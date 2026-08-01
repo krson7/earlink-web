@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  useEffect,
+  useState,
+} from "react";
+
 type AccessibilityMode =
   | "VISUAL"
   | "HEARING"
@@ -207,10 +212,26 @@ export default function ChatHeader({
   accessibilityMode,
   onLeave,
 }: ChatHeaderProps) {
+  const [
+    showTagline,
+    setShowTagline,
+  ] = useState(true);
+
   const modeInformation =
     getModeInformation(
       accessibilityMode,
     );
+
+  useEffect(() => {
+    const timer =
+      window.setTimeout(() => {
+        setShowTagline(false);
+      }, 2200);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, []);
 
   return (
     <header
@@ -220,7 +241,7 @@ export default function ChatHeader({
           "env(safe-area-inset-top)",
       }}
     >
-      {/* 상단 헤더 영역 */}
+      {/* 상단 헤더 */}
       <div className="flex h-[50px] items-center gap-2.5 px-4">
         {/* 뒤로가기 버튼 */}
         <button
@@ -258,7 +279,7 @@ export default function ChatHeader({
           </div>
         </div>
 
-        {/* 오른쪽 서비스 종류 배지 */}
+        {/* 서비스 종류 배지 */}
         <div className="shrink-0">
           <span
             className={[
@@ -277,12 +298,14 @@ export default function ChatHeader({
         </div>
       </div>
 
-      {/* 초록색 문구 영역 */}
-      <div className="flex h-[34px] items-center justify-center border-y border-emerald-100 bg-emerald-50/80">
-        <p className="text-[13px] font-bold tracking-[0.15em] text-emerald-700">
-          EVERY WAY CONNECTS
-        </p>
-      </div>
+      {/* 2.2초 동안 표시되는 문구 */}
+      {showTagline && (
+        <div className="flex h-[28px] items-center justify-center border-y border-emerald-100 bg-emerald-50/80">
+          <p className="text-[11px] font-bold tracking-[0.12em] text-emerald-700">
+            EVERY WAY CONNECTS
+          </p>
+        </div>
+      )}
 
       {/* 스크린 리더 안내 */}
       <p className="sr-only">
