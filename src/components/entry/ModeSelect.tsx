@@ -440,7 +440,7 @@ export default function ModeSelect({
             "env(safe-area-inset-top)",
         }}
       >
-        <div className="flex h-[56px] items-center justify-between pl-0 pr-4">
+        <div className="flex h-[50px] items-center justify-between pl-0 pr-4">
           <a
             href="#mode-select-top"
             aria-label="EarLink 처음으로 이동"
