@@ -444,7 +444,7 @@ export default function ModeSelect({
           <a
             href="#mode-select-top"
             aria-label="EarLink 처음으로 이동"
-            className="relative -ml-2 block h-[54px] w-[178px] translate-y-[2px] shrink-0 overflow-hidden"
+            className="relative -ml-2 block h-[44px] w-[150px] translate-y-[2px] shrink-0 overflow-hidden"
           >
             <Image
               src="/earlink-header-logo.png"
