@@ -55,15 +55,16 @@ export default function IntroSplash() {
 
         {/* 로고 및 진행 표시 */}
         <section className="flex flex-1 items-center justify-center">
-          {/* 기존 -translate-y-16에서 조금 더 위로 이동 */}
           <div className="flex w-full -translate-y-20 flex-col items-center">
             {/* 로고 영역 */}
             <div className="relative flex h-[260px] w-full items-center justify-center overflow-visible">
+              {/* 로고 뒤쪽 빛 효과 */}
               <div
                 aria-hidden="true"
                 className="pointer-events-none absolute h-56 w-56 rounded-full bg-fuchsia-200/35 blur-3xl"
               />
 
+              {/* 로고 이미지 */}
               <Image
                 src="/earlink-logo-transparent.png"
                 alt="EarLink, 서로의 소리를 이어주세요"
@@ -72,6 +73,9 @@ export default function IntroSplash() {
                 priority
                 unoptimized
                 className="relative z-10 h-auto w-[270px] max-w-none scale-[1.3] bg-transparent object-contain sm:w-[270px]"
+                style={{
+                  clipPath: "inset(3px 0 0 3px)",
+                }}
               />
             </div>
 
