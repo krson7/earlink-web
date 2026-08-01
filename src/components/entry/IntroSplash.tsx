@@ -71,7 +71,7 @@ export default function IntroSplash() {
                 height={320}
                 priority
                 unoptimized
-                className="relative z-10 h-auto w-[270px] max-w-none scale-[1.5] bg-transparent object-contain sm:w-[290px]"
+                className="relative z-10 h-auto w-[230px] max-w-none scale-[1.15] bg-transparent object-contain sm:w-[250px]"
               />
             </div>
 
