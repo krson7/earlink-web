@@ -140,15 +140,6 @@ function createLocalMessageId():
   );
 }
 
-function getJoinedNotice(
-  mode: AccessibilityMode,
-): string {
-  // 모든 서비스에서 동일한 문구를 표시한다.
-  void mode;
-
-  return "EVERY WAY CONNECTS";
-}
-
 export default function Home() {
   const chatWebSocketRef =
     useRef<WebSocket | null>(
@@ -240,12 +231,6 @@ export default function Home() {
   ] =
     useState("");
 
-  const [
-    noticeMessage,
-    setNoticeMessage,
-  ] =
-    useState("");
-
   useEffect(() => {
     if (
       screen !== "SPLASH"
@@ -269,28 +254,6 @@ export default function Home() {
       );
     };
   }, [screen]);
-
-  useEffect(() => {
-    if (!noticeMessage) {
-      return;
-    }
-
-    const timer =
-      window.setTimeout(
-        () => {
-          setNoticeMessage(
-            "",
-          );
-        },
-        2200,
-      );
-
-    return () => {
-      window.clearTimeout(
-        timer,
-      );
-    };
-  }, [noticeMessage]);
 
   useEffect(() => {
     if (
@@ -635,7 +598,6 @@ export default function Home() {
 
     setLoading(true);
     setErrorMessage("");
-    setNoticeMessage("");
     setChatErrorMessage("");
 
     try {
@@ -674,13 +636,6 @@ export default function Home() {
 
       setChatErrorMessage(
         "",
-      );
-
-      setNoticeMessage(
-        getJoinedNotice(
-          participant
-            .accessibility_mode,
-        ),
       );
 
       setScreen("CHAT");
@@ -740,7 +695,6 @@ export default function Home() {
     );
 
     setErrorMessage("");
-    setNoticeMessage("");
 
     joinInFlightRef.current =
       false;
@@ -952,12 +906,6 @@ export default function Home() {
                 handleLeaveRoom
               }
             />
-
-            {noticeMessage && (
-              <div className="shrink-0 border-b border-emerald-100 bg-emerald-50 px-4 py-2 text-center text-xs font-medium tracking-[0.08em] text-emerald-700">
-                {noticeMessage}
-              </div>
-            )}
 
             <MessageList
               messages={
