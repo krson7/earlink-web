@@ -72,7 +72,7 @@ function BrailleIcon() {
       aria-hidden="true"
       viewBox="0 0 24 24"
       fill="none"
-      className="h-[18px] w-[18px]"
+      className="h-4 w-4"
     >
       <circle
         cx="8"
@@ -125,7 +125,7 @@ function HandIcon() {
       aria-hidden="true"
       viewBox="0 0 24 24"
       fill="none"
-      className="h-[18px] w-[18px]"
+      className="h-4 w-4"
     >
       <path
         d="M7.5 12V5.5a1.5 1.5 0 0 1 3 0V10"
@@ -165,7 +165,7 @@ function TextIcon() {
       aria-hidden="true"
       viewBox="0 0 24 24"
       fill="none"
-      className="h-[18px] w-[18px]"
+      className="h-4 w-4"
     >
       <path
         d="M5 5.5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-4.5 3v-3H5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2Z"
@@ -214,13 +214,13 @@ export default function ChatHeader({
 
   return (
     <header
-      className="shrink-0 border-b border-slate-100 bg-white px-4 pb-3 shadow-sm"
+      className="shrink-0 border-b border-slate-100 bg-white px-4 shadow-sm"
       style={{
         paddingTop:
-          "max(0.75rem, env(safe-area-inset-top))",
+          "env(safe-area-inset-top)",
       }}
     >
-      <div className="flex min-h-12 items-center gap-3">
+      <div className="flex h-[50px] items-center gap-2.5">
         {/* 뒤로가기 버튼 */}
         <button
           type="button"
@@ -233,15 +233,15 @@ export default function ChatHeader({
 
         {/* 서비스 이름과 연결 상태 */}
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-[20px] font-black tracking-[-0.03em] text-slate-950">
+          <h1 className="truncate text-[18px] font-black leading-none tracking-[-0.03em] text-slate-950">
             EarLink
           </h1>
 
-          <div className="mt-1 flex min-w-0 items-center gap-2 text-[11px]">
+          <div className="mt-1 flex min-w-0 items-center gap-1.5 text-[10px] leading-none">
             <span
               aria-hidden="true"
               className={[
-                "h-2 w-2 shrink-0 rounded-full",
+                "h-1.5 w-1.5 shrink-0 rounded-full",
                 chatConnected
                   ? "bg-emerald-500"
                   : "bg-amber-400",
@@ -261,7 +261,7 @@ export default function ChatHeader({
         <div className="shrink-0">
           <span
             className={[
-              "inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full border px-3 py-2 text-[11px] font-extrabold whitespace-nowrap",
+              "inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-[10px] font-extrabold",
               modeInformation.badgeClassName,
             ].join(" ")}
           >
