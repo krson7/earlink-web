@@ -887,8 +887,8 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-slate-200 text-slate-900">
-      <div className="mx-auto min-h-[100dvh] w-full max-w-[430px] overflow-hidden bg-white shadow-2xl">
+    <div className="h-[100dvh] overflow-hidden bg-slate-200 text-slate-900">
+      <div className="mx-auto h-full w-full max-w-[430px] overflow-hidden bg-white shadow-2xl">
         {screen ===
           "SPLASH" && (
           <IntroSplash />
@@ -896,7 +896,7 @@ export default function Home() {
 
         {screen ===
           "MODE_SELECT" && (
-          <div className="relative min-h-[100dvh]">
+          <div className="relative h-full">
             <ModeSelect
               onSelectMode={
                 handleSelectMode
@@ -937,7 +937,7 @@ export default function Home() {
           "CHAT" &&
           joinedParticipant &&
           accessibilityMode && (
-          <div className="flex h-[100dvh] flex-col overflow-hidden bg-white">
+          <div className="flex h-full min-h-0 flex-col overflow-hidden bg-white">
             <ChatHeader
               chatConnected={
                 chatConnected
