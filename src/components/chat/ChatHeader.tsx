@@ -214,13 +214,14 @@ export default function ChatHeader({
 
   return (
     <header
-      className="shrink-0 border-b border-slate-100 bg-white px-4 shadow-sm"
+      className="shrink-0 bg-white shadow-sm"
       style={{
         paddingTop:
           "env(safe-area-inset-top)",
       }}
     >
-      <div className="flex h-[50px] items-center gap-2.5">
+      {/* 상단 헤더 영역 */}
+      <div className="flex h-[50px] items-center gap-2.5 px-4">
         {/* 뒤로가기 버튼 */}
         <button
           type="button"
@@ -276,6 +277,14 @@ export default function ChatHeader({
         </div>
       </div>
 
+      {/* 초록색 문구 영역 */}
+      <div className="flex h-[34px] items-center justify-center border-y border-emerald-100 bg-emerald-50/80">
+        <p className="text-[13px] font-bold tracking-[0.15em] text-emerald-700">
+          EVERY WAY CONNECTS
+        </p>
+      </div>
+
+      {/* 스크린 리더 안내 */}
       <p className="sr-only">
         현재 선택한 방식은{" "}
         {modeInformation.description}
