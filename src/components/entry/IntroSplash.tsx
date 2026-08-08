@@ -30,9 +30,11 @@ export default function IntroSplash() {
       >
         {/* 상단 문구 */}
         <header className="shrink-0 pt-10 text-center">
-         <p className="text-[12px] font-black tracking-[0.23em] text-slate-700">
-           EVERY WAY CONNECTS
-         </p>
+       
+  <p className="text-[11px] font-semibold tracking-[0.28em] text-slate-500">
+    EVERY WAY CONNECTS
+  </p>
+
         </header>
 
         {/* 로고 및 진행 표시 */}
