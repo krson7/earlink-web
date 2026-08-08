@@ -29,7 +29,7 @@ export default function IntroSplash() {
     >
       {/* 로고 + 진행 표시 전체 영역 */}
       <section className="flex flex-1 items-center justify-center">
-        <div className="flex w-full -translate-y-7 flex-col items-center">
+        <div className="flex w-full -translate-y-10 flex-col items-center">
           {/* 로고 영역 */}
           <Image
             src="/earlink-logo-transparent.png"
