@@ -29,25 +29,25 @@ export default function IntroSplash() {
     >
       {/* 로고 및 진행 표시 */}
       <section className="flex flex-1 items-center justify-center">
-        <div className="flex w-full -translate-y-20 flex-col items-center">
+        <div className="flex w-full flex-col items-center">
+
           {/* 로고 영역 */}
-          <div className="relative flex h-[245px] w-full items-center justify-center">
-            <Image
-              src="/earlink-logo-transparent.png"
-              alt="EarLink"
-              width={320}
-              height={320}
-              priority
-              unoptimized
-              className="h-auto w-[230px] max-w-none scale-[1.1] bg-transparent object-contain sm:w-[230px]"
-              style={{
-                clipPath: "inset(3px 0 0 3px)",
-              }}
-            />
-          </div>
+          <Image
+            src="/earlink-logo-transparent.png"
+            alt="EarLink"
+            width={320}
+            height={320}
+            priority
+            unoptimized
+            className="h-auto w-[230px] max-w-none translate-y-3 scale-[1.1] bg-transparent object-contain sm:w-[230px]"
+            style={{
+              clipPath: "inset(3px 0 0 3px)",
+            }}
+          />
 
           {/* 진행 표시 */}
           <div className="mt-3 w-full max-w-[290px]">
+
             {/* 로딩 바 */}
             <div
               role="progressbar"
@@ -84,6 +84,7 @@ export default function IntroSplash() {
             >
               대화를 연결하고 있어요
             </p>
+
           </div>
         </div>
       </section>
