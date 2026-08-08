@@ -273,11 +273,7 @@ export default function ModeSelect({
         }}
       />
 
-      {/*
-        오른쪽 배경 곡면
-        나무는 제거하고
-        나무 뒤쪽에 있던 부드러운 그림자만 표현
-      */}
+      {/* 오른쪽 배경 곡면 */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -right-[145px] top-[70px] h-[470px] w-[285px] bg-[#f1f0ec]/80"
@@ -287,7 +283,7 @@ export default function ModeSelect({
         }}
       />
 
-      {/* 곡면 안쪽의 한 단계 더 연한 레이어 */}
+      {/* 곡면 안쪽 연한 레이어 */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -right-[175px] top-[122px] h-[390px] w-[270px] bg-white/55 blur-[1px]"
@@ -297,7 +293,7 @@ export default function ModeSelect({
         }}
       />
 
-      {/* 아주 은은한 왼쪽 하단 톤 */}
+      {/* 왼쪽 하단 배경 */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -bottom-[170px] -left-[170px] h-[260px] w-[260px] rounded-full bg-stone-100/45"
@@ -322,7 +318,7 @@ export default function ModeSelect({
             className={[
               "relative -ml-2 block",
               "h-[44px] w-[150px]",
-              "translate-x-[1px]",
+              "translate-x-[3px]",
               "translate-y-[2px]",
               "shrink-0 overflow-hidden",
             ].join(" ")}
