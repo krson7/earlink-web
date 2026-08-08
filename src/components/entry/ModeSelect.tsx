@@ -273,9 +273,9 @@ export default function ModeSelect({
         }}
       />
 
-      {/* 
+      {/*
         오른쪽 배경 곡면
-        기존 디자인의 나무는 제거하고
+        나무는 제거하고
         나무 뒤쪽에 있던 부드러운 그림자만 표현
       */}
       <div
@@ -318,10 +318,14 @@ export default function ModeSelect({
       >
         <div className="flex h-[50px] items-center justify-between pl-0 pr-4">
           {/* EarLink 로고 */}
-          <a
-            href="#mode-select-top"
-            aria-label="EarLink 처음으로 이동"
-            className="relative -ml-2 block h-[44px] w-[150px] translate-y-[2px] shrink-0 overflow-hidden"
+          <div
+            className={[
+              "relative -ml-2 block",
+              "h-[44px] w-[150px]",
+              "translate-x-[1px]",
+              "translate-y-[2px]",
+              "shrink-0 overflow-hidden",
+            ].join(" ")}
           >
             <Image
               src="/earlink-header-logo.png"
@@ -331,7 +335,7 @@ export default function ModeSelect({
               priority
               className="origin-center scale-[1.03] object-cover object-center"
             />
-          </a>
+          </div>
 
           {/* 메뉴 */}
           <nav
@@ -415,6 +419,7 @@ export default function ModeSelect({
             className="mt-3 flex items-center gap-1.5"
           >
             <span className="h-1 w-7 rounded-full bg-[#3f7568]" />
+
             <span className="h-1 w-1 rounded-full bg-[#8eaaa2]" />
           </div>
         </section>
