@@ -20,7 +20,6 @@ type ChatHeaderProps = {
 type ModeInformation = {
   label: string;
   description: string;
-  badgeClassName: string;
 };
 
 function getModeInformation(
@@ -30,8 +29,6 @@ function getModeInformation(
     return {
       label: "점자 서비스",
       description: "점자 대화",
-      badgeClassName:
-        "border-violet-200 bg-violet-50 text-violet-700",
     };
   }
 
@@ -39,16 +36,12 @@ function getModeInformation(
     return {
       label: "수어 서비스",
       description: "지문자 인식",
-      badgeClassName:
-        "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700",
     };
   }
 
   return {
     label: "텍스트 서비스",
     description: "텍스트 대화",
-    badgeClassName:
-      "border-slate-200 bg-slate-100 text-slate-700",
   };
 }
 
@@ -243,7 +236,7 @@ export default function ChatHeader({
     >
       {/* 상단 헤더 */}
       <div className="flex h-[50px] items-center gap-2.5 px-4">
-        {/* 뒤로가기 버튼 */}
+        {/* 뒤로가기 */}
         <button
           type="button"
           onClick={onLeave}
@@ -253,7 +246,7 @@ export default function ChatHeader({
           <BackIcon />
         </button>
 
-        {/* 서비스 이름과 연결 상태 */}
+        {/* 서비스 이름 + 연결 상태 */}
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-[18px] font-black leading-none tracking-[-0.03em] text-slate-950">
             EarLink
@@ -279,14 +272,9 @@ export default function ChatHeader({
           </div>
         </div>
 
-        {/* 서비스 종류 배지 */}
+        {/* 서비스 종류 */}
         <div className="shrink-0">
-          <span
-            className={[
-              "inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-[10px] font-extrabold",
-              modeInformation.badgeClassName,
-            ].join(" ")}
-          >
+          <span className="inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-slate-200 bg-slate-100 px-3 text-[10px] font-extrabold text-slate-700">
             <ModeIcon
               accessibilityMode={
                 accessibilityMode
