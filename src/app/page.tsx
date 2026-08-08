@@ -875,7 +875,7 @@ export default function Home() {
                 >
                   <div
                     aria-hidden="true"
-                    className="mx-auto h-7 w-7 animate-spin rounded-full border-[3px] border-slate-200 border-t-fuchsia-500"
+                    className="mx-auto h-7 w-7 animate-spin rounded-full border-[3px] border-slate-200 border-t-slate-500"
                   />
 
                   <p className="mt-3 text-sm font-bold text-slate-700">
