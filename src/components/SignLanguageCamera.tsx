@@ -13,19 +13,18 @@ const WASM_URL =
 
 const HAND_MODEL_URL =
   "https://storage.googleapis.com/mediapipe-models/" +
-  "hand_landmarker/hand_landmarker/float16/1/" +
-  "hand_landmarker.task";
+  "hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+
+const WS_MAX_BUFFERED =
+  64 * 1024;
+
+const DETECT_INTERVAL_MS = 66;
+const MAX_RECONNECT_ATTEMPTS = 5;
 
 const FASTAPI_WS_BASE_URL =
   process.env
     .NEXT_PUBLIC_FASTAPI_WS_BASE_URL ??
   "ws://localhost:8000";
-
-const WS_MAX_BUFFERED_BYTES =
-  64 * 1024;
-
-const DETECT_INTERVAL_MS = 66;
-const MAX_RECONNECT_ATTEMPTS = 5;
 
 type FacingMode =
   | "user"
@@ -49,31 +48,31 @@ type HandLandmarkerResult = {
 };
 
 type HandLandmarkerInstance = {
-  detectForVideo: (
+  detectForVideo(
     video: HTMLVideoElement,
     timestamp: number,
-  ) => HandLandmarkerResult;
+  ): HandLandmarkerResult;
 
-  close: () => void;
+  close(): void;
 };
 
 type DrawingUtilsInstance = {
-  drawConnectors: (
+  drawConnectors(
     landmarks: Landmark[],
     connections: unknown,
     style: {
       color: string;
       lineWidth: number;
     },
-  ) => void;
+  ): void;
 
-  drawLandmarks: (
+  drawLandmarks(
     landmarks: Landmark[],
     style: {
       color: string;
       radius: number;
     },
-  ) => void;
+  ): void;
 };
 
 type JamoMessage = {
@@ -109,10 +108,39 @@ type ServerMessage =
 type SignLanguageCameraProps = {
   roomCode: string;
   participantId: number;
-  onApplyText?: (
+  chatConnected: boolean;
+  chatErrorMessage: string;
+  onSendText: (
     text: string,
-  ) => void;
+  ) => boolean;
 };
+
+function EarLinkSendMark() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 64 64"
+      fill="none"
+      className="h-6 w-6"
+    >
+      <circle
+        cx="23"
+        cy="31"
+        r="6"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+
+      <circle
+        cx="41"
+        cy="31"
+        r="6"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+    </svg>
+  );
+}
 
 function isCompleteKoreanSyllable(
   character: string,
@@ -120,27 +148,13 @@ function isCompleteKoreanSyllable(
   const code =
     character.codePointAt(0);
 
-  return (
-    code !== undefined &&
-    code >= 0xac00 &&
-    code <= 0xd7a3
-  );
-}
-
-function clampConfidence(
-  confidence: number | null,
-): number {
-  if (
-    typeof confidence !==
-      "number" ||
-    !Number.isFinite(confidence)
-  ) {
-    return 0;
+  if (code === undefined) {
+    return false;
   }
 
-  return Math.min(
-    1,
-    Math.max(0, confidence),
+  return (
+    code >= 0xac00 &&
+    code <= 0xd7a3
   );
 }
 
@@ -159,7 +173,7 @@ function getErrorMessage(
     case "NotAllowedError":
       return (
         "카메라 권한이 거부되었습니다. " +
-        "브라우저 설정에서 카메라를 허용해 주세요."
+        "브라우저에서 카메라를 허용해 주세요."
       );
 
     case "NotReadableError":
@@ -170,59 +184,19 @@ function getErrorMessage(
       );
 
     case "NotFoundError":
-      return (
-        "사용 가능한 카메라를 찾지 못했습니다."
-      );
-
-    case "OverconstrainedError":
-      return (
-        "요청한 카메라 설정을 사용할 수 없습니다."
-      );
-
-    case "SecurityError":
-      return (
-        "보안 문제로 카메라를 실행할 수 없습니다. " +
-        "HTTPS 또는 localhost 환경인지 확인해 주세요."
-      );
+      return "사용 가능한 카메라를 찾지 못했습니다.";
 
     default:
-      return (
-        error.message ||
-        "카메라를 실행하지 못했습니다."
-      );
+      return error.message;
   }
-}
-
-function SendIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      fill="none"
-      className="h-[22px] w-[22px]"
-    >
-      <path
-        d="M4.5 11.5 19.5 5l-4.9 14-3.2-5.1-6.9-2.4Z"
-        stroke="currentColor"
-        strokeWidth="1.9"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-
-      <path
-        d="m11.4 13.9 4.1-4.1"
-        stroke="currentColor"
-        strokeWidth="1.9"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
 }
 
 export default function SignLanguageCamera({
   roomCode,
   participantId,
-  onApplyText,
+  chatConnected,
+  chatErrorMessage,
+  onSendText,
 }: SignLanguageCameraProps) {
   const videoRef =
     useRef<HTMLVideoElement | null>(
@@ -250,9 +224,11 @@ export default function SignLanguageCamera({
     );
 
   const reconnectTimerRef =
-    useRef<number | null>(
-      null,
-    );
+    useRef<
+      ReturnType<
+        typeof setTimeout
+      > | null
+    >(null);
 
   const landmarkerRef =
     useRef<
@@ -270,57 +246,83 @@ export default function SignLanguageCamera({
   const facingRef =
     useRef<FacingMode>("user");
 
-  const onApplyTextRef =
-    useRef(onApplyText);
+  const switchCameraRef =
+    useRef<
+      (() => Promise<void>) | null
+    >(null);
+
+  const onSendTextRef =
+    useRef(onSendText);
+
+  const ttsEnabledRef =
+    useRef(true);
 
   const lastSpokenComposedRef =
     useRef("");
 
-  const [, setStatus] =
+  const [status, setStatus] =
     useState("준비 중");
 
-  const [, setConnected] =
+  const [
+    connected,
+    setConnected,
+  ] =
     useState(false);
 
   const [
     errorMessage,
     setErrorMessage,
-  ] = useState("");
+  ] =
+    useState("");
 
   const [
     currentJamo,
     setCurrentJamo,
-  ] = useState<string | null>(
-    null,
-  );
+  ] =
+    useState<string | null>(
+      null,
+    );
 
   const [
     recognizedText,
     setRecognizedText,
-  ] = useState("");
+  ] =
+    useState("");
 
   const [
     confidence,
     setConfidence,
-  ] = useState(0);
+  ] =
+    useState(0);
+
+  const [facing, setFacing] =
+    useState<FacingMode>(
+      "user",
+    );
 
   const [
-    facing,
-    setFacing,
-  ] = useState<FacingMode>(
-    "user",
-  );
+    canFlipCamera,
+    setCanFlipCamera,
+  ] =
+    useState(false);
+
+  const [
+    ttsEnabled,
+    setTtsEnabled,
+  ] =
+    useState(true);
 
   useEffect(() => {
-    onApplyTextRef.current =
-      onApplyText;
-  }, [onApplyText]);
+    onSendTextRef.current =
+      onSendText;
+  }, [onSendText]);
 
   useEffect(() => {
     let disposed = false;
-    let reconnectBlocked = false;
     let reconnectDelay = 500;
+    let reconnectBlocked = false;
     let reconnectAttempts = 0;
+
     let lastVideoTime = -1;
     let lastDetectTime = 0;
     let frameId = 0;
@@ -328,7 +330,6 @@ export default function SignLanguageCamera({
     setCurrentJamo(null);
     setRecognizedText("");
     setConfidence(0);
-    setErrorMessage("");
 
     lastSpokenComposedRef.current =
       "";
@@ -344,22 +345,21 @@ export default function SignLanguageCamera({
         return null;
       }
 
-      const voices =
+      const koreanVoices =
         window.speechSynthesis
           .getVoices()
-          .filter(
-            (voice) =>
-              voice.lang.startsWith(
-                "ko",
-              ),
+          .filter((voice) =>
+            voice.lang.startsWith(
+              "ko",
+            ),
           );
 
       return (
-        voices.find(
+        koreanVoices.find(
           (voice) =>
             voice.localService,
         ) ??
-        voices[0] ??
+        koreanVoices[0] ??
         null
       );
     }
@@ -368,6 +368,7 @@ export default function SignLanguageCamera({
       text: string,
     ): void {
       if (
+        !ttsEnabledRef.current ||
         !text ||
         !(
           "speechSynthesis" in
@@ -377,8 +378,7 @@ export default function SignLanguageCamera({
         return;
       }
 
-      window
-        .speechSynthesis
+      window.speechSynthesis
         .cancel();
 
       const utterance =
@@ -386,17 +386,18 @@ export default function SignLanguageCamera({
           text,
         );
 
-      utterance.lang = "ko-KR";
+      utterance.lang =
+        "ko-KR";
 
       const voice =
         pickKoreanVoice();
 
       if (voice) {
-        utterance.voice = voice;
+        utterance.voice =
+          voice;
       }
 
-      window
-        .speechSynthesis
+      window.speechSynthesis
         .speak(utterance);
     }
 
@@ -404,16 +405,10 @@ export default function SignLanguageCamera({
       message: JamoMessage,
     ): void {
       const nextText =
-        typeof message.composed ===
-          "string"
-          ? message.composed
-          : "";
+        message.composed ?? "";
 
       setCurrentJamo(
-        typeof message.current ===
-          "string"
-          ? message.current
-          : null,
+        message.current ?? null,
       );
 
       setRecognizedText(
@@ -421,46 +416,42 @@ export default function SignLanguageCamera({
       );
 
       setConfidence(
-        clampConfidence(
-          message.confidence,
-        ),
+        message.confidence ?? 0,
       );
 
       if (
-        !nextText ||
-        nextText ===
+        nextText &&
+        nextText !==
           lastSpokenComposedRef
             .current
       ) {
-        return;
-      }
-
-      const completed =
-        [...nextText].filter(
+        const completed = [
+          ...nextText,
+        ].filter(
           isCompleteKoreanSyllable,
         );
 
-      const previousCompleted =
-        [
+        const previousCompleted = [
           ...lastSpokenComposedRef
             .current,
         ].filter(
           isCompleteKoreanSyllable,
         );
 
-      if (
-        completed.length >
-        previousCompleted.length
-      ) {
-        speak(
-          completed[
-            completed.length - 1
-          ],
-        );
-      }
+        if (
+          completed.length >
+          previousCompleted.length
+        ) {
+          speak(
+            completed[
+              completed.length - 1
+            ],
+          );
+        }
 
-      lastSpokenComposedRef.current =
-        nextText;
+        lastSpokenComposedRef.current =
+          nextText;
+      }
     }
 
     function handleServerError(
@@ -473,8 +464,7 @@ export default function SignLanguageCamera({
       );
 
       setErrorMessage(
-        message.detail ||
-          "지문자 서버에서 오류가 발생했습니다.",
+        message.detail,
       );
 
       setStatus(
@@ -512,8 +502,6 @@ export default function SignLanguageCamera({
         ) ||
         participantId <= 0
       ) {
-        reconnectBlocked = true;
-
         setConnected(false);
 
         setStatus(
@@ -524,6 +512,9 @@ export default function SignLanguageCamera({
           "대화방에 참여한 후 지문자 기능을 사용할 수 있습니다.",
         );
 
+        reconnectBlocked =
+          true;
+
         return;
       }
 
@@ -533,9 +524,11 @@ export default function SignLanguageCamera({
       if (
         currentSocket &&
         (
-          currentSocket.readyState ===
+          currentSocket
+            .readyState ===
             WebSocket.OPEN ||
-          currentSocket.readyState ===
+          currentSocket
+            .readyState ===
             WebSocket.CONNECTING
         )
       ) {
@@ -549,19 +542,20 @@ export default function SignLanguageCamera({
             "",
           );
 
-      const websocketUrl =
+      const translateWebSocketUrl =
         `${baseUrl}/ws/translate/` +
         `${encodeURIComponent(
           normalizedRoomCode,
-        )}/${participantId}`;
+        )}/` +
+        `${participantId}`;
 
       setStatus(
-        "지문자 서버 연결 중",
+        "FastAPI 서버 연결 중",
       );
 
       const socket =
         new WebSocket(
-          websocketUrl,
+          translateWebSocketUrl,
         );
 
       webSocketRef.current =
@@ -574,22 +568,15 @@ export default function SignLanguageCamera({
         setConnected(true);
 
         setStatus(
-          "지문자 서버 연결됨",
+          "FastAPI 서버 연결됨",
         );
 
         setErrorMessage("");
       };
 
       socket.onmessage = (
-        event: MessageEvent,
+        event,
       ) => {
-        if (
-          typeof event.data !==
-            "string"
-        ) {
-          return;
-        }
-
         let message:
           ServerMessage;
 
@@ -600,7 +587,7 @@ export default function SignLanguageCamera({
             ) as ServerMessage;
         } catch {
           console.warn(
-            "지문자 서버 메시지를 해석하지 못했습니다.",
+            "서버 메시지를 JSON으로 해석하지 못했습니다.",
           );
 
           return;
@@ -655,7 +642,8 @@ export default function SignLanguageCamera({
         if (
           event.code === 1008
         ) {
-          reconnectBlocked = true;
+          reconnectBlocked =
+            true;
 
           setStatus(
             "참가자 확인 실패",
@@ -669,13 +657,34 @@ export default function SignLanguageCamera({
           return;
         }
 
-        reconnectAttempts += 1;
+        if (
+          reconnectBlocked
+        ) {
+          setStatus(
+            "지문자 기능 사용 불가",
+          );
+
+          if (event.reason) {
+            setErrorMessage(
+              event.reason,
+            );
+          }
+
+          return;
+        }
+
+        setStatus(
+          event.code === 1011
+            ? "서버 오류 · 재연결 중"
+            : "FastAPI 서버 재연결 중",
+        );
 
         if (
-          reconnectAttempts >
+          reconnectAttempts >=
           MAX_RECONNECT_ATTEMPTS
         ) {
-          reconnectBlocked = true;
+          reconnectBlocked =
+            true;
 
           setStatus(
             "지문자 서버 연결 실패",
@@ -688,20 +697,16 @@ export default function SignLanguageCamera({
           return;
         }
 
-        setStatus(
-          `지문자 서버 재연결 중 (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`,
-        );
+        reconnectAttempts +=
+          1;
 
         reconnectTimerRef.current =
-          window.setTimeout(
-            () => {
-              reconnectTimerRef.current =
-                null;
+          setTimeout(() => {
+            reconnectTimerRef.current =
+              null;
 
-              connectWebSocket();
-            },
-            reconnectDelay,
-          );
+            connectWebSocket();
+          }, reconnectDelay);
 
         reconnectDelay =
           Math.min(
@@ -720,7 +725,8 @@ export default function SignLanguageCamera({
     }
 
     async function startCamera(
-      nextFacing: FacingMode,
+      nextFacing:
+        FacingMode,
     ): Promise<void> {
       const video =
         videoRef.current;
@@ -743,9 +749,6 @@ export default function SignLanguageCamera({
           (track) =>
             track.stop(),
         );
-
-      streamRef.current = null;
-      video.srcObject = null;
 
       const stream =
         await navigator
@@ -788,22 +791,13 @@ export default function SignLanguageCamera({
 
       await video.play();
 
-      if (disposed) {
-        stream
-          .getTracks()
-          .forEach(
-            (track) =>
-              track.stop(),
-          );
-
-        return;
-      }
-
       canvas.width =
-        video.videoWidth || 640;
+        video.videoWidth ||
+        640;
 
       canvas.height =
-        video.videoHeight || 480;
+        video.videoHeight ||
+        480;
 
       facingRef.current =
         nextFacing;
@@ -813,7 +807,47 @@ export default function SignLanguageCamera({
       );
 
       lastVideoTime = -1;
+
+      const devices =
+        await navigator
+          .mediaDevices
+          .enumerateDevices();
+
+      const cameras =
+        devices.filter(
+          (device) =>
+            device.kind ===
+            "videoinput",
+        );
+
+      setCanFlipCamera(
+        cameras.length >= 2,
+      );
     }
+
+    switchCameraRef.current =
+      async () => {
+        try {
+          setErrorMessage("");
+
+          const nextFacing:
+            FacingMode =
+            facingRef.current ===
+            "user"
+              ? "environment"
+              : "user";
+
+          await startCamera(
+            nextFacing,
+          );
+        } catch (error) {
+          setErrorMessage(
+            getErrorMessage(
+              error,
+            ),
+          );
+        }
+      };
 
     function findRightHand(
       result:
@@ -829,10 +863,7 @@ export default function SignLanguageCamera({
         null;
 
       result.landmarks.forEach(
-        (
-          hand,
-          index,
-        ) => {
+        (hand, index) => {
           const category =
             handedness[index]?.[0];
 
@@ -843,7 +874,8 @@ export default function SignLanguageCamera({
               ?.displayName;
 
           if (
-            handName !== "Left"
+            handName !==
+            "Left"
           ) {
             rightHand = hand;
           }
@@ -886,28 +918,22 @@ export default function SignLanguageCamera({
         canvas.height,
       );
 
-      const handedness =
-        result.handedness ??
-        result.handednesses ??
-        [];
-
       result.landmarks.forEach(
-        (
-          hand,
-          index,
-        ) => {
+        (hand, index) => {
+          const handedness =
+            result.handedness ??
+            result.handednesses ??
+            [];
+
           const handName =
-            handedness[
-              index
-            ]?.[0]
+            handedness[index]?.[0]
               ?.categoryName ??
-            handedness[
-              index
-            ]?.[0]
+            handedness[index]?.[0]
               ?.displayName;
 
           const color =
-            handName === "Left"
+            handName ===
+            "Left"
               ? "#60a5fa"
               : "#f97316";
 
@@ -944,9 +970,14 @@ export default function SignLanguageCamera({
       if (
         !socket ||
         socket.readyState !==
-          WebSocket.OPEN ||
+          WebSocket.OPEN
+      ) {
+        return;
+      }
+
+      if (
         socket.bufferedAmount >
-          WS_MAX_BUFFERED_BYTES
+        WS_MAX_BUFFERED
       ) {
         return;
       }
@@ -982,10 +1013,6 @@ export default function SignLanguageCamera({
     function detectionLoop(
       now: number,
     ): void {
-      if (disposed) {
-        return;
-      }
-
       animationFrameRef.current =
         window
           .requestAnimationFrame(
@@ -1015,9 +1042,15 @@ export default function SignLanguageCamera({
 
       if (
         video.currentTime ===
-          lastVideoTime ||
-        now - lastDetectTime <
-          DETECT_INTERVAL_MS
+        lastVideoTime
+      ) {
+        return;
+      }
+
+      if (
+        now -
+          lastDetectTime <
+        DETECT_INTERVAL_MS
       ) {
         return;
       }
@@ -1042,8 +1075,13 @@ export default function SignLanguageCamera({
 
         drawHands(result);
 
+        const rightHand =
+          findRightHand(
+            result,
+          );
+
         sendHand(
-          findRightHand(result),
+          rightHand,
           timestamp,
         );
       } catch (error) {
@@ -1092,9 +1130,10 @@ export default function SignLanguageCamera({
           FilesetResolver,
           HandLandmarker,
           DrawingUtils,
-        } = await import(
-          "@mediapipe/tasks-vision"
-        );
+        } =
+          await import(
+            "@mediapipe/tasks-vision"
+          );
 
         const vision =
           await FilesetResolver
@@ -1140,7 +1179,8 @@ export default function SignLanguageCamera({
 
             break;
           } catch (error) {
-            lastError = error;
+            lastError =
+              error;
 
             console.warn(
               `HandLandmarker ${delegate} 초기화 실패`,
@@ -1152,7 +1192,7 @@ export default function SignLanguageCamera({
         if (!landmarker) {
           throw (
             lastError instanceof
-              Error
+            Error
               ? lastError
               : new Error(
                   "MediaPipe 모델을 초기화하지 못했습니다.",
@@ -1162,7 +1202,6 @@ export default function SignLanguageCamera({
 
         if (disposed) {
           landmarker.close();
-
           return;
         }
 
@@ -1207,10 +1246,6 @@ export default function SignLanguageCamera({
           "user",
         );
 
-        if (disposed) {
-          return;
-        }
-
         connectWebSocket();
 
         animationFrameRef.current =
@@ -1219,10 +1254,7 @@ export default function SignLanguageCamera({
               detectionLoop,
             );
       } catch (error) {
-        console.error(
-          "지문자 카메라 초기화 실패:",
-          error,
-        );
+        console.error(error);
 
         setConnected(false);
 
@@ -1235,28 +1267,6 @@ export default function SignLanguageCamera({
             error,
           ),
         );
-
-        streamRef.current
-          ?.getTracks()
-          .forEach(
-            (track) =>
-              track.stop(),
-          );
-
-        streamRef.current =
-          null;
-
-        landmarkerRef.current
-          ?.close();
-
-        landmarkerRef.current =
-          null;
-
-        drawingUtilsRef.current =
-          null;
-
-        handConnectionsRef.current =
-          null;
       }
     }
 
@@ -1264,6 +1274,9 @@ export default function SignLanguageCamera({
 
     return () => {
       disposed = true;
+
+      switchCameraRef.current =
+        null;
 
       if (
         animationFrameRef.current !==
@@ -1283,7 +1296,7 @@ export default function SignLanguageCamera({
         reconnectTimerRef.current !==
         null
       ) {
-        window.clearTimeout(
+        clearTimeout(
           reconnectTimerRef
             .current,
         );
@@ -1307,7 +1320,7 @@ export default function SignLanguageCamera({
         try {
           socket.close();
         } catch {
-          // 이미 닫힌 소켓은 무시한다.
+          // 이미 종료된 경우 무시한다.
         }
       }
 
@@ -1320,11 +1333,6 @@ export default function SignLanguageCamera({
 
       streamRef.current =
         null;
-
-      if (videoRef.current) {
-        videoRef.current
-          .srcObject = null;
-      }
 
       landmarkerRef.current
         ?.close();
@@ -1352,7 +1360,7 @@ export default function SignLanguageCamera({
     participantId,
   ]);
 
-  function applyRecognizedText():
+  function sendRecognizedText():
     void {
     const text =
       recognizedText.trim();
@@ -1361,9 +1369,14 @@ export default function SignLanguageCamera({
       return;
     }
 
-    onApplyTextRef.current?.(
-      text,
-    );
+    const sent =
+      onSendTextRef.current(
+        text,
+      );
+
+    if (!sent) {
+      return;
+    }
 
     const socket =
       webSocketRef.current;
@@ -1405,36 +1418,47 @@ export default function SignLanguageCamera({
     }
   }
 
+  function toggleTts(): void {
+    setTtsEnabled(
+      (previous) => {
+        const next =
+          !previous;
+
+        ttsEnabledRef.current =
+          next;
+
+        if (
+          !next &&
+          "speechSynthesis" in
+          window
+        ) {
+          window
+            .speechSynthesis
+            .cancel();
+        }
+
+        return next;
+      },
+    );
+  }
+
   return (
-    <section
-      className="bg-white px-3 pt-2"
-      style={{
-        paddingBottom:
-          "max(0.7rem, env(safe-area-inset-bottom))",
-      }}
-    >
+    <section className="shrink-0 border-b border-slate-200 bg-white">
       {errorMessage && (
         <div
           role="alert"
-          className="mb-2 rounded-[14px] border border-rose-100 bg-rose-50 px-3 py-2 text-[11px] font-medium leading-4 text-rose-700"
+          className="border-b border-red-100 bg-red-50 px-4 py-2.5 text-xs font-medium text-red-700"
         >
           {errorMessage}
         </div>
       )}
 
-      <div className="mb-2 px-0.5">
-        <p className="text-[11px] font-black tracking-[-0.02em] text-[#153b60]">
-          지문자 인식
-        </p>
-      </div>
-
-      <div className="relative h-[clamp(190px,27dvh,230px)] overflow-hidden rounded-[24px] border border-slate-200 bg-[#070b16] shadow-[0_12px_28px_rgba(15,23,42,0.16)]">
+      <div className="relative aspect-[16/10] overflow-hidden bg-slate-950">
         <video
           ref={videoRef}
           muted
           playsInline
-          autoPlay
-          className="absolute inset-0 h-full w-full object-contain"
+          className="absolute inset-0 h-full w-full object-cover"
           style={{
             transform:
               facing === "user"
@@ -1445,7 +1469,7 @@ export default function SignLanguageCamera({
 
         <canvas
           ref={canvasRef}
-          className="pointer-events-none absolute inset-0 h-full w-full object-contain"
+          className="pointer-events-none absolute inset-0 h-full w-full"
           style={{
             transform:
               facing === "user"
@@ -1454,87 +1478,167 @@ export default function SignLanguageCamera({
           }}
         />
 
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/45" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/65" />
 
-        <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/15 bg-black/30 px-3 py-1 text-[9px] font-semibold text-white/90 backdrop-blur-md">
-          오른손을 프레임 안에 보여주세요
+        <div className="pointer-events-none absolute inset-x-[22%] bottom-[18%] top-[18%] rounded-[28px] border border-white/25 shadow-[0_0_0_999px_rgba(15,23,42,0.05)]">
+          <span className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium text-white/75">
+            오른손을 안내선 안에 보여주세요
+          </span>
         </div>
 
-        <div className="pointer-events-none absolute inset-x-[24%] bottom-[17%] top-[18%]">
-          <span className="absolute left-0 top-0 h-7 w-7 rounded-tl-[18px] border-l border-t border-white/45" />
+        <div className="absolute left-3 top-3 flex max-w-[58%] items-center gap-2 rounded-full bg-black/55 px-3 py-1.5 text-[11px] font-semibold text-white backdrop-blur-md">
+          <span
+            className={
+              "h-2 w-2 shrink-0 rounded-full " +
+              (
+                connected
+                  ? "bg-emerald-400"
+                  : "bg-rose-400"
+              )
+            }
+          />
 
-          <span className="absolute right-0 top-0 h-7 w-7 rounded-tr-[18px] border-r border-t border-white/45" />
-
-          <span className="absolute bottom-0 left-0 h-7 w-7 rounded-bl-[18px] border-b border-l border-white/45" />
-
-          <span className="absolute bottom-0 right-0 h-7 w-7 rounded-br-[18px] border-b border-r border-white/45" />
+          <span className="truncate">
+            {status}
+          </span>
         </div>
 
-        <div className="absolute bottom-3 left-3 max-w-[78%] rounded-[14px] border border-white/10 bg-black/35 px-3 py-2 text-white backdrop-blur-md">
-          <p className="text-[9px] font-semibold text-white/60">
-            현재 인식
-          </p>
-
-          <p
-            aria-live="polite"
-            className="mt-0.5 truncate text-[13px] font-black tracking-[-0.02em]"
+        <div className="absolute right-3 top-3 flex gap-2">
+          <button
+            type="button"
+            aria-label="카메라 전환"
+            title="카메라 전환"
+            disabled={
+              !canFlipCamera
+            }
+            onClick={() => {
+              void switchCameraRef
+                .current?.();
+            }}
+            className="rounded-full bg-black/55 px-3 py-1.5 text-[11px] font-bold text-white backdrop-blur-md transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {currentJamo
-              ? `${currentJamo} · ${Math.round(
-                  confidence * 100,
-                )}%`
-              : "손동작을 기다리고 있어요"}
-          </p>
+            전환
+          </button>
+
+          <button
+            type="button"
+            aria-label={
+              ttsEnabled
+                ? "인식 음성 끄기"
+                : "인식 음성 켜기"
+            }
+            title={
+              ttsEnabled
+                ? "인식 음성 끄기"
+                : "인식 음성 켜기"
+            }
+            onClick={
+              toggleTts
+            }
+            className="rounded-full bg-black/55 px-3 py-1.5 text-[11px] font-bold text-white backdrop-blur-md transition active:scale-95"
+          >
+            {ttsEnabled
+              ? "음성 켬"
+              : "음성 끔"}
+          </button>
+        </div>
+
+        <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold text-white/70">
+              현재 인식
+            </p>
+
+            <p
+              aria-live="polite"
+              className="mt-0.5 truncate text-lg font-black text-white drop-shadow"
+            >
+              {currentJamo
+                ? `${currentJamo} · ${Math.round(
+                    confidence *
+                      100,
+                  )}%`
+                : "손동작을 기다리고 있어요"}
+            </p>
+          </div>
+
+          <span className="shrink-0 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-md">
+            지문자 입력
+          </span>
         </div>
       </div>
 
-      <div className="mt-2.5 flex items-stretch gap-2">
-        <div className="min-w-0 flex-1 rounded-[18px] border border-slate-200 bg-white px-3.5 py-2.5 shadow-[0_5px_16px_rgba(15,23,42,0.04)]">
-          <p className="text-[9px] font-black tracking-[-0.02em] text-fuchsia-500">
-            인식된 문장
-          </p>
+      {chatErrorMessage && (
+        <div
+          role="alert"
+          className="mx-3 mt-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-medium text-red-700"
+        >
+          {chatErrorMessage}
+        </div>
+      )}
 
-          <p
-            aria-live="polite"
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          sendRecognizedText();
+        }}
+        className="bg-white px-3 py-1.5"
+        style={{
+          paddingBottom:
+            "max(0.5rem, env(safe-area-inset-bottom))",
+        }}
+      >
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1 rounded-[22px] border border-blue-100 bg-white px-4 py-2 shadow-[0_3px_12px_rgba(15,23,42,0.04)]">
+            <textarea
+              aria-label="지문자 인식 문장"
+              value={
+                recognizedText
+              }
+              rows={1}
+              readOnly
+              placeholder="지문자를 인식하면 문장이 여기에 표시됩니다"
+              className="max-h-24 min-h-5 w-full resize-none overflow-y-auto bg-transparent text-[14px] leading-5 text-slate-900 outline-none placeholder:text-slate-400"
+            />
+          </div>
+
+          <button
+            type="submit"
+            aria-label="지문자 메시지 전송"
+            disabled={
+              !chatConnected ||
+              !recognizedText.trim()
+            }
             className={[
-              "mt-1 max-h-10 overflow-hidden break-words text-[13px] font-bold leading-5 tracking-[-0.02em]",
-              recognizedText
-                ? "text-[#153b60]"
-                : "text-slate-400",
+              "flex h-11 w-[62px] shrink-0 items-center justify-center",
+              "rounded-[18px] text-white",
+              "transition duration-200",
+
+              chatConnected &&
+              recognizedText.trim()
+                ? [
+                    "bg-gradient-to-br",
+                    "from-sky-400",
+                    "via-blue-500",
+                    "to-indigo-600",
+                    "shadow-[0_7px_18px_rgba(37,99,235,0.22)]",
+                    "hover:-translate-y-[1px]",
+                    "hover:shadow-[0_10px_22px_rgba(37,99,235,0.28)]",
+                    "active:translate-y-0",
+                    "active:scale-95",
+                  ].join(" ")
+                : [
+                    "cursor-not-allowed",
+                    "bg-slate-200",
+                    "text-slate-400",
+                    "shadow-none",
+                  ].join(" "),
             ].join(" ")}
           >
-            {recognizedText ||
-              "지문자를 인식하면 여기에 표시됩니다."}
-          </p>
+            <EarLinkSendMark />
+          </button>
         </div>
-
-        <button
-          type="button"
-          aria-label="인식된 문장을 입력창에 넣기"
-          title="입력창에 넣기"
-          disabled={
-            !recognizedText.trim() ||
-            !onApplyText
-          }
-          onClick={
-            applyRecognizedText
-          }
-          className={[
-            "flex w-[64px] shrink-0 items-center justify-center",
-            "rounded-[18px] bg-[#0b3761] text-white",
-            "shadow-[0_8px_18px_rgba(11,55,97,0.18)]",
-            "transition duration-200",
-            "hover:bg-[#092f54]",
-            "active:scale-[0.96]",
-            "disabled:cursor-not-allowed",
-            "disabled:bg-slate-200",
-            "disabled:text-slate-400",
-            "disabled:shadow-none",
-          ].join(" ")}
-        >
-          <SendIcon />
-        </button>
-      </div>
+      </form>
     </section>
   );
 }

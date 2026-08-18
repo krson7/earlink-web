@@ -1,14 +1,7 @@
 "use client";
 
-import {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-
-import type {
-  FormEvent,
-} from "react";
+import { useEffect, useRef, useState } from "react";
+import type { FormEvent } from "react";
 
 import CameraComposer from "@/components/chat/CameraComposer";
 import ChatComposer from "@/components/chat/ChatComposer";
@@ -18,28 +11,17 @@ import IntroSplash from "@/components/entry/IntroSplash";
 import ModeSelect from "@/components/entry/ModeSelect";
 
 const FASTAPI_HTTP_BASE_URL =
-  process.env
-    .NEXT_PUBLIC_FASTAPI_HTTP_BASE_URL ??
-  "http://localhost:8000";
+  process.env.NEXT_PUBLIC_FASTAPI_HTTP_BASE_URL ?? "http://localhost:8000";
 
 const FASTAPI_WS_BASE_URL =
-  process.env
-    .NEXT_PUBLIC_FASTAPI_WS_BASE_URL ??
-  "ws://localhost:8000";
+  process.env.NEXT_PUBLIC_FASTAPI_WS_BASE_URL ?? "ws://localhost:8000";
 
 const SPLASH_DURATION_MS = 1800;
 const MAX_CHAT_MESSAGE_LENGTH = 1000;
 const MAX_CHAT_RECONNECT_ATTEMPTS = 5;
 
-type AccessibilityMode =
-  | "VISUAL"
-  | "HEARING"
-  | "STANDARD";
-
-type Screen =
-  | "SPLASH"
-  | "MODE_SELECT"
-  | "CHAT";
+type AccessibilityMode = "VISUAL" | "HEARING" | "STANDARD";
+type Screen = "SPLASH" | "MODE_SELECT" | "CHAT";
 
 type JoinRoomResponse = {
   participant_id: number;
@@ -65,20 +47,14 @@ type ChatErrorMessage = {
   detail: string;
 };
 
-type ChatServerMessage =
-  | ChatMessage
-  | ChatErrorMessage;
+type ChatServerMessage = ChatMessage | ChatErrorMessage;
 
-type ChatMessageItem =
-  ChatMessage & {
-    localId: string;
-  };
+type ChatMessageItem = ChatMessage & {
+  localId: string;
+};
 
-function getApiErrorMessage(
-  body: ErrorResponse | null,
-): string {
-  return typeof body?.detail ===
-    "string"
+function getApiErrorMessage(body: ErrorResponse | null): string {
+  return typeof body?.detail === "string"
     ? body.detail
     : "서버 요청을 처리하지 못했습니다.";
 }
@@ -87,29 +63,21 @@ async function requestJson<T>(
   path: string,
   options: RequestInit,
 ): Promise<T> {
-  const headers =
-    new Headers(
-      options.headers,
-    );
+  const headers = new Headers(options.headers);
 
-  headers.set(
-    "Content-Type",
-    "application/json",
+  headers.set("Content-Type", "application/json");
+
+  const response = await fetch(
+    `${FASTAPI_HTTP_BASE_URL}${path}`,
+    {
+      ...options,
+      headers,
+    },
   );
 
-  const response =
-    await fetch(
-      `${FASTAPI_HTTP_BASE_URL}${path}`,
-      {
-        ...options,
-        headers,
-      },
-    );
-
-  const body =
-    await response
-      .json()
-      .catch(() => null);
+  const body = await response
+    .json()
+    .catch(() => null);
 
   if (!response.ok) {
     throw new Error(
@@ -122,82 +90,59 @@ async function requestJson<T>(
   return body as T;
 }
 
-function createLocalMessageId():
-  string {
+function createLocalMessageId(): string {
   if (
-    typeof crypto !==
-      "undefined" &&
+    typeof crypto !== "undefined" &&
     "randomUUID" in crypto
   ) {
     return crypto.randomUUID();
   }
 
-  return (
-    `${Date.now()}-` +
-    Math.random()
-      .toString(16)
-      .slice(2)
-  );
+  return `${Date.now()}-${Math.random()
+    .toString(16)
+    .slice(2)}`;
 }
 
 export default function Home() {
   const chatWebSocketRef =
-    useRef<WebSocket | null>(
-      null,
-    );
+    useRef<WebSocket | null>(null);
 
   const chatReconnectTimerRef =
-    useRef<number | null>(
-      null,
-    );
+    useRef<number | null>(null);
 
   const chatInputRef =
-    useRef<HTMLTextAreaElement | null>(
-      null,
-    );
+    useRef<HTMLTextAreaElement | null>(null);
 
-  // 서비스 선택 버튼을 빠르게 여러 번 눌러도
-  // 참가 요청이 중복되지 않도록 막는다.
   const joinInFlightRef =
     useRef(false);
 
-  const [
-    screen,
-    setScreen,
-  ] =
-    useState<Screen>(
-      "SPLASH",
-    );
+  const [screen, setScreen] =
+    useState<Screen>("SPLASH");
 
   const [
     accessibilityMode,
     setAccessibilityMode,
   ] =
-    useState<
-      AccessibilityMode | null
-    >(null);
+    useState<AccessibilityMode | null>(
+      null,
+    );
 
   const [
     joinedParticipant,
     setJoinedParticipant,
   ] =
-    useState<
-      JoinRoomResponse | null
-    >(null);
+    useState<JoinRoomResponse | null>(
+      null,
+    );
 
-  const [
-    message,
-    setMessage,
-  ] =
+  const [message, setMessage] =
     useState("");
 
   const [
     chatMessages,
     setChatMessages,
   ] =
-    useState<
-      ChatMessageItem[]
-    >([]);
+    useState<ChatMessageItem[]>([]);
 
   const [
     chatConnected,
@@ -209,9 +154,7 @@ export default function Home() {
     chatStatus,
     setChatStatus,
   ] =
-    useState(
-      "채팅 연결 전",
-    );
+    useState("채팅 연결 전");
 
   const [
     chatErrorMessage,
@@ -219,10 +162,7 @@ export default function Home() {
   ] =
     useState("");
 
-  const [
-    loading,
-    setLoading,
-  ] =
+  const [loading, setLoading] =
     useState(false);
 
   const [
@@ -232,66 +172,41 @@ export default function Home() {
     useState("");
 
   useEffect(() => {
-    if (
-      screen !== "SPLASH"
-    ) {
+    if (screen !== "SPLASH") {
       return;
     }
 
     const timer =
-      window.setTimeout(
-        () => {
-          setScreen(
-            "MODE_SELECT",
-          );
-        },
-        SPLASH_DURATION_MS,
-      );
+      window.setTimeout(() => {
+        setScreen("MODE_SELECT");
+      }, SPLASH_DURATION_MS);
 
     return () => {
-      window.clearTimeout(
-        timer,
-      );
+      window.clearTimeout(timer);
     };
   }, [screen]);
 
   useEffect(() => {
-    if (
-      !joinedParticipant
-    ) {
-      setChatConnected(
-        false,
-      );
-
-      setChatStatus(
-        "채팅 연결 전",
-      );
-
+    if (!joinedParticipant) {
+      setChatConnected(false);
+      setChatStatus("채팅 연결 전");
       return;
     }
 
     let disposed = false;
-    let reconnectBlocked =
-      false;
-
-    let reconnectDelay =
-      500;
-
-    let reconnectAttempts =
-      0;
+    let reconnectBlocked = false;
+    let reconnectDelay = 500;
+    let reconnectAttempts = 0;
 
     const normalizedRoomCode =
-      joinedParticipant
-        .room_code
+      joinedParticipant.room_code
         .trim()
         .toUpperCase();
 
     const participantId =
-      joinedParticipant
-        .participant_id;
+      joinedParticipant.participant_id;
 
-    function connectChatWebSocket():
-      void {
+    function connectChatWebSocket(): void {
       if (
         disposed ||
         reconnectBlocked
@@ -305,11 +220,9 @@ export default function Home() {
       if (
         currentSocket &&
         (
-          currentSocket
-            .readyState ===
+          currentSocket.readyState ===
             WebSocket.OPEN ||
-          currentSocket
-            .readyState ===
+          currentSocket.readyState ===
             WebSocket.CONNECTING
         )
       ) {
@@ -317,11 +230,10 @@ export default function Home() {
       }
 
       const baseUrl =
-        FASTAPI_WS_BASE_URL
-          .replace(
-            /\/+$/,
-            "",
-          );
+        FASTAPI_WS_BASE_URL.replace(
+          /\/+$/,
+          "",
+        );
 
       const websocketUrl =
         `${baseUrl}/ws/rooms/` +
@@ -334,31 +246,20 @@ export default function Home() {
       );
 
       const socket =
-        new WebSocket(
-          websocketUrl,
-        );
+        new WebSocket(websocketUrl);
 
       chatWebSocketRef.current =
         socket;
 
       socket.onopen = () => {
-        reconnectDelay =
-          500;
+        reconnectDelay = 500;
+        reconnectAttempts = 0;
 
-        reconnectAttempts =
-          0;
-
-        setChatConnected(
-          true,
-        );
-
+        setChatConnected(true);
         setChatStatus(
           "채팅 서버 연결됨",
         );
-
-        setChatErrorMessage(
-          "",
-        );
+        setChatErrorMessage("");
       };
 
       socket.onmessage = (
@@ -383,7 +284,6 @@ export default function Home() {
           console.warn(
             "채팅 서버 메시지를 해석하지 못했습니다.",
           );
-
           return;
         }
 
@@ -392,24 +292,19 @@ export default function Home() {
           "message"
         ) {
           if (
-            typeof serverMessage
-              .sender_id !==
+            typeof serverMessage.sender_id !==
               "number" ||
-            typeof serverMessage
-              .content !==
+            typeof serverMessage.content !==
               "string"
           ) {
             return;
           }
 
           setChatMessages(
-            (
-              previousMessages,
-            ) => [
+            (previousMessages) => [
               ...previousMessages,
               {
                 ...serverMessage,
-
                 localId:
                   createLocalMessageId(),
               },
@@ -424,15 +319,10 @@ export default function Home() {
           "error"
         ) {
           setChatErrorMessage(
-            typeof serverMessage
-              .detail ===
+            typeof serverMessage.detail ===
               "string"
-              ? serverMessage
-                  .detail
-              : (
-                "채팅 서버에서 " +
-                "오류가 발생했습니다."
-              ),
+              ? serverMessage.detail
+              : "채팅 서버에서 오류가 발생했습니다.",
           );
         }
       };
@@ -441,28 +331,21 @@ export default function Home() {
         event: CloseEvent,
       ) => {
         if (
-          chatWebSocketRef
-            .current ===
+          chatWebSocketRef.current ===
           socket
         ) {
           chatWebSocketRef.current =
             null;
         }
 
-        setChatConnected(
-          false,
-        );
+        setChatConnected(false);
 
         if (disposed) {
           return;
         }
 
-        if (
-          event.code ===
-          1008
-        ) {
-          reconnectBlocked =
-            true;
+        if (event.code === 1008) {
+          reconnectBlocked = true;
 
           setChatStatus(
             "채팅 참가자 확인 실패",
@@ -470,24 +353,19 @@ export default function Home() {
 
           setChatErrorMessage(
             event.reason ||
-              (
-                "해당 대화방의 참가자 " +
-                "정보를 확인할 수 없습니다."
-              ),
+              "해당 대화방의 참가자 정보를 확인할 수 없습니다.",
           );
 
           return;
         }
 
-        reconnectAttempts +=
-          1;
+        reconnectAttempts += 1;
 
         if (
           reconnectAttempts >
           MAX_CHAT_RECONNECT_ATTEMPTS
         ) {
-          reconnectBlocked =
-            true;
+          reconnectBlocked = true;
 
           setChatStatus(
             "채팅 재연결 실패",
@@ -495,36 +373,27 @@ export default function Home() {
 
           setChatErrorMessage(
             event.reason ||
-              (
-                "채팅 서버에 다시 " +
-                "연결하지 못했습니다."
-              ),
+              "채팅 서버에 다시 연결하지 못했습니다.",
           );
 
           return;
         }
 
         setChatStatus(
-          `채팅 서버 재연결 중 ` +
-          `(${reconnectAttempts}/` +
-          `${MAX_CHAT_RECONNECT_ATTEMPTS})`,
+          `채팅 서버 재연결 중 (${reconnectAttempts}/${MAX_CHAT_RECONNECT_ATTEMPTS})`,
         );
 
         chatReconnectTimerRef.current =
-          window.setTimeout(
-            () => {
-              chatReconnectTimerRef.current =
-                null;
+          window.setTimeout(() => {
+            chatReconnectTimerRef.current =
+              null;
 
-              connectChatWebSocket();
-            },
-            reconnectDelay,
-          );
+            connectChatWebSocket();
+          }, reconnectDelay);
 
         reconnectDelay =
           Math.min(
-            reconnectDelay *
-              2,
+            reconnectDelay * 2,
             8000,
           );
       };
@@ -562,17 +431,10 @@ export default function Home() {
         null;
 
       if (socket) {
-        socket.onopen =
-          null;
-
-        socket.onmessage =
-          null;
-
-        socket.onerror =
-          null;
-
-        socket.onclose =
-          null;
+        socket.onopen = null;
+        socket.onmessage = null;
+        socket.onerror = null;
+        socket.onclose = null;
 
         try {
           socket.close();
@@ -587,14 +449,11 @@ export default function Home() {
     selectedMode:
       AccessibilityMode,
   ): Promise<void> {
-    if (
-      joinInFlightRef.current
-    ) {
+    if (joinInFlightRef.current) {
       return;
     }
 
-    joinInFlightRef.current =
-      true;
+    joinInFlightRef.current = true;
 
     setLoading(true);
     setErrorMessage("");
@@ -606,18 +465,15 @@ export default function Home() {
           "/rooms/join",
           {
             method: "POST",
-
-            body:
-              JSON.stringify({
-                accessibility_mode:
-                  selectedMode,
-              }),
+            body: JSON.stringify({
+              accessibility_mode:
+                selectedMode,
+            }),
           },
         );
 
       setAccessibilityMode(
-        participant
-          .accessibility_mode,
+        participant.accessibility_mode,
       );
 
       setJoinedParticipant(
@@ -626,35 +482,24 @@ export default function Home() {
 
       setMessage("");
       setChatMessages([]);
-      setChatConnected(
-        false,
-      );
+      setChatConnected(false);
 
       setChatStatus(
         "채팅 연결 준비 중",
       );
 
-      setChatErrorMessage(
-        "",
-      );
-
+      setChatErrorMessage("");
       setScreen("CHAT");
     } catch (error) {
-      setAccessibilityMode(
-        null,
-      );
+      setAccessibilityMode(null);
 
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : (
-            "대화방 입장에 " +
-            "실패했습니다."
-          ),
+          : "대화방 입장에 실패했습니다.",
       );
     } finally {
       setLoading(false);
-
       joinInFlightRef.current =
         false;
     }
@@ -669,114 +514,47 @@ export default function Home() {
     );
   }
 
-  function handleLeaveRoom():
-    void {
-    setJoinedParticipant(
-      null,
-    );
-
-    setAccessibilityMode(
-      null,
-    );
+  function handleLeaveRoom(): void {
+    setJoinedParticipant(null);
+    setAccessibilityMode(null);
 
     setMessage("");
     setChatMessages([]);
 
-    setChatConnected(
-      false,
-    );
+    setChatConnected(false);
 
     setChatStatus(
       "채팅 연결 전",
     );
 
-    setChatErrorMessage(
-      "",
-    );
-
+    setChatErrorMessage("");
     setErrorMessage("");
 
     joinInFlightRef.current =
       false;
 
-    setScreen(
-      "MODE_SELECT",
-    );
+    setScreen("MODE_SELECT");
   }
 
   function handleMessageChange(
     value: string,
   ): void {
     setMessage(value);
-
-    setChatErrorMessage(
-      "",
-    );
+    setChatErrorMessage("");
   }
 
-  function handleApplyRecognizedText(
+  function sendChatMessage(
     text: string,
-  ): void {
-    const normalizedText =
-      text.trim();
-
-    if (!normalizedText) {
-      return;
-    }
-
-    const previousText =
-      message.trimEnd();
-
-    const nextMessage =
-      previousText
-        ? `${previousText} ${normalizedText}`
-        : normalizedText;
-
-    if (
-      nextMessage.length >
-      MAX_CHAT_MESSAGE_LENGTH
-    ) {
-      setChatErrorMessage(
-        `메시지는 최대 ` +
-        `${MAX_CHAT_MESSAGE_LENGTH}자까지 ` +
-        `입력할 수 있습니다.`,
-      );
-
-      return;
-    }
-
-    setMessage(
-      nextMessage,
-    );
-
-    setChatErrorMessage(
-      "",
-    );
-
-    window
-      .requestAnimationFrame(
-        () => {
-          chatInputRef.current
-            ?.focus();
-        },
-      );
-  }
-
-  function handleSendMessage(
-    event:
-      FormEvent<HTMLFormElement>,
-  ): void {
-    event.preventDefault();
-
+  ): boolean {
     const trimmedMessage =
-      message.trim();
+      text.trim();
 
     if (!trimmedMessage) {
       setChatErrorMessage(
         "보낼 메시지를 입력해 주세요.",
       );
 
-      return;
+      return false;
     }
 
     if (
@@ -784,12 +562,10 @@ export default function Home() {
       MAX_CHAT_MESSAGE_LENGTH
     ) {
       setChatErrorMessage(
-        `메시지는 최대 ` +
-        `${MAX_CHAT_MESSAGE_LENGTH}자까지 ` +
-        `입력할 수 있습니다.`,
+        `메시지는 최대 ${MAX_CHAT_MESSAGE_LENGTH}자까지 입력할 수 있습니다.`,
       );
 
-      return;
+      return false;
     }
 
     const socket =
@@ -804,21 +580,33 @@ export default function Home() {
         "채팅 서버에 연결되어 있지 않습니다.",
       );
 
-      return;
+      return false;
     }
 
-    // room_code와 participant_id는
-    // WebSocket URL에 이미 포함되어 있으므로
-    // 메시지는 일반 문자열로 전송한다.
-    socket.send(
-      trimmedMessage,
-    );
+    socket.send(trimmedMessage);
 
-    setMessage("");
+    setChatErrorMessage("");
 
-    setChatErrorMessage(
-      "",
-    );
+    return true;
+  }
+
+  function handleSendMessage(
+    event:
+      FormEvent<HTMLFormElement>,
+  ): void {
+    event.preventDefault();
+
+    if (
+      sendChatMessage(message)
+    ) {
+      setMessage("");
+    }
+  }
+
+  function handleSendRecognizedText(
+    text: string,
+  ): boolean {
+    return sendChatMessage(text);
   }
 
   function getChatPlaceholder():
@@ -843,8 +631,7 @@ export default function Home() {
   return (
     <div className="h-[100dvh] overflow-hidden bg-slate-200 text-slate-900">
       <div className="mx-auto h-full w-full max-w-[430px] overflow-hidden bg-white shadow-2xl">
-        {screen ===
-          "SPLASH" && (
+        {screen === "SPLASH" && (
           <IntroSplash />
         )}
 
@@ -887,102 +674,84 @@ export default function Home() {
           </div>
         )}
 
-        {screen ===
-          "CHAT" &&
+        {screen === "CHAT" &&
           joinedParticipant &&
           accessibilityMode && (
-          <div className="flex h-full min-h-0 flex-col overflow-hidden bg-white">
-            <ChatHeader
-              chatConnected={
-                chatConnected
-              }
-              chatStatus={
-                chatStatus
-              }
-              accessibilityMode={
-                accessibilityMode
-              }
-              onLeave={
-                handleLeaveRoom
-              }
-            />
+            <div className="flex h-full min-h-0 flex-col overflow-hidden bg-white">
+              <ChatHeader
+                chatConnected={
+                  chatConnected
+                }
+                chatStatus={
+                  chatStatus
+                }
+                accessibilityMode={
+                  accessibilityMode
+                }
+                onLeave={
+                  handleLeaveRoom
+                }
+              />
 
-            <MessageList
-              messages={
-                chatMessages
-              }
-              participantId={
-                joinedParticipant
-                  .participant_id
-              }
-            />
-
-            {accessibilityMode ===
-            "HEARING" ? (
-              <CameraComposer
-                roomCode={
-                  joinedParticipant
-                    .room_code
+              <MessageList
+                messages={
+                  chatMessages
                 }
                 participantId={
                   joinedParticipant
                     .participant_id
                 }
-                message={
-                  message
-                }
-                chatConnected={
-                  chatConnected
-                }
-                chatErrorMessage={
-                  chatErrorMessage
-                }
-                maxLength={
-                  MAX_CHAT_MESSAGE_LENGTH
-                }
-                inputRef={
-                  chatInputRef
-                }
-                onMessageChange={
-                  handleMessageChange
-                }
-                onApplyText={
-                  handleApplyRecognizedText
-                }
-                onSubmit={
-                  handleSendMessage
-                }
               />
-            ) : (
-              <ChatComposer
-                message={
-                  message
-                }
-                chatConnected={
-                  chatConnected
-                }
-                chatErrorMessage={
-                  chatErrorMessage
-                }
-                placeholder={
-                  getChatPlaceholder()
-                }
-                maxLength={
-                  MAX_CHAT_MESSAGE_LENGTH
-                }
-                inputRef={
-                  chatInputRef
-                }
-                onMessageChange={
-                  handleMessageChange
-                }
-                onSubmit={
-                  handleSendMessage
-                }
-              />
-            )}
-          </div>
-        )}
+
+              {accessibilityMode ===
+              "HEARING" ? (
+                <CameraComposer
+                  roomCode={
+                    joinedParticipant
+                      .room_code
+                  }
+                  participantId={
+                    joinedParticipant
+                      .participant_id
+                  }
+                  chatConnected={
+                    chatConnected
+                  }
+                  chatErrorMessage={
+                    chatErrorMessage
+                  }
+                  onSendText={
+                    handleSendRecognizedText
+                  }
+                />
+              ) : (
+                <ChatComposer
+                  message={message}
+                  chatConnected={
+                    chatConnected
+                  }
+                  chatErrorMessage={
+                    chatErrorMessage
+                  }
+                  placeholder={
+                    getChatPlaceholder()
+                  }
+                  maxLength={
+                    MAX_CHAT_MESSAGE_LENGTH
+                  }
+                  inputRef={
+                    chatInputRef
+                  }
+                  onMessageChange={
+                    handleMessageChange
+                  }
+                  onSubmit={
+                    handleSendMessage
+                  }
+                />
+              )}
+            </div>
+          )}
       </div>
     </div>
   );
