@@ -51,12 +51,12 @@ function BackIcon() {
       aria-hidden="true"
       viewBox="0 0 24 24"
       fill="none"
-      className="h-5 w-5"
+      className="h-6 w-6"
     >
       <path
         d="m15 18-6-6 6-6"
         stroke="currentColor"
-        strokeWidth="2.2"
+        strokeWidth="2.4"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -234,13 +234,13 @@ export default function ChatHeader({
       }}
     >
       {/* 상단 헤더 */}
-      <div className="flex h-[50px] items-center gap-1 px-3">
+      <div className="flex h-[50px] items-center gap-0.5 px-2">
         {/* 뒤로가기 */}
         <button
           type="button"
           onClick={onLeave}
           aria-label="서비스 선택 화면으로 돌아가기"
-          className="flex h-9 w-8 shrink-0 items-center justify-start rounded-full text-slate-600 transition hover:bg-slate-100 active:scale-95"
+          className="flex h-10 w-7 shrink-0 items-center justify-start rounded-full text-slate-600 transition hover:bg-slate-100 active:scale-95"
         >
           <BackIcon />
         </button>
