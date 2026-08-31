@@ -45,7 +45,7 @@ export default function IntroSplash() {
           />
 
           {/* 진행 표시 */}
-         <div className="mt-2 w-full max-w-[270px]">
+         <div className="mt-1 w-full max-w-[240px]">
             {/* 로딩 바 */}
             <div
               role="progressbar"
