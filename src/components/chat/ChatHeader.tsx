@@ -201,7 +201,6 @@ function ModeIcon({
 
 export default function ChatHeader({
   chatConnected,
-  chatStatus,
   accessibilityMode,
   onLeave,
 }: ChatHeaderProps) {
@@ -246,30 +245,11 @@ export default function ChatHeader({
           <BackIcon />
         </button>
 
-        {/* 서비스 이름 + 연결 상태 */}
-        <div className="min-w-0 flex-1">
+        {/* 서비스 이름 */}
+        <div className="flex min-w-0 flex-1 items-center">
           <h1 className="truncate text-[18px] font-black leading-none tracking-[-0.03em] text-slate-950">
             EarLink
           </h1>
-
-          <div className="mt-1 flex min-w-0 items-center gap-1.5 text-[10px] leading-none">
-            <span
-              aria-hidden="true"
-              className={[
-                "h-1.5 w-1.5 shrink-0 rounded-full",
-                chatConnected
-                  ? "bg-emerald-500"
-                  : "bg-amber-400",
-              ].join(" ")}
-            />
-
-            <span
-              aria-live="polite"
-              className="truncate text-slate-500"
-            >
-              {chatStatus}
-            </span>
-          </div>
         </div>
 
         {/* 서비스 종류 */}
