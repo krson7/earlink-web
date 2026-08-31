@@ -10,7 +10,6 @@ import {
 import { useCameraStream } from "@/hooks/sign-language/useCameraStream";
 import { useHandTracking } from "@/hooks/sign-language/useHandTracking";
 import { useSignLanguageSocket } from "@/hooks/sign-language/useSignLanguageSocket";
-import { useSpeechTts } from "@/hooks/sign-language/useSpeechTts";
 
 import { getErrorMessage } from "@/lib/sign-language/utils";
 
@@ -72,14 +71,6 @@ export function useSignLanguageCamera({
       onSendText;
   }, [onSendText]);
 
-  const {
-    ttsEnabled,
-    handleComposedText,
-    resetSpeechTracking,
-    cancelSpeech,
-    toggleTts,
-  } = useSpeechTts();
-
   const handleJamoMessage =
     useCallback(
       (
@@ -99,12 +90,8 @@ export function useSignLanguageCamera({
         setConfidence(
           message.confidence ?? 0,
         );
-
-        handleComposedText(
-          nextText,
-        );
       },
-      [handleComposedText],
+      [],
     );
 
   const {
@@ -142,7 +129,6 @@ export function useSignLanguageCamera({
   } = useCameraStream({
     videoRef,
     canvasRef,
-
     onCameraStarted:
       resetDetectionVideoTime,
   });
@@ -153,8 +139,6 @@ export function useSignLanguageCamera({
     setCurrentJamo(null);
     setRecognizedText("");
     setConfidence(0);
-
-    resetSpeechTracking();
 
     async function initialize():
       Promise<void> {
@@ -248,14 +232,10 @@ export function useSignLanguageCamera({
       stopHandTracking();
       stopConnectionSession();
       stopCamera();
-
-      cancelSpeech();
     };
   }, [
-    cancelSpeech,
     initializeHandTracking,
     participantId,
-    resetSpeechTracking,
     roomCode,
     startCamera,
     startConnectionSession,
@@ -296,13 +276,8 @@ export function useSignLanguageCamera({
       setRecognizedText("");
       setCurrentJamo(null);
       setConfidence(0);
-
-      resetSpeechTracking();
-      cancelSpeech();
     }, [
-      cancelSpeech,
       recognizedText,
-      resetSpeechTracking,
       sendReset,
     ]);
 
@@ -318,8 +293,6 @@ export function useSignLanguageCamera({
     confidence,
     facing,
     canFlipCamera,
-    ttsEnabled,
     sendRecognizedText,
-    toggleTts,
   };
 }

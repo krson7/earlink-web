@@ -37,54 +37,6 @@ function CameraFlipIcon() {
   );
 }
 
-function VolumeIcon({
-  enabled,
-}: {
-  enabled: boolean;
-}) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      fill="none"
-      className="h-[18px] w-[18px]"
-    >
-      <path
-        d="M5 10v4h3l4 3V7L8 10H5Z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-
-      {enabled ? (
-        <>
-          <path
-            d="M15 9.5a3.5 3.5 0 0 1 0 5"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-          />
-
-          <path
-            d="M17.5 7.5a6.3 6.3 0 0 1 0 9"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-          />
-        </>
-      ) : (
-        <path
-          d="m15.5 10 4 4m0-4-4 4"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-        />
-      )}
-    </svg>
-  );
-}
-
 function EarLinkSendMark() {
   return (
     <svg
@@ -123,7 +75,6 @@ export default function SignLanguageCamera({
     videoRef,
     canvasRef,
     switchCameraRef,
-    status,
     connected,
     errorMessage,
     currentJamo,
@@ -131,9 +82,7 @@ export default function SignLanguageCamera({
     confidence,
     facing,
     canFlipCamera,
-    ttsEnabled,
     sendRecognizedText,
-    toggleTts,
   } = useSignLanguageCamera({
     roomCode,
     participantId,
@@ -169,55 +118,23 @@ export default function SignLanguageCamera({
             ].join(" ")}
           />
 
-          <div className="min-w-0">
-            <p className="text-[10px] font-black tracking-[-0.02em] text-[#153b60]">
-              지문자 인식
-            </p>
-
-            <p className="truncate text-[9px] font-medium text-slate-400">
-              {status}
-            </p>
-          </div>
+          <p className="text-[10px] font-black tracking-[-0.02em] text-[#153b60]">
+            지문자 인식
+          </p>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5">
-          <button
-            type="button"
-            aria-label="카메라 전환"
-            title="카메라 전환"
-            disabled={!canFlipCamera}
-            onClick={() => {
-              void switchCameraRef.current?.();
-            }}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-[0_3px_10px_rgba(15,23,42,0.06)] transition hover:border-slate-300 hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35"
-          >
-            <CameraFlipIcon />
-          </button>
-
-          <button
-            type="button"
-            aria-label={
-              ttsEnabled
-                ? "음성 안내 끄기"
-                : "음성 안내 켜기"
-            }
-            title={
-              ttsEnabled
-                ? "음성 안내 끄기"
-                : "음성 안내 켜기"
-            }
-            aria-pressed={ttsEnabled}
-            onClick={toggleTts}
-            className={[
-              "flex h-9 w-9 items-center justify-center rounded-full border shadow-[0_3px_10px_rgba(15,23,42,0.06)] transition active:scale-95",
-              ttsEnabled
-                ? "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-600"
-                : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50",
-            ].join(" ")}
-          >
-            <VolumeIcon enabled={ttsEnabled} />
-          </button>
-        </div>
+        <button
+          type="button"
+          aria-label="카메라 전환"
+          title="카메라 전환"
+          disabled={!canFlipCamera}
+          onClick={() => {
+            void switchCameraRef.current?.();
+          }}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-[0_3px_10px_rgba(15,23,42,0.06)] transition hover:border-slate-300 hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35"
+        >
+          <CameraFlipIcon />
+        </button>
       </div>
 
       <div className="relative h-[clamp(190px,27dvh,230px)] overflow-hidden rounded-[24px] border border-slate-200 bg-[#070b16] shadow-[0_12px_28px_rgba(15,23,42,0.16)]">
