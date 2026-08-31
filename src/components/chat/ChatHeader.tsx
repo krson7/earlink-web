@@ -234,20 +234,20 @@ export default function ChatHeader({
       }}
     >
       {/* 상단 헤더 */}
-      <div className="flex h-[50px] items-center gap-2.5 px-4">
+      <div className="flex h-[50px] items-center gap-1 px-3">
         {/* 뒤로가기 */}
         <button
           type="button"
           onClick={onLeave}
           aria-label="서비스 선택 화면으로 돌아가기"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-100 active:scale-95"
+          className="flex h-9 w-8 shrink-0 items-center justify-start rounded-full text-slate-600 transition hover:bg-slate-100 active:scale-95"
         >
           <BackIcon />
         </button>
 
         {/* 서비스 이름 */}
         <div className="flex min-w-0 flex-1 items-center">
-          <h1 className="truncate text-[18px] font-black leading-none tracking-[-0.03em] text-slate-950">
+          <h1 className="truncate text-[20px] font-black leading-none tracking-[-0.03em] text-slate-950">
             EarLink
           </h1>
         </div>
