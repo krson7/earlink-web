@@ -150,7 +150,7 @@ export default function ChatComposer({
             enterKeyHint="send"
             onChange={handleChange}
             onKeyDown={handleKeyDown}
-            className="max-h-24 min-h-5 w-full resize-none overflow-y-auto bg-transparent text-[14px] leading-5 text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed disabled:text-slate-400"
+        className="max-h-24 min-h-5 w-full resize-none overflow-y-auto bg-transparent pt-[1px] text-[13px] leading-[19px] text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed disabled:text-slate-400"
           />
         </div>
 
