@@ -246,6 +246,7 @@ export function useChatSocket(participant: JoinRoomResponse | null) {
     setStatus("채팅 연결 전");
     setErrorMessage("");
   }, []);
+  
 
   return {
     messages,
