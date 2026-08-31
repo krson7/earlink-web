@@ -38,7 +38,7 @@ export default function IntroSplash() {
             height={320}
             priority
             unoptimized
-            className="h-auto w-[230px] max-w-none scale-[1.1] bg-transparent object-contain sm:w-[230px]"
+           className="h-auto w-[190px] max-w-none scale-[1.0] bg-transparent object-contain sm:w-[190px]"
             style={{
               clipPath: "inset(3px 0 0 3px)",
             }}
