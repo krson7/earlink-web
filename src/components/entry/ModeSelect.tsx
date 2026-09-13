@@ -38,7 +38,8 @@ const MODE_OPTIONS = [
     cardClassName:
       "border-[#efd7d3] bg-[#fff8f6]",
 
-    iconClassName: "scale-[1.5]",
+    iconClassName:
+      "scale-[1.56]",
   },
 
   {
@@ -53,12 +54,14 @@ const MODE_OPTIONS = [
     imageSrc:
       "/mode-icons/sign-language.png",
 
-    imageAlt: "두 손으로 수어를 표현한 이미지",
+    imageAlt:
+      "두 손으로 수어를 표현한 이미지",
 
     cardClassName:
       "border-[#d8e9e1] bg-[#f4fbf7]",
 
-    iconClassName: "scale-[1.43]",
+    iconClassName:
+      "scale-[1.50]",
   },
 
   {
@@ -70,19 +73,22 @@ const MODE_OPTIONS = [
       "실시간으로 대화해요.",
     ],
 
-    imageSrc: "/mode-icons/text.png",
+    imageSrc:
+      "/mode-icons/text.png",
 
-    imageAlt: "텍스트 말풍선을 표현한 이미지",
+    imageAlt:
+      "텍스트 말풍선을 표현한 이미지",
 
     cardClassName:
       "border-[#dfdaf0] bg-[#f7f5ff]",
 
-    iconClassName: "scale-[1.48]",
+    iconClassName:
+      "scale-[1.54]",
   },
 ] as const satisfies readonly ModeOption[];
 
 /* ======================================================
-   햄버거 메뉴 아이콘
+   MENU ICON
 ====================================================== */
 
 function MenuIcon() {
@@ -104,7 +110,7 @@ function MenuIcon() {
 }
 
 /* ======================================================
-   대화 방식 카드
+   MODE CARD
 ====================================================== */
 
 function ModeCard({
@@ -123,7 +129,7 @@ function ModeCard({
         "relative",
 
         "flex",
-        "min-h-[184px]",
+        "min-h-[188px]",
         "w-full",
         "flex-col",
         "items-center",
@@ -133,7 +139,7 @@ function ModeCard({
 
         "px-2",
         "pb-4",
-        "pt-4",
+        "pt-3.5",
 
         "text-center",
 
@@ -162,8 +168,8 @@ function ModeCard({
         className="
           relative
           flex
-          h-[55px]
-          w-[55px]
+          h-[70px]
+          w-[70px]
           shrink-0
           items-center
           justify-center
@@ -174,7 +180,7 @@ function ModeCard({
           src={option.imageSrc}
           alt={option.imageAlt}
           fill
-          sizes="55px"
+          sizes="70px"
           priority
           className={[
             "origin-center",
@@ -182,8 +188,6 @@ function ModeCard({
 
             "transition",
             "duration-300",
-
-            "group-hover:scale-[1.04]",
 
             option.iconClassName,
           ].join(" ")}
@@ -193,7 +197,7 @@ function ModeCard({
       {/* 제목 */}
       <span
         className="
-          mt-3
+          mt-2
 
           whitespace-pre-line
 
@@ -264,14 +268,13 @@ export default function ModeSelect({
       "
     >
       {/* ==================================================
-          배경 장식
+          BACKGROUND
       ================================================== */}
 
       <div
         aria-hidden="true"
         className="
           pointer-events-none
-
           absolute
           inset-0
         "
@@ -333,9 +336,6 @@ export default function ModeSelect({
 
       {/* ==================================================
           HEADER
-
-          기존 EarLink 화면에서
-          잘 맞았던 위치 그대로 유지
       ================================================== */}
 
       <header
@@ -345,14 +345,15 @@ export default function ModeSelect({
           shrink-0
 
           border-b
-          border-slate-100/90
+          border-[#eee7e1]
 
-          bg-white/95
+          bg-[#fffdf9]/95
 
           backdrop-blur-sm
         "
         style={{
-          paddingTop: "env(safe-area-inset-top)",
+          paddingTop:
+            "env(safe-area-inset-top)",
         }}
       >
         <div
@@ -367,7 +368,10 @@ export default function ModeSelect({
             pr-4
           "
         >
-          {/* EarLink 로고 */}
+          {/* =========================
+              EarLink LOGO
+          ========================== */}
+
           <a
             href="#mode-select-top"
             aria-label="EarLink 홈"
@@ -406,76 +410,73 @@ export default function ModeSelect({
             />
           </a>
 
-          {/* 오른쪽 메뉴 */}
+          {/* =========================
+              오른쪽 HEADER
+          ========================== */}
+
           <div
             className="
               flex
               shrink-0
               items-center
-              gap-4
+
+              gap-[18px]
             "
           >
+            {/* 페이지는 아직 연결하지 않음 */}
             <nav
               aria-label="주요 메뉴"
               className="
                 flex
-                shrink-0
                 items-center
-                gap-4
+
+                gap-[22px]
               "
             >
-              {/* 아직 페이지 없음 */}
-              <button
-                type="button"
-                disabled
-                aria-disabled="true"
+              <span
                 className="
                   cursor-default
+                  select-none
 
                   whitespace-nowrap
 
-                  text-[12px]
-                  font-black
+                  text-[13px]
+                  font-bold
 
-                  tracking-[-0.03em]
+                  tracking-[-0.035em]
 
-                  text-slate-800
+                  text-[#1f2937]
                 "
               >
                 서비스 소개
-              </button>
+              </span>
 
-              {/* 아직 페이지 없음 */}
-              <button
-                type="button"
-                disabled
-                aria-disabled="true"
+              <span
                 className="
                   cursor-default
+                  select-none
 
                   whitespace-nowrap
 
-                  text-[12px]
-                  font-black
+                  text-[13px]
+                  font-bold
 
-                  tracking-[-0.03em]
+                  tracking-[-0.035em]
 
-                  text-slate-800
+                  text-[#1f2937]
                 "
               >
                 이용 방법
-              </button>
+              </span>
             </nav>
 
-            {/* 메뉴도 아직 기능 없으면 버튼만 유지 */}
+            {/* 메뉴 아이콘 - 아직 기능 없음 */}
             <button
               type="button"
               disabled
               aria-label="메뉴"
               aria-disabled="true"
               className="
-                ml-1
-
                 flex
                 h-9
                 w-9
@@ -487,7 +488,7 @@ export default function ModeSelect({
 
                 rounded-full
 
-                text-slate-800
+                text-[#1f2937]
               "
             >
               <MenuIcon />
@@ -527,6 +528,7 @@ export default function ModeSelect({
           className="
             relative
             z-20
+
             shrink-0
           "
         >
@@ -578,9 +580,6 @@ export default function ModeSelect({
 
         {/* ==================================================
             GIRL + SPEECH BUBBLE
-
-            말풍선과 하트가 겹치지 않도록
-            말풍선을 girl 이미지 위에 분리
         ================================================== */}
 
         <section
@@ -599,8 +598,7 @@ export default function ModeSelect({
           "
         >
           {/* =========================
-              말풍선
-              girl.png 영역보다 위쪽
+              SPEECH BUBBLE
           ========================== */}
 
           <div
@@ -650,7 +648,7 @@ export default function ModeSelect({
               좋은 하루를 만들어요.
             </p>
 
-            {/* 꼬리 */}
+            {/* 말풍선 꼬리 */}
             <span
               aria-hidden="true"
               className="
@@ -674,10 +672,7 @@ export default function ModeSelect({
           </div>
 
           {/* =========================
-              여자 이미지
-
-              말풍선 아래부터 시작해서
-              하트와 겹치지 않음
+              GIRL
           ========================== */}
 
           <div
@@ -711,8 +706,6 @@ export default function ModeSelect({
 
         {/* ==================================================
             MODE SELECT
-
-            기존보다 위쪽에 붙임
         ================================================== */}
 
         <section
@@ -734,13 +727,15 @@ export default function ModeSelect({
               gap-2.5
             "
           >
-            {MODE_OPTIONS.map((option) => (
-              <ModeCard
-                key={option.mode}
-                option={option}
-                onSelect={onSelectMode}
-              />
-            ))}
+            {MODE_OPTIONS.map(
+              (option) => (
+                <ModeCard
+                  key={option.mode}
+                  option={option}
+                  onSelect={onSelectMode}
+                />
+              )
+            )}
           </div>
         </section>
 
