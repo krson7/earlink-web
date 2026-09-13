@@ -9,7 +9,7 @@ type AccessibilityMode =
 
 type ModeSelectProps = {
   onSelectMode: (
-    mode: AccessibilityMode,
+    mode: AccessibilityMode
   ) => void;
 };
 
@@ -22,435 +22,630 @@ type ModeOption = {
   ];
   imageSrc: string;
   imageAlt: string;
-  imageClassName: string;
+
+  cardClassName: string;
+  iconClassName: string;
 };
 
 const MODE_OPTIONS = [
   {
     mode: "VISUAL",
-    title: "점자로 대화하기",
+    title: "점자로\n대화하기",
+
     description: [
       "점자 기기와 연결해",
       "메시지를 주고받아요.",
     ],
+
     imageSrc:
       "/mode-icons/braille.png",
+
     imageAlt:
       "점자 여섯 점을 표현한 이미지",
-    imageClassName:
-      "scale-[1.68]",
+
+    cardClassName:
+      "border-[#f4d9d6] bg-[linear-gradient(180deg,#fff9f8_0%,#fdf0ef_100%)]",
+
+    iconClassName:
+      "scale-[1.48]",
   },
 
   {
     mode: "HEARING",
-    title: "수어로 대화하기",
+    title: "수어로\n대화하기",
+
     description: [
       "카메라로 제스처를 인식해",
       "자연스럽게 문장으로 바꿔줘요.",
     ],
+
     imageSrc:
       "/mode-icons/sign-language.png",
+
     imageAlt:
       "두 손으로 수어를 표현한 이미지",
-    imageClassName:
-      "scale-[1.58]",
+
+    cardClassName:
+      "border-[#dcece4] bg-[linear-gradient(180deg,#f8fdfa_0%,#edf8f1_100%)]",
+
+    iconClassName:
+      "scale-[1.42]",
   },
 
   {
     mode: "STANDARD",
-    title: "텍스트로 대화하기",
+    title: "텍스트로\n대화하기",
+
     description: [
       "키보드로 바로 입력하고",
       "실시간으로 이야기를 나눠요.",
     ],
+
     imageSrc:
       "/mode-icons/text.png",
+
     imageAlt:
       "텍스트 말풍선을 표현한 이미지",
-    imageClassName:
-      "scale-[1.64]",
+
+    cardClassName:
+      "border-[#e4def4] bg-[linear-gradient(180deg,#faf9ff_0%,#f1effc_100%)]",
+
+    iconClassName:
+      "scale-[1.46]",
   },
 ] as const satisfies readonly ModeOption[];
 
-function ArrowIcon() {
+/* ======================================================
+   메뉴 아이콘
+====================================================== */
+
+function MenuIcon() {
   return (
     <svg
       aria-hidden="true"
       viewBox="0 0 24 24"
       fill="none"
-      className="h-[17px] w-[17px]"
+      className="h-6 w-6"
     >
       <path
-        d="m9 18 6-6-6-6"
+        d="M4 6.5h16M4 12h16M4 17.5h16"
         stroke="currentColor"
-        strokeWidth="2.4"
+        strokeWidth="1.8"
         strokeLinecap="round"
-        strokeLinejoin="round"
       />
     </svg>
   );
 }
 
-function BottomConnectionMark() {
-  return (
-    <div
-      aria-hidden="true"
-      className="flex items-center justify-center gap-3"
-    >
-      <span className="h-px w-10 bg-slate-200" />
-
-      <svg
-        viewBox="0 0 40 25"
-        fill="none"
-        className="h-[21px] w-9 text-slate-400"
-      >
-        <path
-          d="M10 7.5 19 16M29 8l-10 8"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-
-        <circle
-          cx="8"
-          cy="6"
-          r="4"
-          fill="white"
-          stroke="currentColor"
-          strokeWidth="2.4"
-        />
-
-        <circle
-          cx="20"
-          cy="18"
-          r="4"
-          fill="white"
-          stroke="currentColor"
-          strokeWidth="2.4"
-        />
-
-        <circle
-          cx="31"
-          cy="7"
-          r="4"
-          fill="white"
-          stroke="currentColor"
-          strokeWidth="2.4"
-        />
-      </svg>
-
-      <span className="h-px w-10 bg-slate-200" />
-    </div>
-  );
-}
+/* ======================================================
+   방식 선택 카드
+====================================================== */
 
 function ModeCard({
   option,
   onSelect,
 }: {
   option: ModeOption;
+
   onSelect: (
-    mode: AccessibilityMode,
+    mode: AccessibilityMode
   ) => void;
 }) {
-  const descriptionId =
-    `mode-${option.mode.toLowerCase()}-description`;
-
   return (
     <button
       type="button"
-      onClick={() => {
-        onSelect(option.mode);
-      }}
-      aria-describedby={descriptionId}
+      onClick={() =>
+        onSelect(option.mode)
+      }
       className={[
-        "group relative flex",
-        "h-[clamp(96px,12.8dvh,108px)]",
-        "w-full items-center",
-        "rounded-[22px]",
-        "border border-[#eceae6]",
-        "bg-white/95",
-        "px-3 py-2",
-        "text-left",
-        "shadow-[0_8px_24px_rgba(15,23,42,0.055)]",
-        "backdrop-blur-sm",
-        "transition duration-200 ease-out",
+        "group",
+        "relative",
+        "flex",
+        "min-h-[230px]",
+        "flex-col",
+        "items-center",
+        "rounded-[26px]",
+        "border",
+        "px-2.5",
+        "pb-5",
+        "pt-5",
+        "text-center",
+        "shadow-[0_12px_35px_rgba(53,42,36,0.045)]",
+        "transition",
+        "duration-300",
+        "ease-out",
 
-        "hover:-translate-y-0.5",
-        "hover:border-slate-200",
-        "hover:shadow-[0_12px_28px_rgba(15,23,42,0.075)]",
+        "hover:-translate-y-1",
+        "hover:shadow-[0_18px_42px_rgba(53,42,36,0.08)]",
 
         "active:translate-y-0",
         "active:scale-[0.985]",
 
         "focus-visible:outline-none",
         "focus-visible:ring-2",
-        "focus-visible:ring-slate-400",
-        "focus-visible:ring-offset-2",
+        "focus-visible:ring-[#a8a0d8]",
+
+        option.cardClassName,
       ].join(" ")}
     >
-      {/* 서비스 이미지 */}
+      {/* 아이콘 */}
       <span
-        className={[
-          "relative ml-1 shrink-0",
-          "h-[clamp(78px,10.5dvh,90px)]",
-          "w-[clamp(78px,10.5dvh,90px)]",
-          "overflow-hidden",
-          "rounded-[18px]",
-        ].join(" ")}
+        className="
+          relative
+          flex
+          h-[66px]
+          w-[66px]
+          shrink-0
+          items-center
+          justify-center
+          overflow-hidden
+        "
       >
         <Image
           src={option.imageSrc}
           alt={option.imageAlt}
           fill
-          sizes="90px"
+          sizes="66px"
           priority
           className={[
-            "origin-center object-contain",
-            option.imageClassName,
+            "object-contain",
+            "transition",
+            "duration-300",
+            "group-hover:scale-[1.06]",
+
+            option.iconClassName,
           ].join(" ")}
         />
       </span>
 
-      {/* 서비스 설명 */}
-      <span className="ml-3.5 min-w-0 flex-1">
-        <span className="block text-[15px] font-black leading-tight tracking-[-0.035em] text-slate-900">
-          {option.title}
-        </span>
-
-        <span
-          id={descriptionId}
-          className="mt-1.5 block text-[10.5px] font-medium leading-[1.6] tracking-[-0.02em] text-slate-500"
-        >
-          <span className="block">
-            {option.description[0]}
-          </span>
-
-          <span className="block">
-            {option.description[1]}
-          </span>
-        </span>
+      {/* 제목 */}
+      <span
+        className="
+          mt-3
+          whitespace-pre-line
+          text-[15px]
+          font-black
+          leading-[1.5]
+          tracking-[-0.045em]
+          text-[#141c2c]
+          sm:text-[16px]
+        "
+      >
+        {option.title}
       </span>
 
-      {/* 이동 버튼 */}
+      {/* 설명 */}
       <span
-        aria-hidden="true"
-        className={[
-          "mr-1 flex",
-          "h-10 w-10",
-          "shrink-0",
-          "items-center justify-center",
-          "rounded-full",
-          "bg-[#f4f4f2]",
-          "text-slate-500",
-          "transition duration-200",
-
-          "group-hover:translate-x-0.5",
-          "group-hover:bg-slate-100",
-          "group-hover:text-slate-700",
-
-          "group-active:scale-95",
-        ].join(" ")}
+        className="
+          mt-4
+          block
+          text-[10.5px]
+          font-medium
+          leading-[1.75]
+          tracking-[-0.025em]
+          text-[#667085]
+          sm:text-[11px]
+        "
       >
-        <ArrowIcon />
+        <span className="block">
+          {option.description[0]}
+        </span>
+
+        <span className="block">
+          {option.description[1]}
+        </span>
       </span>
     </button>
   );
 }
 
+/* ======================================================
+   MAIN
+====================================================== */
+
 export default function ModeSelect({
   onSelectMode,
 }: ModeSelectProps) {
   return (
-    <div className="relative flex h-[100dvh] flex-col overflow-hidden bg-[#faf9f7]">
-      {/* 전체적으로 아주 약한 배경 톤 */}
+    <div
+      className="
+        relative
+        min-h-[100dvh]
+        overflow-hidden
+        bg-[#fffaf6]
+        text-[#111827]
+      "
+    >
+      {/* =========================
+          전체 배경 분위기
+      ========================== */}
+
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(250,249,247,0.94) 65%, rgba(248,247,244,0.96) 100%)",
-        }}
-      />
+        className="
+          pointer-events-none
+          absolute
+          inset-0
+        "
+      >
+        {/* 왼쪽 위 */}
+        <div
+          className="
+            absolute
+            -left-24
+            -top-24
+            h-[300px]
+            w-[300px]
+            rounded-full
+            bg-[#fff1ec]/80
+            blur-[85px]
+          "
+        />
 
-      {/* 오른쪽 배경 곡면 */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-[145px] top-[70px] h-[470px] w-[285px] bg-[#f1f0ec]/80"
-        style={{
-          borderRadius:
-            "58% 0 0 72% / 44% 0 0 62%",
-        }}
-      />
+        {/* 오른쪽 */}
+        <div
+          className="
+            absolute
+            -right-24
+            top-[250px]
+            h-[320px]
+            w-[320px]
+            rounded-full
+            bg-[#f8e9e7]/65
+            blur-[85px]
+          "
+        />
 
-      {/* 곡면 안쪽 연한 레이어 */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-[175px] top-[122px] h-[390px] w-[270px] bg-white/55 blur-[1px]"
-        style={{
-          borderRadius:
-            "65% 0 0 74% / 50% 0 0 66%",
-        }}
-      />
+        {/* 아래 민트 */}
+        <div
+          className="
+            absolute
+            bottom-[-130px]
+            left-[20%]
+            h-[300px]
+            w-[300px]
+            rounded-full
+            bg-[#ecf7f1]/70
+            blur-[90px]
+          "
+        />
+      </div>
 
-      {/* 왼쪽 하단 배경 */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -bottom-[170px] -left-[170px] h-[260px] w-[260px] rounded-full bg-stone-100/45"
-      />
+      {/* =========================
+          HEADER
+      ========================== */}
 
-      {/* 헤더 */}
       <header
-        className={[
-          "relative z-30 shrink-0",
-          "border-b border-slate-100/90",
-          "bg-white/92",
-          "backdrop-blur-sm",
-        ].join(" ")}
+        className="
+          relative
+          z-30
+          border-b
+          border-[#efe9e4]
+          bg-[#fffdfb]/90
+          backdrop-blur-xl
+        "
         style={{
           paddingTop:
             "env(safe-area-inset-top)",
         }}
       >
-        <div className="flex h-[50px] items-center justify-between pl-0 pr-4">
+        <div
+          className="
+            mx-auto
+            flex
+            h-[64px]
+            w-full
+            max-w-[1100px]
+            items-center
+            justify-between
+            px-5
+            sm:px-7
+          "
+        >
           {/* EarLink 로고 */}
-          <div
-            className={[
-              "relative -ml-2 block",
-              "h-[44px] w-[150px]",
-              "translate-x-[3px]",
-              "translate-y-[2px]",
-              "shrink-0 overflow-hidden",
-            ].join(" ")}
+          <a
+            href="#mode-select-top"
+            className="
+              relative
+              block
+              h-[46px]
+              w-[146px]
+              shrink-0
+            "
+            aria-label="EarLink 홈"
           >
             <Image
               src="/earlink-header-logo.png"
               alt="EarLink"
               fill
-              sizes="150px"
+              sizes="146px"
               priority
-              className="origin-center scale-[1.03] object-cover object-center"
+              className="
+                object-contain
+                object-left
+              "
             />
-          </div>
+          </a>
 
-          {/* 메뉴 */}
-          <nav
-            aria-label="주요 메뉴"
-            className="flex shrink-0 items-center gap-4"
+          <div
+            className="
+              flex
+              items-center
+              gap-5
+            "
           >
-            <a
-              href="#service-intro"
-              className="whitespace-nowrap text-[12px] font-black tracking-[-0.03em] text-slate-800 transition hover:text-[#3f7568]"
+            <nav
+              aria-label="주요 메뉴"
+              className="
+                hidden
+                items-center
+                gap-6
+                sm:flex
+              "
             >
-              서비스 소개
-            </a>
+              <a
+                href="#service-intro"
+                className="
+                  whitespace-nowrap
+                  text-[13px]
+                  font-bold
+                  tracking-[-0.03em]
+                  text-[#182033]
+                  transition
+                  hover:text-[#4b8b79]
+                "
+              >
+                서비스 소개
+              </a>
 
-            <a
-              href="#usage-guide"
-              className="whitespace-nowrap text-[12px] font-black tracking-[-0.03em] text-slate-800 transition hover:text-[#3f7568]"
+              <a
+                href="#usage-guide"
+                className="
+                  whitespace-nowrap
+                  text-[13px]
+                  font-bold
+                  tracking-[-0.03em]
+                  text-[#182033]
+                  transition
+                  hover:text-[#4b8b79]
+                "
+              >
+                이용 방법
+              </a>
+            </nav>
+
+            <button
+              type="button"
+              aria-label="메뉴"
+              className="
+                flex
+                h-10
+                w-10
+                items-center
+                justify-center
+                rounded-full
+                text-[#182033]
+                transition
+                hover:bg-black/[0.04]
+              "
             >
-              이용 방법
-            </a>
-          </nav>
+              <MenuIcon />
+            </button>
+          </div>
         </div>
       </header>
 
+      {/* =========================
+          CONTENT
+      ========================== */}
+
       <main
         id="mode-select-top"
-        className="relative z-10 flex min-h-0 flex-1 flex-col px-5"
-        style={{
-          paddingBottom:
-            "max(0.75rem, env(safe-area-inset-bottom))",
-        }}
+        className="
+          relative
+          z-10
+          mx-auto
+          w-full
+          max-w-[470px]
+          px-5
+          pb-10
+          pt-9
+          sm:px-6
+          sm:pt-11
+        "
       >
-        {/* 메인 문구 */}
+        {/* =========================
+            HERO TEXT
+        ========================== */}
+
         <section
           id="service-intro"
-          className={[
-            "mx-auto w-full max-w-[365px]",
-            "shrink-0 scroll-mt-20",
-            "pt-[clamp(26px,4dvh,42px)]",
-            "text-left",
-          ].join(" ")}
+          className="
+            relative
+            z-20
+          "
         >
           <h1
-            className={[
-              "text-[clamp(30px,4.4dvh,36px)]",
-              "font-black",
-              "leading-[1.17]",
-              "tracking-[-0.065em]",
-              "text-slate-950",
-            ].join(" ")}
+            className="
+              text-[38px]
+              font-black
+              leading-[1.18]
+              tracking-[-0.07em]
+              text-[#101827]
+              sm:text-[43px]
+            "
           >
-            나에게 맞는
+            오늘,
             <br />
 
-            <span className="text-[#3f7568]">
-              대화 방식
-            </span>
-            을
+            어떤 대화를
             <br />
 
-            선택해 주세요
+            시작해 볼까요?
           </h1>
 
           <p
-            className={[
-              "mt-[clamp(12px,2dvh,18px)]",
-              "text-[12.5px]",
-              "font-medium",
-              "leading-[1.7]",
-              "tracking-[-0.025em]",
-              "text-slate-500",
-            ].join(" ")}
+            className="
+              mt-5
+              text-[15px]
+              font-medium
+              leading-[1.75]
+              tracking-[-0.035em]
+              text-[#626873]
+              sm:text-[16px]
+            "
           >
-            편한 방법을 선택하면
+            당신에게 맞는 방식으로,
             <br />
-            바로 대화를 시작할 수 있어요.
+
+            더 편안하게 이어지는 대화.
           </p>
+        </section>
 
-          {/* 작은 포인트 */}
+        {/* =========================
+            GIRL ILLUSTRATION
+        ========================== */}
+
+        <section
+          aria-label="EarLink 소개 이미지"
+          className="
+            relative
+            mt-2
+            h-[300px]
+            w-full
+            sm:h-[325px]
+          "
+        >
+          {/* 말풍선 */}
           <div
-            aria-hidden="true"
-            className="mt-3 flex items-center gap-1.5"
+            className="
+              absolute
+              right-0
+              top-4
+              z-20
+              rounded-[28px]
+              border
+              border-[#eed9d2]
+              bg-[#fffaf7]/95
+              px-5
+              py-4
+              shadow-[0_8px_25px_rgba(78,58,50,0.035)]
+            "
           >
-            <span className="h-1 w-7 rounded-full bg-[#3f7568]" />
+            <p
+              className="
+                rotate-[-2deg]
+                text-[12px]
+                font-medium
+                leading-6
+                tracking-[-0.03em]
+                text-[#594c46]
+                sm:text-[13px]
+              "
+            >
+              좋은 대화가
+              <br />
 
-            <span className="h-1 w-1 rounded-full bg-[#8eaaa2]" />
+              좋은 하루를 만들어요.
+            </p>
+
+            {/* 말풍선 꼬리 */}
+            <span
+              className="
+                absolute
+                -bottom-[8px]
+                left-7
+                h-4
+                w-4
+                rotate-45
+                border-b
+                border-r
+                border-[#eed9d2]
+                bg-[#fffaf7]
+              "
+            />
+          </div>
+
+          {/* 여자 이미지 */}
+          <div
+            className="
+              absolute
+              bottom-[-8px]
+              left-1/2
+              h-[245px]
+              w-[112%]
+              -translate-x-1/2
+              sm:h-[270px]
+            "
+          >
+            <Image
+              src="/girl.png"
+              alt="대화를 기다리는 사람 일러스트"
+              fill
+              sizes="470px"
+              priority
+              className="
+                object-contain
+                object-bottom
+              "
+            />
           </div>
         </section>
 
-        {/* 방식 선택 카드 */}
+        {/* =========================
+            MODE CARDS
+        ========================== */}
+
         <section
           id="usage-guide"
           aria-label="대화 방식 선택"
-          className={[
-            "mx-auto",
-            "mt-[clamp(20px,3dvh,30px)]",
-            "flex",
-            "w-full max-w-[365px]",
-            "shrink-0",
-            "scroll-mt-20",
-            "flex-col",
-            "gap-2.5",
-          ].join(" ")}
+          className="
+            relative
+            z-20
+            -mt-2
+          "
         >
-          {MODE_OPTIONS.map(
-            (option) => (
-              <ModeCard
-                key={option.mode}
-                option={option}
-                onSelect={
-                  onSelectMode
-                }
-              />
-            ),
-          )}
+          <div
+            className="
+              grid
+              grid-cols-3
+              gap-2.5
+              sm:gap-3
+            "
+          >
+            {MODE_OPTIONS.map(
+              (option) => (
+                <ModeCard
+                  key={option.mode}
+                  option={option}
+                  onSelect={
+                    onSelectMode
+                  }
+                />
+              )
+            )}
+          </div>
         </section>
 
-        {/* 하단 장식 */}
-        <footer className="mt-auto shrink-0 pb-1 pt-[clamp(14px,2.2dvh,24px)]">
-          <BottomConnectionMark />
+        {/* 하단 문구 */}
+        <footer
+          className="
+            pb-2
+            pt-8
+            text-center
+          "
+        >
+          <p
+            className="
+              text-[10px]
+              font-semibold
+              uppercase
+              tracking-[0.18em]
+              text-[#a1a1aa]
+            "
+          >
+            Connect in your way
+          </p>
         </footer>
       </main>
     </div>
