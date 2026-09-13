@@ -8,35 +8,22 @@ type AccessibilityMode =
   | "STANDARD";
 
 type ModeSelectProps = {
-  onSelectMode: (
-    mode: AccessibilityMode
-  ) => void;
+  onSelectMode: (mode: AccessibilityMode) => void;
 };
 
 type ModeOption = {
   mode: AccessibilityMode;
   title: string;
-
-  description: readonly [
-    string,
-    string,
-  ];
-
+  description: readonly [string, string];
   imageSrc: string;
   imageAlt: string;
-
   cardClassName: string;
   iconClassName: string;
 };
 
-/* ======================================================
-   대화 방식
-====================================================== */
-
 const MODE_OPTIONS = [
   {
     mode: "VISUAL",
-
     title: "점자로\n대화하기",
 
     description: [
@@ -44,68 +31,58 @@ const MODE_OPTIONS = [
       "메시지를 주고받아요.",
     ],
 
-    imageSrc:
-      "/mode-icons/braille.png",
+    imageSrc: "/mode-icons/braille.png",
 
-    imageAlt:
-      "점자 여섯 점을 표현한 이미지",
+    imageAlt: "점자 여섯 점을 표현한 이미지",
 
     cardClassName:
-      "border-[#f0d7d2] bg-[#fff8f6]",
+      "border-[#efd7d3] bg-[#fff8f6]",
 
-    iconClassName:
-      "scale-[1.5]",
+    iconClassName: "scale-[1.5]",
   },
 
   {
     mode: "HEARING",
-
     title: "수어로\n대화하기",
 
     description: [
-      "카메라로 제스처를 인식해",
+      "카메라 제스처를 인식해",
       "문장으로 바꿔줘요.",
     ],
 
     imageSrc:
       "/mode-icons/sign-language.png",
 
-    imageAlt:
-      "두 손으로 수어를 표현한 이미지",
+    imageAlt: "두 손으로 수어를 표현한 이미지",
 
     cardClassName:
-      "border-[#d9e9e1] bg-[#f4fbf7]",
+      "border-[#d8e9e1] bg-[#f4fbf7]",
 
-    iconClassName:
-      "scale-[1.43]",
+    iconClassName: "scale-[1.43]",
   },
 
   {
     mode: "STANDARD",
-
     title: "텍스트로\n대화하기",
 
     description: [
-      "키보드로 바로 입력하고",
-      "실시간으로 이야기해요.",
+      "키보드로 바로 입력해",
+      "실시간으로 대화해요.",
     ],
 
-    imageSrc:
-      "/mode-icons/text.png",
+    imageSrc: "/mode-icons/text.png",
 
-    imageAlt:
-      "텍스트 말풍선을 표현한 이미지",
+    imageAlt: "텍스트 말풍선을 표현한 이미지",
 
     cardClassName:
       "border-[#dfdaf0] bg-[#f7f5ff]",
 
-    iconClassName:
-      "scale-[1.48]",
+    iconClassName: "scale-[1.48]",
   },
 ] as const satisfies readonly ModeOption[];
 
 /* ======================================================
-   햄버거 아이콘
+   햄버거 메뉴 아이콘
 ====================================================== */
 
 function MenuIcon() {
@@ -127,7 +104,7 @@ function MenuIcon() {
 }
 
 /* ======================================================
-   카드
+   대화 방식 카드
 ====================================================== */
 
 function ModeCard({
@@ -135,47 +112,46 @@ function ModeCard({
   onSelect,
 }: {
   option: ModeOption;
-
-  onSelect: (
-    mode: AccessibilityMode
-  ) => void;
+  onSelect: (mode: AccessibilityMode) => void;
 }) {
   return (
     <button
       type="button"
-      onClick={() =>
-        onSelect(option.mode)
-      }
+      onClick={() => onSelect(option.mode)}
       className={[
         "group",
         "relative",
+
         "flex",
-        "min-h-[190px]",
+        "min-h-[184px]",
         "w-full",
         "flex-col",
         "items-center",
-        "rounded-[24px]",
+
+        "rounded-[23px]",
         "border",
+
         "px-2",
         "pb-4",
         "pt-4",
+
         "text-center",
 
-        "shadow-[0_8px_28px_rgba(36,30,26,0.035)]",
+        "shadow-[0_8px_26px_rgba(36,30,26,0.035)]",
 
         "transition",
         "duration-300",
         "ease-out",
 
         "hover:-translate-y-1",
-        "hover:shadow-[0_13px_34px_rgba(36,30,26,0.07)]",
+        "hover:shadow-[0_13px_32px_rgba(36,30,26,0.07)]",
 
         "active:translate-y-0",
         "active:scale-[0.985]",
 
         "focus-visible:outline-none",
         "focus-visible:ring-2",
-        "focus-visible:ring-[#9fa9c4]",
+        "focus-visible:ring-[#a7adc4]",
         "focus-visible:ring-offset-2",
 
         option.cardClassName,
@@ -186,8 +162,8 @@ function ModeCard({
         className="
           relative
           flex
-          h-[58px]
-          w-[58px]
+          h-[55px]
+          w-[55px]
           shrink-0
           items-center
           justify-center
@@ -198,13 +174,16 @@ function ModeCard({
           src={option.imageSrc}
           alt={option.imageAlt}
           fill
-          sizes="58px"
+          sizes="55px"
           priority
           className={[
             "origin-center",
             "object-contain",
+
             "transition",
             "duration-300",
+
+            "group-hover:scale-[1.04]",
 
             option.iconClassName,
           ].join(" ")}
@@ -215,11 +194,15 @@ function ModeCard({
       <span
         className="
           mt-3
+
           whitespace-pre-line
+
           text-[14px]
           font-black
           leading-[1.45]
+
           tracking-[-0.05em]
+
           text-[#111827]
 
           sm:text-[15px]
@@ -233,11 +216,14 @@ function ModeCard({
         className="
           mt-3
           block
+
           text-[9.5px]
           font-medium
           leading-[1.65]
+
           tracking-[-0.025em]
-          text-[#6f7685]
+
+          text-[#707787]
 
           sm:text-[10px]
         "
@@ -250,23 +236,6 @@ function ModeCard({
           {option.description[1]}
         </span>
       </span>
-
-      {/* 아래 작은 포인트 */}
-      <span
-        aria-hidden="true"
-        className="
-          absolute
-          bottom-3.5
-          h-[3px]
-          w-[18px]
-          rounded-full
-          bg-current
-          opacity-0
-          transition
-
-          group-hover:opacity-[0.16]
-        "
-      />
     </button>
   );
 }
@@ -282,22 +251,27 @@ export default function ModeSelect({
     <div
       className="
         relative
+
         flex
         min-h-[100dvh]
         flex-col
+
         overflow-hidden
+
         bg-[#fffaf6]
+
         text-[#101827]
       "
     >
       {/* ==================================================
-          배경
+          배경 장식
       ================================================== */}
 
       <div
         aria-hidden="true"
         className="
           pointer-events-none
+
           absolute
           inset-0
         "
@@ -305,12 +279,17 @@ export default function ModeSelect({
         <div
           className="
             absolute
+
             -left-[130px]
-            top-[80px]
+            top-[70px]
+
             h-[330px]
             w-[330px]
+
             rounded-full
+
             bg-[#fff0e9]/60
+
             blur-[100px]
           "
         />
@@ -318,12 +297,17 @@ export default function ModeSelect({
         <div
           className="
             absolute
+
             -right-[150px]
-            top-[260px]
-            h-[370px]
-            w-[370px]
+            top-[240px]
+
+            h-[360px]
+            w-[360px]
+
             rounded-full
+
             bg-[#f6e7e4]/55
+
             blur-[100px]
           "
         />
@@ -331,12 +315,17 @@ export default function ModeSelect({
         <div
           className="
             absolute
+
             bottom-[-180px]
             left-[5%]
+
             h-[340px]
             w-[340px]
+
             rounded-full
+
             bg-[#eaf6ef]/50
+
             blur-[100px]
           "
         />
@@ -344,7 +333,9 @@ export default function ModeSelect({
 
       {/* ==================================================
           HEADER
-          기존 EarLink 위치 유지
+
+          기존 EarLink 화면에서
+          잘 맞았던 위치 그대로 유지
       ================================================== */}
 
       <header
@@ -352,22 +343,26 @@ export default function ModeSelect({
           relative
           z-30
           shrink-0
+
           border-b
           border-slate-100/90
-          bg-white/92
+
+          bg-white/95
+
           backdrop-blur-sm
         "
         style={{
-          paddingTop:
-            "env(safe-area-inset-top)",
+          paddingTop: "env(safe-area-inset-top)",
         }}
       >
         <div
           className="
             flex
             h-[50px]
+
             items-center
             justify-between
+
             pl-0
             pr-4
           "
@@ -378,13 +373,19 @@ export default function ModeSelect({
             aria-label="EarLink 홈"
             className="
               relative
+
               -ml-2
+
               block
+
               h-[44px]
               w-[150px]
+
+              shrink-0
+
               translate-x-[3px]
               translate-y-[2px]
-              shrink-0
+
               overflow-hidden
             "
           >
@@ -396,14 +397,16 @@ export default function ModeSelect({
               priority
               className="
                 origin-center
+
                 scale-[1.03]
+
                 object-cover
                 object-center
               "
             />
           </a>
 
-          {/* 오른쪽 */}
+          {/* 오른쪽 메뉴 */}
           <div
             className="
               flex
@@ -421,51 +424,70 @@ export default function ModeSelect({
                 gap-4
               "
             >
-              <a
-                href="#service-intro"
+              {/* 아직 페이지 없음 */}
+              <button
+                type="button"
+                disabled
+                aria-disabled="true"
                 className="
+                  cursor-default
+
                   whitespace-nowrap
+
                   text-[12px]
                   font-black
+
                   tracking-[-0.03em]
+
                   text-slate-800
-                  transition
-                  hover:text-[#3f7568]
                 "
               >
                 서비스 소개
-              </a>
+              </button>
 
-              <a
-                href="#usage-guide"
+              {/* 아직 페이지 없음 */}
+              <button
+                type="button"
+                disabled
+                aria-disabled="true"
                 className="
+                  cursor-default
+
                   whitespace-nowrap
+
                   text-[12px]
                   font-black
+
                   tracking-[-0.03em]
+
                   text-slate-800
-                  transition
-                  hover:text-[#3f7568]
                 "
               >
                 이용 방법
-              </a>
+              </button>
             </nav>
 
+            {/* 메뉴도 아직 기능 없으면 버튼만 유지 */}
             <button
               type="button"
-              aria-label="메뉴 열기"
+              disabled
+              aria-label="메뉴"
+              aria-disabled="true"
               className="
                 ml-1
+
                 flex
                 h-9
                 w-9
+
+                cursor-default
+
                 items-center
                 justify-center
+
                 rounded-full
+
                 text-slate-800
-                transition
-                hover:bg-slate-100
               "
             >
               <MenuIcon />
@@ -483,23 +505,25 @@ export default function ModeSelect({
         className="
           relative
           z-10
+
           mx-auto
+
           flex
           w-full
           max-w-[430px]
           flex-1
           flex-col
+
           px-5
           pb-5
-          pt-7
+          pt-6
         "
       >
         {/* ==================================================
-            HERO COPY
+            HERO TEXT
         ================================================== */}
 
         <section
-          id="service-intro"
           className="
             relative
             z-20
@@ -508,13 +532,16 @@ export default function ModeSelect({
         >
           <h1
             className="
-              text-[31px]
+              text-[29px]
               font-black
-              leading-[1.16]
+
+              leading-[1.17]
+
               tracking-[-0.065em]
+
               text-[#101827]
 
-              sm:text-[34px]
+              sm:text-[32px]
             "
           >
             오늘,
@@ -528,11 +555,15 @@ export default function ModeSelect({
 
           <p
             className="
-              mt-4
+              mt-3.5
+
               text-[13px]
               font-medium
+
               leading-[1.7]
+
               tracking-[-0.03em]
+
               text-[#626b79]
 
               sm:text-[13.5px]
@@ -546,52 +577,71 @@ export default function ModeSelect({
         </section>
 
         {/* ==================================================
-            ILLUSTRATION
+            GIRL + SPEECH BUBBLE
 
-            이전보다 확실히 위로 올림
+            말풍선과 하트가 겹치지 않도록
+            말풍선을 girl 이미지 위에 분리
         ================================================== */}
 
         <section
           aria-label="EarLink 소개 이미지"
           className="
             relative
-            -mt-2
-            h-[235px]
+
+            -mt-1
+
+            h-[220px]
             w-full
+
             shrink-0
 
-            sm:h-[250px]
+            sm:h-[228px]
           "
         >
-          {/* 말풍선 */}
+          {/* =========================
+              말풍선
+              girl.png 영역보다 위쪽
+          ========================== */}
+
           <div
             className="
               absolute
-              right-0
-              top-[22px]
-              z-20
 
-              rounded-[24px]
+              right-0
+              top-0
+
+              z-30
+
+              w-[142px]
+
+              rounded-[21px]
+
               border
-              border-[#efd8d1]
+              border-[#edd6cf]
 
               bg-[#fffaf7]/95
 
               px-4
-              py-3
+              py-2.5
 
-              shadow-[0_6px_22px_rgba(78,58,50,0.035)]
+              shadow-[0_6px_20px_rgba(78,58,50,0.035)]
+
+              sm:right-1
+              sm:w-[148px]
             "
           >
             <p
               className="
-                text-[10.5px]
+                text-[10px]
                 font-medium
-                leading-[1.8]
-                tracking-[-0.025em]
-                text-[#645047]
 
-                sm:text-[11px]
+                leading-[1.8]
+
+                tracking-[-0.025em]
+
+                text-[#624c43]
+
+                sm:text-[10.5px]
               "
             >
               좋은 대화가
@@ -600,40 +650,49 @@ export default function ModeSelect({
               좋은 하루를 만들어요.
             </p>
 
-            {/* 말풍선 꼬리 */}
+            {/* 꼬리 */}
             <span
+              aria-hidden="true"
               className="
                 absolute
-                -bottom-[7px]
-                left-9
 
-                h-[14px]
-                w-[14px]
+                -bottom-[7px]
+                left-[27px]
+
+                h-[13px]
+                w-[13px]
 
                 rotate-45
 
                 border-b
                 border-r
-                border-[#efd8d1]
+                border-[#edd6cf]
 
                 bg-[#fffaf7]
               "
             />
           </div>
 
-          {/* girl.png */}
+          {/* =========================
+              여자 이미지
+
+              말풍선 아래부터 시작해서
+              하트와 겹치지 않음
+          ========================== */}
+
           <div
             className="
               absolute
+
               bottom-[-2px]
               left-1/2
 
-              h-[215px]
-              w-[116%]
+              h-[176px]
+              w-[114%]
 
               -translate-x-1/2
 
-              sm:h-[230px]
+              sm:h-[185px]
             "
           >
             <Image
@@ -653,16 +712,17 @@ export default function ModeSelect({
         {/* ==================================================
             MODE SELECT
 
-            기존보다 위로 당김
+            기존보다 위쪽에 붙임
         ================================================== */}
 
         <section
-          id="usage-guide"
           aria-label="대화 방식 선택"
           className="
             relative
             z-20
+
             -mt-1
+
             shrink-0
           "
         >
@@ -670,29 +730,31 @@ export default function ModeSelect({
             className="
               grid
               grid-cols-3
+
               gap-2.5
             "
           >
-            {MODE_OPTIONS.map(
-              (option) => (
-                <ModeCard
-                  key={option.mode}
-                  option={option}
-                  onSelect={
-                    onSelectMode
-                  }
-                />
-              )
-            )}
+            {MODE_OPTIONS.map((option) => (
+              <ModeCard
+                key={option.mode}
+                option={option}
+                onSelect={onSelectMode}
+              />
+            ))}
           </div>
         </section>
 
-        {/* 하단 */}
+        {/* ==================================================
+            FOOTER
+        ================================================== */}
+
         <footer
           className="
             mt-auto
+
             pb-1
-            pt-5
+            pt-4
+
             text-center
           "
         >
@@ -700,8 +762,11 @@ export default function ModeSelect({
             className="
               text-[9px]
               font-semibold
+
               uppercase
+
               tracking-[0.18em]
+
               text-[#b0acaa]
             "
           >
