@@ -23,7 +23,7 @@ export default function IntroSplash() {
         flex
         min-h-[100dvh]
         flex-col
-        bg-[#fffdf9]
+        bg-[#F7EFE9]
         px-6
       "
       style={{
