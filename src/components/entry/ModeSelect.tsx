@@ -345,9 +345,9 @@ export default function ModeSelect({
           shrink-0
 
           border-b
-          border-[#eee7e1]
+          border-[#EFEDEB]
 
-          bg-[#fffdf9]/95
+          bg-[#FFFEFC]/95
 
           backdrop-blur-sm
         "
@@ -510,7 +510,9 @@ export default function ModeSelect({
           pt-6
         "
       >
-        {/* HERO */}
+        {/* ==================================================
+            HERO
+        ================================================== */}
 
         <section
           className="
@@ -581,6 +583,7 @@ export default function ModeSelect({
             sm:h-[228px]
           "
         >
+          {/* 말풍선 */}
           <div
             className="
               absolute
@@ -649,6 +652,7 @@ export default function ModeSelect({
             />
           </div>
 
+          {/* 여자 일러스트 */}
           <div
             className="
               absolute
