@@ -23,15 +23,12 @@ export default function IntroSplash() {
         flex
         min-h-[100dvh]
         flex-col
-
         bg-[#fffdf9]
-
         px-6
       "
       style={{
         paddingTop:
           "max(2rem, env(safe-area-inset-top))",
-
         paddingBottom:
           "max(1.5rem, env(safe-area-inset-bottom))",
       }}
@@ -52,9 +49,7 @@ export default function IntroSplash() {
           className="
             flex
             w-full
-
             -translate-y-10
-
             flex-col
             items-center
           "
@@ -63,66 +58,23 @@ export default function IntroSplash() {
               INTRO LOGO
           ========================================== */}
 
-          <div
+          <Image
+            src="/earlink-logo-transparent.png"
+            alt="EarLink"
+            width={320}
+            height={320}
+            priority
+            unoptimized
             className="
-              relative
+              h-auto
+              w-[245px]
+              max-w-none
+              bg-transparent
+              object-contain
 
-              h-[150px]
-              w-[260px]
-
-              overflow-hidden
+              sm:w-[250px]
             "
-          >
-            <Image
-              src="/earlink-logo-transparent.png"
-              alt="EarLink"
-              width={320}
-              height={320}
-              priority
-              unoptimized
-              className="
-                absolute
-
-                left-1/2
-                top-0
-
-                h-auto
-                w-[245px]
-                max-w-none
-
-                -translate-x-1/2
-
-                bg-transparent
-                object-contain
-              "
-              style={{
-                /*
-                 * PNG 안에 포함된
-                 * Connect in your way 부분 숨김
-                 */
-                clipPath:
-                  "inset(0 0 18% 0)",
-              }}
-            />
-
-            {/* tagline 하단 영역을 완전히 덮음 */}
-            <div
-              aria-hidden="true"
-              className="
-                pointer-events-none
-
-                absolute
-
-                bottom-0
-                left-0
-                right-0
-
-                h-[24px]
-
-                bg-[#fffdf9]
-              "
-            />
-          </div>
+          />
 
           {/* =========================================
               LOADING BAR
@@ -130,8 +82,7 @@ export default function IntroSplash() {
 
           <div
             className="
-              mt-5
-
+              mt-7
               w-full
               max-w-[260px]
             "
@@ -144,24 +95,20 @@ export default function IntroSplash() {
               className="
                 h-[6px]
                 w-full
-
                 overflow-hidden
-
                 rounded-full
-
-                bg-slate-100
+                bg-[#eeeae5]
               "
             >
               <div
                 className="
                   h-full
-
                   rounded-full
 
                   bg-gradient-to-r
-                  from-slate-950
-                  via-slate-700
-                  to-slate-500
+                  from-[#f2a093]
+                  via-[#c5aa99]
+                  to-[#9eafa3]
 
                   transition-[width]
                   ease-out
@@ -170,7 +117,6 @@ export default function IntroSplash() {
                   width: progressStarted
                     ? "100%"
                     : "8%",
-
                   transitionDuration:
                     "1600ms",
                 }}
