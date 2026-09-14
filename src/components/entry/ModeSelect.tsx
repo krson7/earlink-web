@@ -32,7 +32,8 @@ const MODE_OPTIONS = [
 
     imageSrc: "/mode-icons/braille.png",
 
-    imageAlt: "점자 여섯 점을 표현한 이미지",
+    imageAlt:
+      "점자 여섯 점을 표현한 이미지",
 
     iconClassName:
       "scale-[1.78]",
@@ -108,12 +109,16 @@ function ModeCard({
   onSelect,
 }: {
   option: ModeOption;
-  onSelect: (mode: AccessibilityMode) => void;
+  onSelect: (
+    mode: AccessibilityMode
+  ) => void;
 }) {
   return (
     <button
       type="button"
-      onClick={() => onSelect(option.mode)}
+      onClick={() =>
+        onSelect(option.mode)
+      }
       className="
         group
         relative
@@ -157,7 +162,9 @@ function ModeCard({
         focus-visible:ring-offset-2
       "
     >
-      {/* 아이콘 */}
+      {/* =========================================
+          ICON
+      ========================================== */}
       <span
         className="
           relative
@@ -191,7 +198,9 @@ function ModeCard({
         />
       </span>
 
-      {/* 제목 */}
+      {/* =========================================
+          TITLE
+      ========================================== */}
       <span
         className="
           mt-2
@@ -212,7 +221,9 @@ function ModeCard({
         {option.title}
       </span>
 
-      {/* 설명 */}
+      {/* =========================================
+          DESCRIPTION
+      ========================================== */}
       <span
         className="
           mt-3
@@ -276,6 +287,7 @@ export default function ModeSelect({
           inset-0
         "
       >
+        {/* 왼쪽 상단 핑크 */}
         <div
           className="
             absolute
@@ -294,6 +306,7 @@ export default function ModeSelect({
           "
         />
 
+        {/* 오른쪽 핑크 */}
         <div
           className="
             absolute
@@ -312,6 +325,7 @@ export default function ModeSelect({
           "
         />
 
+        {/* 하단 민트 */}
         <div
           className="
             absolute
@@ -361,13 +375,13 @@ export default function ModeSelect({
             items-center
             justify-between
 
-            pl-0
             pr-4
           "
         >
-          {/* =========================
-              EarLink LOGO
-          ========================== */}
+          {/* =========================================
+              EarLink HEADER LOGO
+              기존보다 작게 조정
+          ========================================== */}
 
           <a
             href="#mode-select-top"
@@ -375,17 +389,14 @@ export default function ModeSelect({
             className="
               relative
 
-              -ml-2
-
               block
 
-              h-[44px]
-              w-[150px]
+              h-[34px]
+              w-[120px]
 
               shrink-0
 
-              translate-x-[3px]
-              translate-y-[2px]
+              translate-x-[8px]
 
               overflow-hidden
             "
@@ -394,22 +405,18 @@ export default function ModeSelect({
               src="/earlink-header-logo.png"
               alt="EarLink"
               fill
-              sizes="150px"
+              sizes="120px"
               priority
               className="
-                origin-center
-
-                scale-[1.03]
-
-                object-cover
-                object-center
+                object-contain
+                object-left
               "
             />
           </a>
 
-          {/* =========================
-              오른쪽 HEADER
-          ========================== */}
+          {/* =========================================
+              RIGHT HEADER
+          ========================================== */}
 
           <div
             className="
@@ -420,7 +427,6 @@ export default function ModeSelect({
               gap-[18px]
             "
           >
-            {/* 페이지는 아직 연결하지 않음 */}
             <nav
               aria-label="주요 메뉴"
               className="
@@ -467,7 +473,7 @@ export default function ModeSelect({
               </span>
             </nav>
 
-            {/* 메뉴 아이콘 - 아직 기능 없음 */}
+            {/* 메뉴 아이콘 */}
             <button
               type="button"
               disabled
@@ -594,9 +600,9 @@ export default function ModeSelect({
             sm:h-[228px]
           "
         >
-          {/* =========================
+          {/* =========================================
               SPEECH BUBBLE
-          ========================== */}
+          ========================================== */}
 
           <div
             className="
@@ -668,9 +674,9 @@ export default function ModeSelect({
             />
           </div>
 
-          {/* =========================
+          {/* =========================================
               GIRL
-          ========================== */}
+          ========================================== */}
 
           <div
             className="
@@ -729,7 +735,9 @@ export default function ModeSelect({
                 <ModeCard
                   key={option.mode}
                   option={option}
-                  onSelect={onSelectMode}
+                  onSelect={
+                    onSelectMode
+                  }
                 />
               )
             )}

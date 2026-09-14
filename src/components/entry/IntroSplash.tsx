@@ -36,30 +36,69 @@ export default function IntroSplash() {
       {/* 로고 + 진행 표시 전체 영역 */}
       <section className="flex flex-1 items-center justify-center">
         <div className="flex w-full -translate-y-10 flex-col items-center">
-          {/* 로고 영역 */}
-          <Image
-            src="/earlink-logo-transparent.png"
-            alt="EarLink"
-            width={320}
-            height={320}
-            priority
-            unoptimized
+
+          {/* =========================================
+              INTRO LOGO
+              - 기존보다 크게
+              - Connect in your way 영역 숨김
+          ========================================== */}
+          <div
             className="
-              h-auto
-              w-[190px]
-              max-w-none
-              scale-[1.0]
-              bg-transparent
-              object-contain
-              sm:w-[190px]
+              relative
+              h-[150px]
+              w-[250px]
+              overflow-hidden
             "
-            style={{
-              clipPath: "inset(3px 0 0 3px)",
-            }}
-          />
+          >
+            <Image
+              src="/earlink-logo-transparent.png"
+              alt="EarLink"
+              width={320}
+              height={320}
+              priority
+              unoptimized
+              className="
+                absolute
+                left-1/2
+                top-0
+
+                h-auto
+                w-[235px]
+                max-w-none
+
+                -translate-x-1/2
+
+                bg-transparent
+                object-contain
+              "
+              style={{
+                /*
+                 * PNG 내부의
+                 * Connect in your way 부분을 잘라냄.
+                 */
+                clipPath:
+                  "inset(0 0 18% 0)",
+              }}
+            />
+
+            {/* tagline 부분을 배경색으로 한번 더 가림 */}
+            <div
+              aria-hidden="true"
+              className="
+                pointer-events-none
+                absolute
+                bottom-0
+                left-0
+                right-0
+                h-[25px]
+                bg-[#fffdf9]
+              "
+            />
+          </div>
 
           {/* 진행 표시 */}
-          <div className="mt-1 w-full max-w-[260px]">
+          <div className="-mt-2 w-full max-w-[260px]">
+
             {/* 로딩 바 */}
             <div
               role="progressbar"
@@ -77,10 +116,12 @@ export default function IntroSplash() {
                 className="
                   h-full
                   rounded-full
+
                   bg-gradient-to-r
                   from-slate-950
                   via-slate-700
                   to-slate-500
+
                   transition-[width]
                   ease-out
                 "
@@ -88,7 +129,8 @@ export default function IntroSplash() {
                   width: progressStarted
                     ? "100%"
                     : "8%",
-                  transitionDuration: "1600ms",
+                  transitionDuration:
+                    "1600ms",
                 }}
               />
             </div>
@@ -105,7 +147,9 @@ export default function IntroSplash() {
               "
             >
               <span className="h-2 w-2 rounded-full bg-slate-900" />
+
               <span className="h-2 w-2 rounded-full bg-slate-600" />
+
               <span className="h-2 w-2 rounded-full bg-slate-400" />
             </div>
 
@@ -115,9 +159,12 @@ export default function IntroSplash() {
               className="
                 mt-4
                 text-center
+
                 text-[12px]
                 font-medium
+
                 tracking-[-0.01em]
+
                 text-slate-500
               "
             >
