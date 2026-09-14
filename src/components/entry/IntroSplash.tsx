@@ -23,30 +23,53 @@ export default function IntroSplash() {
         flex
         min-h-[100dvh]
         flex-col
+
         bg-[#fffdf9]
+
         px-6
       "
       style={{
         paddingTop:
           "max(2rem, env(safe-area-inset-top))",
+
         paddingBottom:
           "max(1.5rem, env(safe-area-inset-bottom))",
       }}
     >
-      {/* 로고 + 진행 표시 전체 영역 */}
-      <section className="flex flex-1 items-center justify-center">
-        <div className="flex w-full -translate-y-10 flex-col items-center">
+      {/* =========================================
+          SPLASH CONTENT
+      ========================================== */}
 
+      <section
+        className="
+          flex
+          flex-1
+          items-center
+          justify-center
+        "
+      >
+        <div
+          className="
+            flex
+            w-full
+
+            -translate-y-10
+
+            flex-col
+            items-center
+          "
+        >
           {/* =========================================
               INTRO LOGO
-              - 기존보다 크게
-              - Connect in your way 영역 숨김
           ========================================== */}
+
           <div
             className="
               relative
+
               h-[150px]
-              w-[250px]
+              w-[260px]
+
               overflow-hidden
             "
           >
@@ -59,11 +82,12 @@ export default function IntroSplash() {
               unoptimized
               className="
                 absolute
+
                 left-1/2
                 top-0
 
                 h-auto
-                w-[235px]
+                w-[245px]
                 max-w-none
 
                 -translate-x-1/2
@@ -73,33 +97,45 @@ export default function IntroSplash() {
               "
               style={{
                 /*
-                 * PNG 내부의
-                 * Connect in your way 부분을 잘라냄.
+                 * PNG 안에 포함된
+                 * Connect in your way 부분 숨김
                  */
                 clipPath:
                   "inset(0 0 18% 0)",
               }}
             />
 
-            {/* tagline 부분을 배경색으로 한번 더 가림 */}
+            {/* tagline 하단 영역을 완전히 덮음 */}
             <div
               aria-hidden="true"
               className="
                 pointer-events-none
+
                 absolute
+
                 bottom-0
                 left-0
                 right-0
-                h-[25px]
+
+                h-[24px]
+
                 bg-[#fffdf9]
               "
             />
           </div>
 
-          {/* 진행 표시 */}
-          <div className="-mt-2 w-full max-w-[260px]">
+          {/* =========================================
+              LOADING BAR
+          ========================================== */}
 
-            {/* 로딩 바 */}
+          <div
+            className="
+              mt-5
+
+              w-full
+              max-w-[260px]
+            "
+          >
             <div
               role="progressbar"
               aria-label="EarLink 시작 준비 중"
@@ -107,14 +143,19 @@ export default function IntroSplash() {
               aria-valuemax={100}
               className="
                 h-[6px]
+                w-full
+
                 overflow-hidden
+
                 rounded-full
+
                 bg-slate-100
               "
             >
               <div
                 className="
                   h-full
+
                   rounded-full
 
                   bg-gradient-to-r
@@ -129,47 +170,12 @@ export default function IntroSplash() {
                   width: progressStarted
                     ? "100%"
                     : "8%",
+
                   transitionDuration:
                     "1600ms",
                 }}
               />
             </div>
-
-            {/* 진행 상태 점 */}
-            <div
-              aria-hidden="true"
-              className="
-                mt-5
-                flex
-                items-center
-                justify-center
-                gap-2
-              "
-            >
-              <span className="h-2 w-2 rounded-full bg-slate-900" />
-
-              <span className="h-2 w-2 rounded-full bg-slate-600" />
-
-              <span className="h-2 w-2 rounded-full bg-slate-400" />
-            </div>
-
-            {/* 진행 상태 문구 */}
-            <p
-              aria-live="polite"
-              className="
-                mt-4
-                text-center
-
-                text-[12px]
-                font-medium
-
-                tracking-[-0.01em]
-
-                text-slate-500
-              "
-            >
-              대화를 연결하고 있어요
-            </p>
           </div>
         </div>
       </section>

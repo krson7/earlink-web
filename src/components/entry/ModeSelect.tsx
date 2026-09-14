@@ -162,9 +162,7 @@ function ModeCard({
         focus-visible:ring-offset-2
       "
     >
-      {/* =========================================
-          ICON
-      ========================================== */}
+      {/* 아이콘 */}
       <span
         className="
           relative
@@ -189,18 +187,14 @@ function ModeCard({
           className={[
             "origin-center",
             "object-contain",
-
             "transition",
             "duration-300",
-
             option.iconClassName,
           ].join(" ")}
         />
       </span>
 
-      {/* =========================================
-          TITLE
-      ========================================== */}
+      {/* 제목 */}
       <span
         className="
           mt-2
@@ -221,9 +215,7 @@ function ModeCard({
         {option.title}
       </span>
 
-      {/* =========================================
-          DESCRIPTION
-      ========================================== */}
+      {/* 설명 */}
       <span
         className="
           mt-3
@@ -287,7 +279,6 @@ export default function ModeSelect({
           inset-0
         "
       >
-        {/* 왼쪽 상단 핑크 */}
         <div
           className="
             absolute
@@ -306,7 +297,6 @@ export default function ModeSelect({
           "
         />
 
-        {/* 오른쪽 핑크 */}
         <div
           className="
             absolute
@@ -325,7 +315,6 @@ export default function ModeSelect({
           "
         />
 
-        {/* 하단 민트 */}
         <div
           className="
             absolute
@@ -378,10 +367,9 @@ export default function ModeSelect({
             pr-4
           "
         >
-          {/* =========================================
-              EarLink HEADER LOGO
-              기존보다 작게 조정
-          ========================================== */}
+          {/* =========================
+              EarLink LOGO
+          ========================== */}
 
           <a
             href="#mode-select-top"
@@ -391,8 +379,8 @@ export default function ModeSelect({
 
               block
 
-              h-[34px]
-              w-[120px]
+              h-[36px]
+              w-[122px]
 
               shrink-0
 
@@ -405,7 +393,7 @@ export default function ModeSelect({
               src="/earlink-header-logo.png"
               alt="EarLink"
               fill
-              sizes="120px"
+              sizes="122px"
               priority
               className="
                 object-contain
@@ -414,9 +402,9 @@ export default function ModeSelect({
             />
           </a>
 
-          {/* =========================================
+          {/* =========================
               RIGHT HEADER
-          ========================================== */}
+          ========================== */}
 
           <div
             className="
@@ -473,7 +461,6 @@ export default function ModeSelect({
               </span>
             </nav>
 
-            {/* 메뉴 아이콘 */}
             <button
               type="button"
               disabled
@@ -523,15 +510,12 @@ export default function ModeSelect({
           pt-6
         "
       >
-        {/* ==================================================
-            HERO TEXT
-        ================================================== */}
+        {/* HERO */}
 
         <section
           className="
             relative
             z-20
-
             shrink-0
           "
         >
@@ -551,10 +535,8 @@ export default function ModeSelect({
           >
             오늘,
             <br />
-
             어떤 대화를
             <br />
-
             시작해 볼까요?
           </h1>
 
@@ -576,7 +558,6 @@ export default function ModeSelect({
           >
             당신에게 맞는 방식으로,
             <br />
-
             더 편안하게 이어지는 대화.
           </p>
         </section>
@@ -600,10 +581,6 @@ export default function ModeSelect({
             sm:h-[228px]
           "
         >
-          {/* =========================================
-              SPEECH BUBBLE
-          ========================================== */}
-
           <div
             className="
               absolute
@@ -647,11 +624,9 @@ export default function ModeSelect({
             >
               좋은 대화가
               <br />
-
               좋은 하루를 만들어요.
             </p>
 
-            {/* 말풍선 꼬리 */}
             <span
               aria-hidden="true"
               className="
@@ -673,10 +648,6 @@ export default function ModeSelect({
               "
             />
           </div>
-
-          {/* =========================================
-              GIRL
-          ========================================== */}
 
           <div
             className="
@@ -726,7 +697,6 @@ export default function ModeSelect({
             className="
               grid
               grid-cols-3
-
               gap-2.5
             "
           >
@@ -735,9 +705,7 @@ export default function ModeSelect({
                 <ModeCard
                   key={option.mode}
                   option={option}
-                  onSelect={
-                    onSelectMode
-                  }
+                  onSelect={onSelectMode}
                 />
               )
             )}
@@ -751,10 +719,8 @@ export default function ModeSelect({
         <footer
           className="
             mt-auto
-
             pb-1
             pt-4
-
             text-center
           "
         >
