@@ -39,7 +39,7 @@ const MODE_OPTIONS = [
       "border-[#efd7d3] bg-[#fff8f6]",
 
     iconClassName:
-      "scale-[1.56]",
+      "scale-[1.78]",
   },
 
   {
@@ -61,7 +61,7 @@ const MODE_OPTIONS = [
       "border-[#d8e9e1] bg-[#f4fbf7]",
 
     iconClassName:
-      "scale-[1.50]",
+      "scale-[1.72]",
   },
 
   {
@@ -83,7 +83,7 @@ const MODE_OPTIONS = [
       "border-[#dfdaf0] bg-[#f7f5ff]",
 
     iconClassName:
-      "scale-[1.54]",
+      "scale-[1.76]",
   },
 ] as const satisfies readonly ModeOption[];
 
@@ -168,8 +168,8 @@ function ModeCard({
         className="
           relative
           flex
-          h-[70px]
-          w-[70px]
+          h-[76px]
+          w-[76px]
           shrink-0
           items-center
           justify-center
@@ -180,7 +180,7 @@ function ModeCard({
           src={option.imageSrc}
           alt={option.imageAlt}
           fill
-          sizes="70px"
+          sizes="76px"
           priority
           className={[
             "origin-center",

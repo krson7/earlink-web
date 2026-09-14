@@ -19,7 +19,13 @@ export default function IntroSplash() {
 
   return (
     <main
-      className="flex min-h-[100dvh] flex-col px-6"
+      className="
+        flex
+        min-h-[100dvh]
+        flex-col
+        bg-[#fffdf9]
+        px-6
+      "
       style={{
         paddingTop:
           "max(2rem, env(safe-area-inset-top))",
@@ -38,24 +44,46 @@ export default function IntroSplash() {
             height={320}
             priority
             unoptimized
-           className="h-auto w-[190px] max-w-none scale-[1.0] bg-transparent object-contain sm:w-[190px]"
+            className="
+              h-auto
+              w-[190px]
+              max-w-none
+              scale-[1.0]
+              bg-transparent
+              object-contain
+              sm:w-[190px]
+            "
             style={{
               clipPath: "inset(3px 0 0 3px)",
             }}
           />
 
           {/* 진행 표시 */}
-         <div className="mt-1 w-full max-w-[260px]">
+          <div className="mt-1 w-full max-w-[260px]">
             {/* 로딩 바 */}
             <div
               role="progressbar"
               aria-label="EarLink 시작 준비 중"
               aria-valuemin={0}
               aria-valuemax={100}
-              className="h-[6px] overflow-hidden rounded-full bg-slate-100"
+              className="
+                h-[6px]
+                overflow-hidden
+                rounded-full
+                bg-slate-100
+              "
             >
               <div
-                className="h-full rounded-full bg-gradient-to-r from-slate-950 via-slate-700 to-slate-500 transition-[width] ease-out"
+                className="
+                  h-full
+                  rounded-full
+                  bg-gradient-to-r
+                  from-slate-950
+                  via-slate-700
+                  to-slate-500
+                  transition-[width]
+                  ease-out
+                "
                 style={{
                   width: progressStarted
                     ? "100%"
@@ -68,7 +96,13 @@ export default function IntroSplash() {
             {/* 진행 상태 점 */}
             <div
               aria-hidden="true"
-              className="mt-5 flex items-center justify-center gap-2"
+              className="
+                mt-5
+                flex
+                items-center
+                justify-center
+                gap-2
+              "
             >
               <span className="h-2 w-2 rounded-full bg-slate-900" />
               <span className="h-2 w-2 rounded-full bg-slate-600" />
@@ -78,7 +112,14 @@ export default function IntroSplash() {
             {/* 진행 상태 문구 */}
             <p
               aria-live="polite"
-              className="mt-4 text-center text-[12px] font-medium tracking-[-0.01em] text-slate-500"
+              className="
+                mt-4
+                text-center
+                text-[12px]
+                font-medium
+                tracking-[-0.01em]
+                text-slate-500
+              "
             >
               대화를 연결하고 있어요
             </p>
