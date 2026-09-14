@@ -17,7 +17,6 @@ type ModeOption = {
   description: readonly [string, string];
   imageSrc: string;
   imageAlt: string;
-  cardClassName: string;
   iconClassName: string;
 };
 
@@ -34,9 +33,6 @@ const MODE_OPTIONS = [
     imageSrc: "/mode-icons/braille.png",
 
     imageAlt: "점자 여섯 점을 표현한 이미지",
-
-    cardClassName:
-      "border-[#efd7d3] bg-[#fff8f6]",
 
     iconClassName:
       "scale-[1.78]",
@@ -57,9 +53,6 @@ const MODE_OPTIONS = [
     imageAlt:
       "두 손으로 수어를 표현한 이미지",
 
-    cardClassName:
-      "border-[#d8e9e1] bg-[#f4fbf7]",
-
     iconClassName:
       "scale-[1.72]",
   },
@@ -78,9 +71,6 @@ const MODE_OPTIONS = [
 
     imageAlt:
       "텍스트 말풍선을 표현한 이미지",
-
-    cardClassName:
-      "border-[#dfdaf0] bg-[#f7f5ff]",
 
     iconClassName:
       "scale-[1.76]",
@@ -124,55 +114,62 @@ function ModeCard({
     <button
       type="button"
       onClick={() => onSelect(option.mode)}
-      className={[
-        "group",
-        "relative",
+      className="
+        group
+        relative
 
-        "flex",
-        "min-h-[188px]",
-        "w-full",
-        "flex-col",
-        "items-center",
+        flex
+        min-h-[188px]
+        w-full
+        flex-col
+        items-center
 
-        "rounded-[23px]",
-        "border",
+        rounded-[23px]
 
-        "px-2",
-        "pb-4",
-        "pt-3.5",
+        border
+        border-[#ebe6e1]
 
-        "text-center",
+        bg-[#fffdf9]
 
-        "shadow-[0_8px_26px_rgba(36,30,26,0.035)]",
+        px-2
+        pb-4
+        pt-3.5
 
-        "transition",
-        "duration-300",
-        "ease-out",
+        text-center
 
-        "hover:-translate-y-1",
-        "hover:shadow-[0_13px_32px_rgba(36,30,26,0.07)]",
+        shadow-[0_8px_26px_rgba(47,39,34,0.045)]
 
-        "active:translate-y-0",
-        "active:scale-[0.985]",
+        transition-all
+        duration-300
+        ease-out
 
-        "focus-visible:outline-none",
-        "focus-visible:ring-2",
-        "focus-visible:ring-[#a7adc4]",
-        "focus-visible:ring-offset-2",
+        hover:-translate-y-1
+        hover:border-[#e3ddd7]
+        hover:bg-[#fffefa]
+        hover:shadow-[0_13px_32px_rgba(47,39,34,0.075)]
 
-        option.cardClassName,
-      ].join(" ")}
+        active:translate-y-0
+        active:scale-[0.985]
+
+        focus-visible:outline-none
+        focus-visible:ring-2
+        focus-visible:ring-[#a7adc4]
+        focus-visible:ring-offset-2
+      "
     >
       {/* 아이콘 */}
       <span
         className="
           relative
+
           flex
           h-[76px]
           w-[76px]
           shrink-0
+
           items-center
           justify-center
+
           overflow-hidden
         "
       >
