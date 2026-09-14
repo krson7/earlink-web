@@ -345,9 +345,9 @@ export default function ModeSelect({
           shrink-0
 
           border-b
-          border-[#EFEDEB]
+          border-[#ECECEC]
 
-          bg-[#FFFEFC]/95
+          bg-[#FFFFFF]
 
           backdrop-blur-sm
         "
