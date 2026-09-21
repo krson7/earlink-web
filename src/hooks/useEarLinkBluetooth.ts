@@ -1,5 +1,5 @@
-
 /// <reference types="web-bluetooth" />
+
 "use client";
 
 import {
@@ -13,6 +13,35 @@ const SERVICE_UUID =
 
 const CHARACTERISTIC_UUID =
   "8f3a0002-7c3b-4b8a-9f52-123456789abc";
+
+function getBluetoothErrorMessage(
+  error: unknown,
+): string | null {
+  if (error instanceof DOMException) {
+    // 사용자가 Bluetooth 기기 선택창을 닫은 경우
+    // 에러처럼 보여주지 않음
+    if (
+      error.name === "NotFoundError" ||
+      error.name === "AbortError"
+    ) {
+      return null;
+    }
+
+    if (error.name === "SecurityError") {
+      return "Bluetooth 사용 권한을 확인해주세요.";
+    }
+
+    if (error.name === "NetworkError") {
+      return "EarLink 기기에 연결하지 못했습니다.";
+    }
+
+    if (error.name === "NotSupportedError") {
+      return "이 브라우저에서는 Bluetooth 연결을 지원하지 않습니다.";
+    }
+  }
+
+  return "EarLink 연결에 실패했습니다. 기기 상태를 확인해주세요.";
+}
 
 export function useEarLinkBluetooth() {
   const [connected, setConnected] =
@@ -37,9 +66,10 @@ export function useEarLinkBluetooth() {
       setError(null);
 
       if (!navigator.bluetooth) {
-        throw new Error(
-          "이 브라우저에서는 Bluetooth를 지원하지 않습니다.",
+        setError(
+          "이 브라우저에서는 Bluetooth 연결을 지원하지 않습니다.",
         );
+        return;
       }
 
       const device =
@@ -56,9 +86,10 @@ export function useEarLinkBluetooth() {
         });
 
       if (!device.gatt) {
-        throw new Error(
-          "Bluetooth GATT를 사용할 수 없습니다.",
+        setError(
+          "EarLink 기기와 통신할 수 없습니다.",
         );
+        return;
       }
 
       const server =
@@ -83,12 +114,14 @@ export function useEarLinkBluetooth() {
       );
 
       setConnected(true);
+      setError(null);
 
       device.addEventListener(
         "gattserverdisconnected",
         () => {
           characteristicRef.current = null;
           setConnected(false);
+          setDeviceName(null);
         },
       );
     } catch (err) {
@@ -99,11 +132,10 @@ export function useEarLinkBluetooth() {
 
       setConnected(false);
 
-      setError(
-        err instanceof Error
-          ? err.message
-          : "EarLink 연결에 실패했습니다.",
-      );
+      const message =
+        getBluetoothErrorMessage(err);
+
+      setError(message);
     }
   }, []);
 
@@ -119,6 +151,7 @@ export function useEarLinkBluetooth() {
 
     setConnected(false);
     setDeviceName(null);
+    setError(null);
   }, []);
 
   const send = useCallback(

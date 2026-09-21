@@ -36,7 +36,7 @@ export default function EarLinkConnector({
           "max(0.75rem, env(safe-area-inset-bottom))",
       }}
     >
-      {/* Bluetooth 연결 오류 */}
+      {/* 실제 오류가 있을 때만 표시 */}
       {error && (
         <div
           role="alert"
@@ -57,7 +57,6 @@ export default function EarLinkConnector({
       )}
 
       {connected ? (
-        /* 연결 완료 상태 */
         <div
           className="
             flex
@@ -83,20 +82,13 @@ export default function EarLinkConnector({
                 "
               />
 
-              <p
-                className="
-                  truncate
-                  text-sm
-                  font-semibold
-                  text-slate-800
-                "
-              >
+              <p className="truncate text-sm font-semibold text-slate-800">
                 {deviceName ?? "EarLink"} 연결됨
               </p>
             </div>
 
             <p className="mt-1 text-xs text-slate-500">
-              지금부터 새 메시지가 점자 기기로 전달됩니다.
+              새 메시지를 점자 기기로 전달합니다.
             </p>
           </div>
 
@@ -121,41 +113,33 @@ export default function EarLinkConnector({
           </button>
         </div>
       ) : (
-        /* 연결 전 상태 */
-        <div>
-          <p className="mb-2 text-center text-xs text-slate-500">
-            상대방의 메시지를 점자로 받으려면
-            EarLink 기기를 연결해주세요.
-          </p>
-
-          <button
-            type="button"
-            onClick={handleConnect}
-            className="
-              flex
-              h-12
-              w-full
-              items-center
-              justify-center
-              rounded-2xl
-              bg-gradient-to-r
-              from-sky-500
-              to-blue-600
-              text-sm
-              font-semibold
-              text-white
-              shadow-[0_6px_18px_rgba(37,99,235,0.20)]
-              transition
-              duration-200
-              hover:-translate-y-[1px]
-              hover:shadow-[0_8px_22px_rgba(37,99,235,0.25)]
-              active:translate-y-0
-              active:scale-[0.99]
-            "
-          >
-            EarLink 연결하기
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={handleConnect}
+          className="
+            flex
+            h-14
+            w-full
+            items-center
+            justify-center
+            rounded-[22px]
+            bg-gradient-to-r
+            from-sky-500
+            to-blue-600
+            text-base
+            font-semibold
+            text-white
+            shadow-[0_6px_18px_rgba(37,99,235,0.20)]
+            transition
+            duration-200
+            hover:-translate-y-[1px]
+            hover:shadow-[0_8px_22px_rgba(37,99,235,0.25)]
+            active:translate-y-0
+            active:scale-[0.99]
+          "
+        >
+          EarLink 연결
+        </button>
       )}
     </div>
   );
