@@ -1,22 +1,26 @@
 "use client";
 
-import { useEarLinkBluetooth } from "@/hooks/useEarLinkBluetooth";
+type EarLinkConnectorProps = {
+  connected: boolean;
+  deviceName: string | null;
+  error: string | null;
+  onConnect: () => Promise<void>;
+  onDisconnect: () => void;
+};
 
-export default function EarLinkConnector() {
-  const {
-    connected,
-    deviceName,
-    error,
-    connect,
-    disconnect,
-  } = useEarLinkBluetooth();
-
+export default function EarLinkConnector({
+  connected,
+  deviceName,
+  error,
+  onConnect,
+  onDisconnect,
+}: EarLinkConnectorProps) {
   async function handleConnect(): Promise<void> {
-    await connect();
+    await onConnect();
   }
 
   function handleDisconnect(): void {
-    disconnect();
+    onDisconnect();
   }
 
   return (
@@ -32,7 +36,7 @@ export default function EarLinkConnector() {
           "max(0.75rem, env(safe-area-inset-bottom))",
       }}
     >
-      {/* 에러 메시지 */}
+      {/* Bluetooth 연결 오류 */}
       {error && (
         <div
           role="alert"
@@ -91,14 +95,8 @@ export default function EarLinkConnector() {
               </p>
             </div>
 
-            <p
-              className="
-                mt-1
-                text-xs
-                text-slate-500
-              "
-            >
-              점자 기기가 준비되었습니다.
+            <p className="mt-1 text-xs text-slate-500">
+              지금부터 새 메시지가 점자 기기로 전달됩니다.
             </p>
           </div>
 
@@ -125,14 +123,7 @@ export default function EarLinkConnector() {
       ) : (
         /* 연결 전 상태 */
         <div>
-          <p
-            className="
-              mb-2
-              text-center
-              text-xs
-              text-slate-500
-            "
-          >
+          <p className="mb-2 text-center text-xs text-slate-500">
             상대방의 메시지를 점자로 받으려면
             EarLink 기기를 연결해주세요.
           </p>
