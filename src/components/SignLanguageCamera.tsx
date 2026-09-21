@@ -143,7 +143,7 @@ export default function SignLanguageCamera({
           muted
           playsInline
           autoPlay
-          className="absolute inset-0 h-full w-full object-contain"
+          className="absolute inset-0 h-full w-full object-cover"
           style={{
             transform:
               facing === "user"
@@ -154,7 +154,7 @@ export default function SignLanguageCamera({
 
         <canvas
           ref={canvasRef}
-          className="pointer-events-none absolute inset-0 h-full w-full object-contain"
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
           style={{
             transform:
               facing === "user"

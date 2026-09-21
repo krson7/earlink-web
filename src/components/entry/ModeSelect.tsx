@@ -262,7 +262,7 @@ export default function ModeSelect({
 
         overflow-hidden
 
-        bg-[#fffaf6]
+        bg-[#FBF6F0]
 
         text-[#101827]
       "
@@ -345,9 +345,9 @@ export default function ModeSelect({
           shrink-0
 
           border-b
-          border-[#ECECEC]
+          border-[#EEE6DC]
 
-          bg-[#FFFFFF]
+          bg-[#F7F1EA]
 
           backdrop-blur-sm
         "
