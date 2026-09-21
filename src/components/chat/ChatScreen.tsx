@@ -6,7 +6,9 @@ import type { FormEvent } from "react";
 import CameraComposer from "@/components/chat/CameraComposer";
 import ChatComposer from "@/components/chat/ChatComposer";
 import ChatHeader from "@/components/chat/ChatHeader";
+import EarLinkConnector from "@/components/chat/EarLinkConnector";
 import MessageList from "@/components/chat/MessageList";
+
 import { MAX_CHAT_MESSAGE_LENGTH } from "@/lib/chat";
 import type { ChatMessageItem, JoinRoomResponse } from "@/types/chat";
 
@@ -23,14 +25,9 @@ type ChatScreenProps = {
 
 function getChatPlaceholder(
   chatConnected: boolean,
-  accessibilityMode: JoinRoomResponse["accessibility_mode"],
 ): string {
   if (!chatConnected) {
     return "채팅 서버 연결 중...";
-  }
-
-  if (accessibilityMode === "VISUAL") {
-    return "점자 기기 연동 전입니다. 임시로 텍스트를 입력하세요";
   }
 
   return "메시지를 입력하세요";
@@ -86,12 +83,14 @@ export default function ChatScreen({
           chatErrorMessage={chatErrorMessage}
           onSendText={onSendMessage}
         />
+      ) : accessibilityMode === "VISUAL" ? (
+        <EarLinkConnector />
       ) : (
         <ChatComposer
           message={message}
           chatConnected={chatConnected}
           chatErrorMessage={chatErrorMessage}
-          placeholder={getChatPlaceholder(chatConnected, accessibilityMode)}
+          placeholder={getChatPlaceholder(chatConnected)}
           maxLength={MAX_CHAT_MESSAGE_LENGTH}
           inputRef={inputRef}
           onMessageChange={handleMessageChange}
