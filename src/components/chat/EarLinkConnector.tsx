@@ -1,7 +1,17 @@
 "use client";
 
+import { useState } from "react";
+import type { EarLinkCommand, EarLinkStatus } from "@/lib/earlink-protocol";
+
 type EarLinkConnectorProps = {
   connected: boolean;
+  connecting: boolean;
+  status: EarLinkStatus | null;
+  onControl: (command: EarLinkCommand) => Promise<void>;
+  onIntervalChange: (milliseconds: number) => Promise<void>;
+  failedCount: number;
+  retrying: boolean;
+  onRetry: () => Promise<void>;
   deviceName: string | null;
   error: string | null;
   onConnect: () => Promise<void>;
@@ -10,11 +20,26 @@ type EarLinkConnectorProps = {
 
 export default function EarLinkConnector({
   connected,
+  connecting,
+  status,
+  onControl,
+  onIntervalChange,
+  failedCount,
+  retrying,
+  onRetry,
   deviceName,
   error,
   onConnect,
   onDisconnect,
 }: EarLinkConnectorProps) {
+  const [busy, setBusy] = useState(false);
+  async function run(operation: () => Promise<void>): Promise<void> {
+    if (busy) return;
+    setBusy(true);
+    try { await operation(); }
+    catch { /* The Bluetooth hook presents the error. */ }
+    finally { setBusy(false); }
+  }
   async function handleConnect(): Promise<void> {
     await onConnect();
   }
@@ -116,6 +141,7 @@ export default function EarLinkConnector({
         <button
           type="button"
           onClick={handleConnect}
+          disabled={connecting}
           className="
             flex
             h-14
@@ -138,7 +164,60 @@ export default function EarLinkConnector({
             active:scale-[0.99]
           "
         >
-          EarLink 연결
+          {connecting ? "EarLink 연결 중…" : "EarLink 연결"}
+        </button>
+      )}
+
+      {connected && status && (
+        <div className="mt-2 space-y-2">
+          <p role="status" className="text-xs text-slate-600">
+            {status.active
+              ? `점자 ${status.page}/${status.pages}쪽 · ${status.automatic ? "자동 넘김" : "직접 넘김"}`
+              : "새 메시지를 기다리고 있어요"}
+            {status.queued > 0 && ` · 대기 ${status.queued}개`}
+          </p>
+          {!status.outputEnabled && (
+            <p className="text-xs text-amber-800">기기 출력 설정 전입니다. 현재 연결과 변환만 확인할 수 있어요.</p>
+          )}
+          {status.active && !status.automatic && !status.visible && (
+            <p className="text-xs text-slate-600">점 표시가 꺼졌습니다. 이전 또는 자동 넘김을 누르면 다시 표시됩니다.</p>
+          )}
+          {status.unsupported > 0 && (
+            <p role="status" className="text-xs text-amber-800">
+              지원하지 않는 문자 {status.unsupported}개를 물음표로 표시합니다.
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" disabled={busy || !status.active}
+              onClick={() => void run(() => onControl("previous"))}
+              className="rounded-lg border px-3 py-2 text-xs disabled:opacity-40">이전</button>
+            <button type="button" disabled={busy || !status.active}
+              onClick={() => void run(() => onControl("next"))}
+              className="rounded-lg border px-3 py-2 text-xs disabled:opacity-40">다음</button>
+            <button type="button" disabled={busy}
+              onClick={() => void run(() => onControl(status.automatic ? "pause" : "play"))}
+              className="rounded-lg border px-3 py-2 text-xs disabled:opacity-40">
+              {status.automatic ? "직접 넘기기" : "자동 넘기기"}
+            </button>
+            <button type="button" disabled={busy || (!status.active && status.queued === 0)}
+              onClick={() => void run(() => onControl("clear"))}
+              className="rounded-lg border px-3 py-2 text-xs disabled:opacity-40">출력 지우기</button>
+            <label className="flex items-center gap-1 text-xs text-slate-600">
+              표시 시간
+              <select value={status.intervalMs} disabled={busy}
+                onChange={(event) => { const milliseconds = Number(event.target.value); void run(() => onIntervalChange(milliseconds)); }}
+                className="rounded-lg border bg-white px-2 py-2">
+                {[1000, 2000, 3000, 5000, 10000].map((ms) => <option key={ms} value={ms}>{ms / 1000}초</option>)}
+              </select>
+            </label>
+          </div>
+        </div>
+      )}
+      {failedCount > 0 && (
+        <button type="button" disabled={!connected || retrying}
+          onClick={() => void onRetry()}
+          className="mt-2 rounded-lg border border-amber-300 px-3 py-2 text-xs text-amber-900 disabled:opacity-40">
+          {retrying ? "다시 보내는 중…" : `전달 실패 ${failedCount}개 다시 보내기`}
         </button>
       )}
     </div>

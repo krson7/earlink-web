@@ -1,4 +1,12 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EarLink Web
+
+Next.js 기반 접근성 채팅 MVP입니다.
+
+- [프로젝트 구조 분석](docs/PROJECT_ANALYSIS.md)
+- [ESP32 3칸 점자 펌웨어, 업로드와 전송 규격](firmware/README.md)
+- 기기 전송 테스트: `npm run test:earlink`
+
+아래는 프론트엔드 실행 안내입니다.
 
 ## Getting Started
 

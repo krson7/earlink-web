@@ -60,6 +60,9 @@ export default function ChatScreen({
   const [message, setMessage] =
     useState("");
 
+  const [failedMessages, setFailedMessages] = useState<ChatMessageItem[]>([]);
+  const [retrying, setRetrying] = useState(false);
+
   const accessibilityMode =
     participant.accessibility_mode;
 
@@ -68,11 +71,15 @@ export default function ChatScreen({
    */
   const {
     connected: earLinkConnected,
+    connecting: earLinkConnecting,
     deviceName: earLinkDeviceName,
     error: earLinkError,
     connect: connectEarLink,
     disconnect: disconnectEarLink,
     send: sendToEarLink,
+    status: earLinkStatus,
+    control: controlEarLink,
+    setIntervalMs: setEarLinkInterval,
   } = useEarLinkBluetooth();
 
   /*
@@ -108,6 +115,25 @@ export default function ChatScreen({
    */
   const sendQueueRef =
     useRef<Promise<void>>(Promise.resolve());
+
+  useEffect(() => () => { earLinkSessionRef.current += 1; }, []);
+
+  async function retryFailedMessages(): Promise<void> {
+    if (retrying || !earLinkConnected) return;
+    setRetrying(true);
+    const session = earLinkSessionRef.current;
+    try {
+      for (const failed of failedMessages) {
+        if (session !== earLinkSessionRef.current) break;
+        await sendToEarLink(failed.content);
+        setFailedMessages((previous) => previous.filter((item) => item.localId !== failed.localId));
+      }
+    } catch {
+      // The Bluetooth hook displays the transmission error.
+    } finally {
+      setRetrying(false);
+    }
+  }
 
   function handleMessageChange(
     value: string,
@@ -263,11 +289,11 @@ export default function ChatScreen({
                 chatMessage.content,
               );
 
-              console.log(
-                "EarLink 메시지 전송:",
-                chatMessage.content,
-              );
             } catch (error) {
+              if (earLinkSessionRef.current === currentSession) {
+                setFailedMessages((previous) => previous.some((item) => item.localId === chatMessage.localId)
+                  ? previous : [...previous, chatMessage]);
+              }
               console.error(
                 "EarLink 메시지 전송 실패:",
                 error,
@@ -319,6 +345,13 @@ export default function ChatScreen({
         "VISUAL" ? (
         <EarLinkConnector
           connected={earLinkConnected}
+          connecting={earLinkConnecting}
+          status={earLinkStatus}
+          onControl={controlEarLink}
+          onIntervalChange={setEarLinkInterval}
+          failedCount={failedMessages.length}
+          retrying={retrying}
+          onRetry={retryFailedMessages}
           deviceName={
             earLinkDeviceName
           }
