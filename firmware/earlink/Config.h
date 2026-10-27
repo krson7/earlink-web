@@ -12,9 +12,9 @@ constexpr uint8_t CELL_COUNT = 3;
 // Entries are the shift-register bit indexes for dots 1..6.
 constexpr uint8_t DOT_BITS[6] = {0, 1, 2, 3, 4, 5};
 constexpr bool REVERSE_CELL_ORDER = true; // Matches the supplied Jooyoung example.
-// Set true after confirming pin roles and DOT_BITS using the PCB/example.
+// GPIO output enabled; pin roles and DOT_BITS must match the actual PCB wiring.
 // false still runs BLE, conversion and pagination, with Serial output only.
-constexpr bool OUTPUT_ENABLED = false;
+constexpr bool OUTPUT_ENABLED = true;
 constexpr uint32_t PAGE_MS = 3000;
 constexpr uint32_t BLANK_MS = 250;
 constexpr uint32_t RECEIVE_TIMEOUT_MS = 10000;
