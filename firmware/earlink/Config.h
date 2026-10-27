@@ -4,9 +4,9 @@
 namespace config {
 // User hardware: ESP32 Dev Module, 5V / 3A, three 6-dot cells.
 // GPIO role order is provisional until checked against the actual PCB wiring.
-constexpr int DATA_PIN = 4;   //4 5 6
-constexpr int LATCH_PIN = 5;  
-constexpr int CLOCK_PIN = 6;
+constexpr int DATA_PIN = 16;   //4 5 6
+constexpr int LATCH_PIN = 17;  
+constexpr int CLOCK_PIN = 18;
 constexpr uint8_t CELL_COUNT = 3;
 // Standard reading orientation: 1 4 / 2 5 / 3 6.
 // Entries are the shift-register bit indexes for dots 1..6.
