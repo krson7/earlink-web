@@ -1,5 +1,6 @@
 "use client";
 
+import { SendIcon } from "@/components/Brand";
 import { useSignLanguageCamera } from "@/hooks/useSignLanguageCamera";
 import type { SignLanguageCameraProps } from "@/types/sign-language";
 
@@ -37,33 +38,6 @@ function CameraFlipIcon() {
   );
 }
 
-function EarLinkSendMark() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 64 64"
-      fill="none"
-      className="h-6 w-6"
-    >
-      <circle
-        cx="23"
-        cy="31"
-        r="6"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
-
-      <circle
-        cx="41"
-        cy="31"
-        r="6"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
-    </svg>
-  );
-}
-
 export default function SignLanguageCamera({
   roomCode,
   participantId,
@@ -91,7 +65,7 @@ export default function SignLanguageCamera({
 
   return (
     <section
-      className="shrink-0 bg-white px-3 pt-2"
+      className="sign-camera"
       style={{
         paddingBottom:
           "max(0.5rem, env(safe-area-inset-bottom))",
@@ -118,7 +92,7 @@ export default function SignLanguageCamera({
             ].join(" ")}
           />
 
-          <p className="text-[10px] font-black tracking-[-0.02em] text-[#153b60]">
+          <p className="camera-title"><span className="eyebrow">FINGERSPELLING</span>
             지문자 인식
           </p>
         </div>
@@ -131,13 +105,13 @@ export default function SignLanguageCamera({
           onClick={() => {
             void switchCameraRef.current?.();
           }}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-[0_3px_10px_rgba(15,23,42,0.06)] transition hover:border-slate-300 hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35"
+          className="soft-circle !h-9 !w-9 disabled:opacity-35"
         >
           <CameraFlipIcon />
         </button>
       </div>
 
-      <div className="relative h-[clamp(190px,27dvh,230px)] overflow-hidden rounded-[24px] border border-slate-200 bg-[#070b16] shadow-[0_12px_28px_rgba(15,23,42,0.16)]">
+      <div className="camera-preview">
         <video
           ref={videoRef}
           muted
@@ -208,14 +182,15 @@ export default function SignLanguageCamera({
           event.preventDefault();
           sendRecognizedText();
         }}
-        className="pt-2"
+        className="composer"
       >
         <div className="flex items-center gap-2">
-          <div className="min-w-0 flex-1 rounded-[22px] border border-blue-100 bg-white px-4 py-2 shadow-[0_3px_12px_rgba(15,23,42,0.04)]">
+          <div className="composer-input">
             <textarea
               aria-label="지문자 인식 문장"
               value={recognizedText}
               rows={1}
+              placeholder="인식된 문장이 여기에 표시돼요"
               readOnly
               className="max-h-24 min-h-5 w-full resize-none overflow-y-auto bg-transparent text-[14px] leading-5 text-slate-900 outline-none"
             />
@@ -228,32 +203,9 @@ export default function SignLanguageCamera({
               !chatConnected ||
               !recognizedText.trim()
             }
-            className={[
-              "flex h-11 w-[62px] shrink-0 items-center justify-center",
-              "rounded-[18px] text-white",
-              "transition duration-200",
-              chatConnected &&
-              recognizedText.trim()
-                ? [
-                    "bg-gradient-to-br",
-                    "from-sky-400",
-                    "via-blue-500",
-                    "to-indigo-600",
-                    "shadow-[0_7px_18px_rgba(37,99,235,0.22)]",
-                    "hover:-translate-y-[1px]",
-                    "hover:shadow-[0_10px_22px_rgba(37,99,235,0.28)]",
-                    "active:translate-y-0",
-                    "active:scale-95",
-                  ].join(" ")
-                : [
-                    "cursor-not-allowed",
-                    "bg-slate-200",
-                    "text-slate-400",
-                    "shadow-none",
-                  ].join(" "),
-            ].join(" ")}
+            className="soft-circle send-button"
           >
-            <EarLinkSendMark />
+            <SendIcon />
           </button>
         </div>
       </form>

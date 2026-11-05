@@ -50,12 +50,7 @@ export default function EarLinkConnector({
 
   return (
     <div
-      className="
-        shrink-0
-        border-t border-slate-200
-        bg-white
-        px-4 py-3
-      "
+      className="earlink-connector"
       style={{
         paddingBottom:
           "max(0.75rem, env(safe-area-inset-bottom))",
@@ -83,16 +78,7 @@ export default function EarLinkConnector({
 
       {connected ? (
         <div
-          className="
-            flex
-            min-h-14
-            items-center
-            gap-3
-            rounded-2xl
-            border border-blue-100
-            bg-blue-50/50
-            px-4 py-3
-          "
+          className="earlink-connected"
         >
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
@@ -142,27 +128,7 @@ export default function EarLinkConnector({
           type="button"
           onClick={handleConnect}
           disabled={connecting}
-          className="
-            flex
-            h-14
-            w-full
-            items-center
-            justify-center
-            rounded-[22px]
-            bg-gradient-to-r
-            from-sky-500
-            to-blue-600
-            text-base
-            font-semibold
-            text-white
-            shadow-[0_6px_18px_rgba(37,99,235,0.20)]
-            transition
-            duration-200
-            hover:-translate-y-[1px]
-            hover:shadow-[0_8px_22px_rgba(37,99,235,0.25)]
-            active:translate-y-0
-            active:scale-[0.99]
-          "
+          className="earlink-connect-button"
         >
           {connecting ? "EarLink 연결 중…" : "EarLink 연결"}
         </button>

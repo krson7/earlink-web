@@ -311,7 +311,7 @@ export default function ChatScreen({
   ]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-white">
+    <div className="chat-screen">
       <ChatHeader
         chatConnected={chatConnected}
         chatStatus={chatStatus}

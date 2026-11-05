@@ -18,7 +18,7 @@ export default function CameraComposer({
   onSendText,
 }: CameraComposerProps) {
   return (
-    <section className="shrink-0 border-t border-slate-200 bg-white shadow-[0_-10px_30px_rgba(15,23,42,0.08)]">
+    <section className="camera-composer">
       <SignLanguageCamera
         roomCode={roomCode}
         participantId={participantId}

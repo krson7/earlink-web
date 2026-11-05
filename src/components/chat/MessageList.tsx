@@ -19,33 +19,10 @@ type MessageListProps = {
 
 function ParticipantAvatar() {
   return (
-    <div
-      aria-hidden="true"
-      className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#d7dde3] shadow-sm ring-1 ring-white"
-    >
-      <svg
-        viewBox="0 0 64 64"
-        className="h-full w-full"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <circle
-          cx="32"
-          cy="32"
-          r="32"
-          fill="#d7dde3"
-        />
-
-        <circle
-          cx="32"
-          cy="24"
-          r="12"
-          fill="#b4bcc4"
-        />
-
-        <path
-          d="M14 54c2.8-9.6 10.8-15 18-15s15.2 5.4 18 15"
-          fill="#b4bcc4"
-        />
+    <div aria-hidden="true" className="participant-avatar">
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <circle cx="12" cy="8" r="3" />
+        <path d="M5 20a7 7 0 0 1 14 0Z" />
       </svg>
     </div>
   );
@@ -68,18 +45,13 @@ export default function MessageList({
   }, [messages]);
 
   return (
-    <section className="relative min-h-0 flex-1 overflow-hidden bg-[#f8fafc]">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(100,116,139,0.07),_transparent_38%)]"
-      />
-
+    <section className="message-list">
       <div
         role="log"
         aria-live="polite"
         aria-relevant="additions"
         aria-label="실시간 채팅 메시지"
-        className="relative h-full space-y-3 overflow-y-auto overscroll-contain px-3 py-4"
+        className="message-scroll"
       >
         {messages.length === 0 ? (
           <div className="flex min-h-[65%] flex-col items-center justify-center px-8 text-center">
@@ -104,11 +76,11 @@ export default function MessageList({
                     key={
                       chatMessage.localId
                     }
-                    className="flex justify-end pl-12"
+                    className="flex justify-end pl-7"
                   >
                     <div className="max-w-[82%]">
-                      <div className="rounded-[20px] rounded-br-[6px] bg-gradient-to-br from-[#596779] via-[#68778a] to-[#7c899a] px-3.5 py-2.5 text-[14px] leading-5 text-white shadow-[0_5px_14px_rgba(51,65,85,0.16)] ring-1 ring-white/20">
-                        <p className="whitespace-pre-wrap break-words">
+                      <div className="message-bubble mine">
+                        <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
                           {
                             chatMessage.content
                           }
@@ -124,17 +96,17 @@ export default function MessageList({
                   key={
                     chatMessage.localId
                   }
-                  className="flex items-end gap-2 pr-12"
+                  className="flex items-end gap-2.5 pr-7"
                 >
                   <ParticipantAvatar />
 
                   <div className="max-w-[82%]">
-                    <p className="mb-1 ml-1 text-[11px] font-semibold text-slate-500">
+                    <p className="mb-1 ml-1 text-[11px] font-medium text-[#606b80]">
                       참여자
                     </p>
 
-                    <div className="rounded-[20px] rounded-bl-[6px] bg-white px-3.5 py-2.5 text-[14px] leading-5 text-slate-800 shadow-[0_3px_10px_rgba(15,23,42,0.06)] ring-1 ring-slate-200">
-                      <p className="whitespace-pre-wrap break-words">
+                    <div className="message-bubble">
+                      <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
                         {
                           chatMessage.content
                         }
