@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "cases": 174250,
+  "consonant_suffixes": 74088,
+  "space_boundaries": 78204,
+  "numeric_mode_resets": 11172,
+  "partial_nfd": 10773,
+  "long_packet_roundtrips": 12,
+  "seconds": 0.237235,
+  "scope": "rule-derived context and software checks; hardware UNVERIFIED",
+  "error": ""
+}

@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "seconds": 600.006,
+  "full_pair_matrix": true,
+  "syllable_pairs": 124813584,
+  "translation_cases": 127189926,
+  "invariant_fuzz_cases": 2175246,
+  "protocol_steps": 4567670,
+  "pager_steps": 4162048,
+  "assertions": 11184275491,
+  "seed": "4541524c494e4b24",
+  "error": "",
+  "instrumentation": "optimized native",
+  "requested_seconds": 600,
+  "total_runner_seconds": 603.9026459000015,
+  "classification": "rule-derived conformance + software invariants; not full official certification",
+  "hardware": "UNVERIFIED; software-only execution"
+}

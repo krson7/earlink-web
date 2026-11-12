@@ -1,9 +1,9 @@
 #pragma once
 #include <stdint.h>
 #include <string>
+#include "EarlinkLimits.h"
 
 namespace earlink {
-constexpr size_t MAX_TEXT_BYTES = 4096;
 enum Result : uint8_t { NONE = 0, ACCEPTED = 1, BAD_PACKET = 2, TOO_LONG = 3,
                         OUT_OF_ORDER = 4, QUEUE_FULL = 5, TIMED_OUT = 6 };
 inline uint16_t read16(const uint8_t* p) { return uint16_t(p[0]) | (uint16_t(p[1]) << 8); }
@@ -18,7 +18,7 @@ class Receiver {
 
   void reset() { receiving = false; text.clear(); expected = 0; }
   Result accept(const uint8_t* data, size_t size, uint32_t now) {
-    if (size < 6 || data[0] != 0x45 || data[1] != 0x4c || data[2] != 1) {
+    if (!data || size < 6 || size > 20 || data[0] != 0x45 || data[1] != 0x4c || data[2] != 1) {
       reset(); return BAD_PACKET;
     }
     const uint16_t incomingId = read16(data + 4);

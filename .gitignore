@@ -42,3 +42,4 @@ next-env.d.ts
 
 # local firmware compiler output
 /.firmware-build/
+/firmware/**/__pycache__/

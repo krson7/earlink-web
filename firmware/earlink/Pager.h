@@ -23,8 +23,17 @@ class Pager {
   bool active() const { return !current.translation.cells.empty(); }
   uint16_t pages() const { return uint16_t((current.translation.cells.size() + 2) / 3); }
   uint8_t queued() const { return uint8_t(waiting.size()); }
+  size_t bufferedCells() const {
+    size_t total = current.translation.cells.size();
+    for (const auto& message : waiting) total += message.translation.cells.size();
+    return total;
+  }
+  bool canEnqueue(size_t cells) const {
+    return cells && cells <= MAX_TRANSLATION_CELLS && waiting.size() < 3 &&
+           bufferedCells() + cells <= MAX_BUFFERED_CELLS;
+  }
   bool enqueue(Message message, uint32_t now) {
-    if (waiting.size() >= 3) return false;
+    if (message.translation.unsupported || !canEnqueue(message.translation.cells.size())) return false;
     waiting.push_back(std::move(message));
     if (!active() && !gap) start(now);
     return true;

@@ -1,0 +1,20 @@
+{
+  "input_generator": "question mark plus space, repeated 2048 times",
+  "input_bytes": 4096,
+  "required_cells_from_rule": 28672,
+  "cell_limit": 24592,
+  "before": {
+    "cells": 24592,
+    "unsupported": 0,
+    "silently_truncated": true
+  },
+  "after": {
+    "cells": 24592,
+    "unsupported": 1,
+    "whole_message_rejected_by_firmware": true,
+    "reason": "LIMIT.output-cells",
+    "byte_offset": 3512,
+    "character_offset": 3512
+  },
+  "regression_cases": "core_test.cpp: exact limit, one cell over, full 4096-byte expanding input"
+}

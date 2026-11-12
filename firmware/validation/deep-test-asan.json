@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "seconds": 1320.39,
+  "full_pair_matrix": true,
+  "syllable_pairs": 124813584,
+  "translation_cases": 125114726,
+  "invariant_fuzz_cases": 100046,
+  "protocol_steps": 12788,
+  "pager_steps": 11648,
+  "assertions": 371323816,
+  "seed": "4541524c494e4b24",
+  "error": "",
+  "instrumentation": "AddressSanitizer (MSVC)",
+  "requested_seconds": 600,
+  "total_runner_seconds": 1323.9372847999912,
+  "classification": "rule-derived conformance + software invariants; not full official certification",
+  "hardware": "UNVERIFIED; software-only execution"
+}

@@ -1,0 +1,98 @@
+[
+  {
+    "path": "firmware/earlink/Config.h",
+    "sha256": "59be731b013b529321fe82314a4114dd3a2585d19e17b29e109ddfcbef3e13fa"
+  },
+  {
+    "path": "firmware/earlink/EarlinkLimits.h",
+    "sha256": "cb7341998df3714c3d02acdf0116086e9c761926fbbc1bb070e566649eafdd65"
+  },
+  {
+    "path": "firmware/earlink/Utf8.h",
+    "sha256": "5a09a72ca474e566e4b09d382e6444b3013ec0501e6190b7012a73703f72d576"
+  },
+  {
+    "path": "firmware/earlink/BrailleRules.h",
+    "sha256": "480eed72c9c69aa676f61e2dc8e241b51eb2fe89f1f8a2a90f886392384e4b2f"
+  },
+  {
+    "path": "firmware/earlink/BrailleText.h",
+    "sha256": "67f4017d875b3fae1628014cb46f5e9266ccf13ff473830dd02c500cc301ef63"
+  },
+  {
+    "path": "firmware/earlink/BrailleMapping.h",
+    "sha256": "c6f6f58c525c1d97705a4f5df0bd41dd526ae6a544b84505b2bd81106146836d"
+  },
+  {
+    "path": "firmware/earlink/BrailleOutput.h",
+    "sha256": "1e1dfa91e825faa8efbbbabd40d26a23bc93a7a1cdedf798a4e32c55f40d0208"
+  },
+  {
+    "path": "firmware/earlink/Protocol.h",
+    "sha256": "6e4cdd6634018d6d2047f853570edef1dae78601e8575a88915ff283bb217822"
+  },
+  {
+    "path": "firmware/earlink/Pager.h",
+    "sha256": "e22b85508231499b2ab581fca085e4a286e41ee79453280b7c4b27d88742a42c"
+  },
+  {
+    "path": "firmware/earlink/earlink.ino",
+    "sha256": "a461cda4b173c1aa89b68460e542fb4853344d6b720cad5b8684539a09d41f2f"
+  },
+  {
+    "path": "firmware/tests/core_test.cpp",
+    "sha256": "99da4cdadd882f5ee1723508cc641603fb838375d2f38ac27f8120e79a9367d8"
+  },
+  {
+    "path": "firmware/tests/cases_2024.py",
+    "sha256": "dc12bdadb350d669c3b3851e6a157125b0e013323c937f9b95665bbe0e4d1b83"
+  },
+  {
+    "path": "firmware/tests/braille_cli.cpp",
+    "sha256": "be0666d04164aa58595734f1b30a3f013a897be93cd1e2f1cf20378841865f11"
+  },
+  {
+    "path": "firmware/tests/run_tests.py",
+    "sha256": "9dd1392cbb67cf5a5404456eaa3cefa3ec3eafb1c1f9fc3e06dfa3901f696295"
+  },
+  {
+    "path": "firmware/tests/official_words_2024.json",
+    "sha256": "8d34ef26a6cb7dde13940ecb708731103d89a7d2c455df4b6e248071b82d0e1f"
+  },
+  {
+    "path": "firmware/tests/syllable_oracle_2024.py",
+    "sha256": "7062d2bc78b22debbdef25cba38eb14f66e02ea969cef78e3cfd394ee9dd99f6"
+  },
+  {
+    "path": "firmware/tests/deep_test.cpp",
+    "sha256": "8d29d36cc66d3feeb4d2a2230781eabc7e4bbbed56a9e35db45ca6d69ca01510"
+  },
+  {
+    "path": "firmware/tests/context_test.cpp",
+    "sha256": "af7734c4eb1bdb81581aa71f3db8cedd493cd0fd4d1b4f1db60b9e95c088cbf6"
+  },
+  {
+    "path": "firmware/tests/run_deep_tests.py",
+    "sha256": "1bd37658162221597397229d7b74f06a9063a4ee80c6608040ba228bff285df8"
+  },
+  {
+    "path": "firmware/tools/export_full_code.py",
+    "sha256": "2955d75255f9b42e97e979fa493e79cc6a5460e2f57607bdd2684e12cf3ef395"
+  },
+  {
+    "path": "firmware/tools/check_official_source.py",
+    "sha256": "36edc216aa6b6a3ade6aea33d1b87567c1457dafa3003387f560dfa9ee52a5f4"
+  },
+  {
+    "path": "firmware/tools/extract_official_words.py",
+    "sha256": "9e94b09a9717e55a5befafbb7263a96ba8d87c32a922051e0a85eaa3df696118"
+  },
+  {
+    "path": "package.json",
+    "sha256": "7988fa579c49a365876246a51d44ce9b553a5c294374907392d417ad2845d0e1"
+  },
+  {
+    "path": ".gitignore",
+    "sha256": "636c5f38188064b664e6cc421524bae64055f7cbe4ccc8b35731bccb8a8d1253"
+  }
+]

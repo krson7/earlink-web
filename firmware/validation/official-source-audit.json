@@ -1,0 +1,2819 @@
+{
+  "pdf_sha256": "cb04780710a4b90f93b574d47afee7c01fa4a5593ad65414ec7857cdc1327612",
+  "summary": {
+    "matched": 312,
+    "unverified": 0
+  },
+  "method": "Pinned official PDF HSBRL glyphs vs fixed test oracles. Translator output is never read.",
+  "limitation": "Nonblank glyph-sequence presence only; not spacing, exact word alignment or semantic/rule certification.",
+  "cases": [
+    {
+      "case_index": 0,
+      "input": "가",
+      "clauses": "K13 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 1,
+      "input": "나",
+      "clauses": "K13 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 2,
+      "input": "다",
+      "clauses": "K13 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 3,
+      "input": "마",
+      "clauses": "K13 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 4,
+      "input": "바",
+      "clauses": "K13 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 5,
+      "input": "사",
+      "clauses": "K13 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 6,
+      "input": "자",
+      "clauses": "K13 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 7,
+      "input": "카",
+      "clauses": "K13 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 8,
+      "input": "타",
+      "clauses": "K13 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 9,
+      "input": "파",
+      "clauses": "K13 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 10,
+      "input": "하",
+      "clauses": "K13 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 12,
+      "input": "강산",
+      "clauses": "K13 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 17,
+      "input": "것",
+      "clauses": "K15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 18,
+      "input": "그래서",
+      "clauses": "K18 p.12",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        12
+      ]
+    },
+    {
+      "case_index": 19,
+      "input": "그러나",
+      "clauses": "K18 p.12",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        12
+      ]
+    },
+    {
+      "case_index": 20,
+      "input": "그러면",
+      "clauses": "K18 p.12",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        12
+      ]
+    },
+    {
+      "case_index": 21,
+      "input": "그러므로",
+      "clauses": "K18 p.12",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        12
+      ]
+    },
+    {
+      "case_index": 22,
+      "input": "그런데",
+      "clauses": "K18 p.12",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        12
+      ]
+    },
+    {
+      "case_index": 23,
+      "input": "그리고",
+      "clauses": "K18 p.12",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        12
+      ]
+    },
+    {
+      "case_index": 24,
+      "input": "그리하여",
+      "clauses": "K18 p.12",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        12
+      ]
+    },
+    {
+      "case_index": 25,
+      "input": "그래서인지",
+      "clauses": "K18 suffix/preceding-letter exception p.13",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        13
+      ]
+    },
+    {
+      "case_index": 26,
+      "input": "그러나저러나",
+      "clauses": "K18 suffix/preceding-letter exception p.13",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        13
+      ]
+    },
+    {
+      "case_index": 27,
+      "input": "그러면서",
+      "clauses": "K18 suffix/preceding-letter exception p.13",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        13
+      ]
+    },
+    {
+      "case_index": 28,
+      "input": "그런데도",
+      "clauses": "K18 suffix/preceding-letter exception p.13",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        13
+      ]
+    },
+    {
+      "case_index": 29,
+      "input": "그리하여도",
+      "clauses": "K18 suffix/preceding-letter exception p.13",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        13
+      ]
+    },
+    {
+      "case_index": 30,
+      "input": "왜 그러나요?",
+      "clauses": "K18 suffix/preceding-letter exception p.13",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        13
+      ]
+    },
+    {
+      "case_index": 31,
+      "input": "오그리고",
+      "clauses": "K18 suffix/preceding-letter exception p.13",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        13
+      ]
+    },
+    {
+      "case_index": 32,
+      "input": "우그리고",
+      "clauses": "K18 suffix/preceding-letter exception p.13",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        13
+      ]
+    },
+    {
+      "case_index": 33,
+      "input": "쭈그리고",
+      "clauses": "K18 suffix/preceding-letter exception p.13",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        13
+      ]
+    },
+    {
+      "case_index": 34,
+      "input": "찡그리고",
+      "clauses": "K18 suffix/preceding-letter exception p.13",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        13
+      ]
+    },
+    {
+      "case_index": 35,
+      "input": "그림을 그리고 있다.",
+      "clauses": "K18 p.12",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        12
+      ]
+    },
+    {
+      "case_index": 36,
+      "input": "그림을 그리고서 밥을 먹었다.",
+      "clauses": "K18 p.13",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        13
+      ]
+    },
+    {
+      "case_index": 37,
+      "input": "비가 왔다. 그래서 소풍 계획은 취소되었다.",
+      "clauses": "K18 p.12",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        12
+      ]
+    },
+    {
+      "case_index": 38,
+      "input": "아내는 조용히 그러나 단호하게 말했다.",
+      "clauses": "K18 p.12",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        12
+      ]
+    },
+    {
+      "case_index": 39,
+      "input": "만약 결과가 그러면 어떻게 할 거니?",
+      "clauses": "K18 p.12",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        12
+      ]
+    },
+    {
+      "case_index": 40,
+      "input": "그러므로 오늘 저녁에 와야 한다.",
+      "clauses": "K18 p.12",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        12
+      ]
+    },
+    {
+      "case_index": 41,
+      "input": "내 잘못이 크다. 그런데 누구를 원망하겠나.",
+      "clauses": "K18 p.12",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        12
+      ]
+    },
+    {
+      "case_index": 42,
+      "input": "그리하여 그들은 친구 사이가 되었다.",
+      "clauses": "K18 p.13",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        13
+      ]
+    },
+    {
+      "case_index": 43,
+      "input": "나이",
+      "clauses": "K14 pp.9-10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 44,
+      "input": "다음",
+      "clauses": "K14 pp.9-10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 45,
+      "input": "마우스",
+      "clauses": "K14 pp.9-10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 46,
+      "input": "바위",
+      "clauses": "K14 pp.9-10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 47,
+      "input": "자아",
+      "clauses": "K14 pp.9-10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 48,
+      "input": "카이로",
+      "clauses": "K14 pp.9-10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 49,
+      "input": "넥타이",
+      "clauses": "K14 pp.9-10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 50,
+      "input": "파이프",
+      "clauses": "K14 pp.9-10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 51,
+      "input": "하얀",
+      "clauses": "K14 pp.9-10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 52,
+      "input": "땅을 팠다.",
+      "clauses": "K14 pp.9-10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 61,
+      "input": "억",
+      "clauses": "K15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 62,
+      "input": "언",
+      "clauses": "K15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 63,
+      "input": "얼",
+      "clauses": "K15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 64,
+      "input": "연",
+      "clauses": "K15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 65,
+      "input": "열",
+      "clauses": "K15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 66,
+      "input": "영",
+      "clauses": "K15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 67,
+      "input": "옥",
+      "clauses": "K15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 68,
+      "input": "온",
+      "clauses": "K15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 69,
+      "input": "옹",
+      "clauses": "K15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 70,
+      "input": "운",
+      "clauses": "K15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 71,
+      "input": "울",
+      "clauses": "K15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 72,
+      "input": "은",
+      "clauses": "K15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 73,
+      "input": "을",
+      "clauses": "K15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 74,
+      "input": "인",
+      "clauses": "K15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 75,
+      "input": "덕망",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 76,
+      "input": "기적",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 77,
+      "input": "꺾다",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 78,
+      "input": "넋",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 79,
+      "input": "건전지",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 80,
+      "input": "얹다",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 81,
+      "input": "벌레",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 82,
+      "input": "얽다",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 83,
+      "input": "젊다",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 84,
+      "input": "넓다",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 85,
+      "input": "변화",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 86,
+      "input": "수련",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 87,
+      "input": "별자리",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 88,
+      "input": "엷다",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 89,
+      "input": "평화",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 90,
+      "input": "안녕",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 91,
+      "input": "복덕방",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 92,
+      "input": "볶다",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 93,
+      "input": "논두렁",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 94,
+      "input": "동그라미",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 95,
+      "input": "순두부",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 96,
+      "input": "불고기",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 97,
+      "input": "붉다",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 98,
+      "input": "굶다",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 99,
+      "input": "훑다",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 100,
+      "input": "근로",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 101,
+      "input": "끊다",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 102,
+      "input": "글씨",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 103,
+      "input": "긁다",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 104,
+      "input": "읊다",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 105,
+      "input": "끓다",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 106,
+      "input": "진실",
+      "clauses": "K15 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 107,
+      "input": "까치",
+      "clauses": "K16-17 pp.11-12",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 108,
+      "input": "힘껏",
+      "clauses": "K16-17 pp.11-12",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 109,
+      "input": "마음껏",
+      "clauses": "K16-17 pp.11-12",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 110,
+      "input": "불을 껐다.",
+      "clauses": "K16-17 pp.11-12",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        12
+      ]
+    },
+    {
+      "case_index": 111,
+      "input": "성가",
+      "clauses": "K16-17 pp.11-12",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        12
+      ]
+    },
+    {
+      "case_index": 112,
+      "input": "말썽",
+      "clauses": "K16-17 pp.11-12",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        12
+      ]
+    },
+    {
+      "case_index": 113,
+      "input": "정성",
+      "clauses": "K16-17 pp.11-12",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        12
+      ]
+    },
+    {
+      "case_index": 114,
+      "input": "어정쩡",
+      "clauses": "K16-17 pp.11-12",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        12
+      ]
+    },
+    {
+      "case_index": 115,
+      "input": "청년",
+      "clauses": "K16-17 pp.11-12",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        12
+      ]
+    },
+    {
+      "case_index": 116,
+      "input": "얄라셩",
+      "clauses": "K16-17 pp.11-12",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        12
+      ]
+    },
+    {
+      "case_index": 117,
+      "input": "아예",
+      "clauses": "K11-12 p.8",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        8
+      ]
+    },
+    {
+      "case_index": 118,
+      "input": "도예",
+      "clauses": "K11-12 p.8",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        8
+      ]
+    },
+    {
+      "case_index": 119,
+      "input": "뭐예요",
+      "clauses": "K11-12 p.8",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        8
+      ]
+    },
+    {
+      "case_index": 120,
+      "input": "서예",
+      "clauses": "K11-12 p.8",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        8
+      ]
+    },
+    {
+      "case_index": 121,
+      "input": "야애",
+      "clauses": "K11-12 p.8",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        8
+      ]
+    },
+    {
+      "case_index": 122,
+      "input": "소화액",
+      "clauses": "K11-12 p.8",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        8
+      ]
+    },
+    {
+      "case_index": 123,
+      "input": "수액",
+      "clauses": "K11-12 p.8",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        8
+      ]
+    },
+    {
+      "case_index": 124,
+      "input": "파워앰프",
+      "clauses": "K11-12 p.8",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        8
+      ]
+    },
+    {
+      "case_index": 155,
+      "input": "0.48",
+      "clauses": "K40-44 pp.27-28",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        28
+      ]
+    },
+    {
+      "case_index": 156,
+      "input": "1,000",
+      "clauses": "K40-44 pp.27-28",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        28
+      ]
+    },
+    {
+      "case_index": 157,
+      "input": "9,375명",
+      "clauses": "K40-44 pp.27-28",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        27
+      ]
+    },
+    {
+      "case_index": 158,
+      "input": "5,700,000원",
+      "clauses": "K40-44 pp.27-28",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        27
+      ]
+    },
+    {
+      "case_index": 159,
+      "input": "02)799-1000",
+      "clauses": "K40-44 pp.27-28",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        28
+      ]
+    },
+    {
+      "case_index": 160,
+      "input": "3·1 운동",
+      "clauses": "K40-44 pp.27-28",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        28
+      ]
+    },
+    {
+      "case_index": 161,
+      "input": "5:3",
+      "clauses": "K40-44 pp.27-28",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        28
+      ]
+    },
+    {
+      "case_index": 162,
+      "input": "10/1~10/9",
+      "clauses": "K40-44 pp.27-28",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        28
+      ]
+    },
+    {
+      "case_index": 163,
+      "input": "1가",
+      "clauses": "K40-44 pp.27-28",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        28
+      ]
+    },
+    {
+      "case_index": 164,
+      "input": "2권",
+      "clauses": "K40-44 pp.27-28",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        28
+      ]
+    },
+    {
+      "case_index": 165,
+      "input": "3반",
+      "clauses": "K40-44 pp.27-28",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        28
+      ]
+    },
+    {
+      "case_index": 166,
+      "input": "4선",
+      "clauses": "K40-44 pp.27-28",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        28
+      ]
+    },
+    {
+      "case_index": 167,
+      "input": "5월",
+      "clauses": "K40-44 pp.27-28",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        28
+      ]
+    },
+    {
+      "case_index": 168,
+      "input": "6일",
+      "clauses": "K40-44 pp.27-28",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        28
+      ]
+    },
+    {
+      "case_index": 169,
+      "input": "7자루",
+      "clauses": "K40-44 pp.27-28",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        28
+      ]
+    },
+    {
+      "case_index": 170,
+      "input": "8꾸러미",
+      "clauses": "K40-44 pp.27-28",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        28
+      ]
+    },
+    {
+      "case_index": 171,
+      "input": "1년",
+      "clauses": "K40-44 pp.27-28",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        28
+      ]
+    },
+    {
+      "case_index": 172,
+      "input": "2도",
+      "clauses": "K40-44 pp.27-28",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        28
+      ]
+    },
+    {
+      "case_index": 173,
+      "input": "3명",
+      "clauses": "K40-44 pp.27-28",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        28
+      ]
+    },
+    {
+      "case_index": 174,
+      "input": "4칸",
+      "clauses": "K40-44 pp.27-28",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        28
+      ]
+    },
+    {
+      "case_index": 175,
+      "input": "5톤",
+      "clauses": "K40-44 pp.27-28",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        28
+      ]
+    },
+    {
+      "case_index": 176,
+      "input": "6평",
+      "clauses": "K40-44 pp.27-28",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        28
+      ]
+    },
+    {
+      "case_index": 177,
+      "input": "7항",
+      "clauses": "K40-44 pp.27-28",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        28
+      ]
+    },
+    {
+      "case_index": 178,
+      "input": "5운6기",
+      "clauses": "K40-44 pp.27-28",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        28
+      ]
+    },
+    {
+      "case_index": 239,
+      "input": "?는",
+      "clauses": "K49 attachment p.34",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        34
+      ]
+    },
+    {
+      "case_index": 240,
+      "input": "?는 대개 앞말에 붙여 쓴다.",
+      "clauses": "K49 attachment p.34",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        34
+      ]
+    },
+    {
+      "case_index": 241,
+      "input": "낫 놓고 ㄱ자도 모른다.",
+      "clauses": "K8 attachment p.6",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        6
+      ]
+    },
+    {
+      "case_index": 242,
+      "input": "ㅂ은 여섯 번째 자음이다.",
+      "clauses": "K8 attachment p.7",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        7
+      ]
+    },
+    {
+      "case_index": 243,
+      "input": "삼각형 ㄱㄴㄷ",
+      "clauses": "K8 p.6",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        6
+      ]
+    },
+    {
+      "case_index": 244,
+      "input": "ㄱ. 유아기",
+      "clauses": "K9 p.7",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        7
+      ]
+    },
+    {
+      "case_index": 245,
+      "input": "ㄴ. 아동기",
+      "clauses": "K9 p.7",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        7
+      ]
+    },
+    {
+      "case_index": 246,
+      "input": "ㄷ. 청년기",
+      "clauses": "K9 p.7",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        7
+      ]
+    },
+    {
+      "case_index": 247,
+      "input": "ㄹ. 장년기",
+      "clauses": "K9 p.7",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        7
+      ]
+    },
+    {
+      "case_index": 248,
+      "input": "ㅁ. 노년기",
+      "clauses": "K9 p.7",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        7
+      ]
+    },
+    {
+      "case_index": 249,
+      "input": "[ㄹㄹ로마]",
+      "clauses": "K10 p.7",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        7
+      ]
+    },
+    {
+      "case_index": 250,
+      "input": "[까ㄹㄹ로]",
+      "clauses": "K10 p.7",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        7
+      ]
+    },
+    {
+      "case_index": 251,
+      "input": "[봉주ㄹ흐]",
+      "clauses": "K10 p.7",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        7
+      ]
+    },
+    {
+      "case_index": 252,
+      "input": "[ㅅ떠디이]",
+      "clauses": "K10 p.7",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        7
+      ]
+    },
+    {
+      "case_index": 253,
+      "input": "[아이ㅅ]",
+      "clauses": "K10 p.7",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        7
+      ]
+    },
+    {
+      "case_index": 254,
+      "input": "거리",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 255,
+      "input": "너비",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 256,
+      "input": "두더지",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 257,
+      "input": "리코더",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 258,
+      "input": "미소",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 259,
+      "input": "보리",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 260,
+      "input": "셔츠",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 261,
+      "input": "저고리",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 262,
+      "input": "추수",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 263,
+      "input": "커피",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 264,
+      "input": "터무니",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 265,
+      "input": "피리",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 266,
+      "input": "호수",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 267,
+      "input": "아버지",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 268,
+      "input": "야구",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 269,
+      "input": "어머니",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 270,
+      "input": "여우",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 271,
+      "input": "오이",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 272,
+      "input": "요리",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 273,
+      "input": "우유",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 274,
+      "input": "유리",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 275,
+      "input": "으스스",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 276,
+      "input": "이모",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 277,
+      "input": "피아노",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 278,
+      "input": "도우미",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 279,
+      "input": "러시아",
+      "clauses": "K1 p.3",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        3
+      ]
+    },
+    {
+      "case_index": 280,
+      "input": "꾸러미",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 281,
+      "input": "두꺼비",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 282,
+      "input": "뚜껑",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 283,
+      "input": "허리띠",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 284,
+      "input": "뻐꾸기",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 285,
+      "input": "고삐",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 286,
+      "input": "쓰기",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 287,
+      "input": "아저씨",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 288,
+      "input": "쭈르르",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 289,
+      "input": "버찌",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 290,
+      "input": "국보",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 291,
+      "input": "윤리",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 292,
+      "input": "싣고",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 293,
+      "input": "놀이",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 294,
+      "input": "솜씨",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 295,
+      "input": "넙치",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 296,
+      "input": "놋그릇",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 297,
+      "input": "향기",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 298,
+      "input": "엊저녁",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 299,
+      "input": "윷놀이",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 300,
+      "input": "부엌",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 301,
+      "input": "겉보리",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 302,
+      "input": "앞집",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 303,
+      "input": "히읗",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 304,
+      "input": "겪다",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 305,
+      "input": "묶음",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 306,
+      "input": "있다",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 307,
+      "input": "보았다",
+      "clauses": "K2-4 p.4",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        4
+      ]
+    },
+    {
+      "case_index": 308,
+      "input": "품삯",
+      "clauses": "K5-7 p.5",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        5
+      ]
+    },
+    {
+      "case_index": 309,
+      "input": "앉다",
+      "clauses": "K5-7 p.5",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        5
+      ]
+    },
+    {
+      "case_index": 310,
+      "input": "않다",
+      "clauses": "K5-7 p.5",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        5
+      ]
+    },
+    {
+      "case_index": 311,
+      "input": "읽다",
+      "clauses": "K5-7 p.5",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        5
+      ]
+    },
+    {
+      "case_index": 312,
+      "input": "옮기다",
+      "clauses": "K5-7 p.5",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        5
+      ]
+    },
+    {
+      "case_index": 313,
+      "input": "얇다",
+      "clauses": "K5-7 p.5",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        5
+      ]
+    },
+    {
+      "case_index": 314,
+      "input": "외곬",
+      "clauses": "K5-7 p.5",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        5
+      ]
+    },
+    {
+      "case_index": 315,
+      "input": "핥다",
+      "clauses": "K5-7 p.5",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        5
+      ]
+    },
+    {
+      "case_index": 316,
+      "input": "옳다",
+      "clauses": "K5-7 p.5",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        5
+      ]
+    },
+    {
+      "case_index": 317,
+      "input": "없다",
+      "clauses": "K5-7 p.5",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        5
+      ]
+    },
+    {
+      "case_index": 318,
+      "input": "아리랑",
+      "clauses": "K5-7 p.5",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        5
+      ]
+    },
+    {
+      "case_index": 319,
+      "input": "고양이",
+      "clauses": "K5-7 p.5",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        5
+      ]
+    },
+    {
+      "case_index": 320,
+      "input": "엄지",
+      "clauses": "K5-7 p.5",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        5
+      ]
+    },
+    {
+      "case_index": 321,
+      "input": "무역",
+      "clauses": "K5-7 p.5",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        5
+      ]
+    },
+    {
+      "case_index": 322,
+      "input": "호랑이",
+      "clauses": "K5-7 p.5",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        5
+      ]
+    },
+    {
+      "case_index": 323,
+      "input": "무용",
+      "clauses": "K5-7 p.5",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        5
+      ]
+    },
+    {
+      "case_index": 324,
+      "input": "국수",
+      "clauses": "K5-7 p.5",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        5
+      ]
+    },
+    {
+      "case_index": 325,
+      "input": "법률",
+      "clauses": "K5-7 p.5",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        5
+      ]
+    },
+    {
+      "case_index": 326,
+      "input": "특기",
+      "clauses": "K5-7 p.5",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        5
+      ]
+    },
+    {
+      "case_index": 327,
+      "input": "코끼리",
+      "clauses": "K5-7 p.5",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        5
+      ]
+    },
+    {
+      "case_index": 328,
+      "input": "매미",
+      "clauses": "K7-8 p.6",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        6
+      ]
+    },
+    {
+      "case_index": 329,
+      "input": "얘기",
+      "clauses": "K7-8 p.6",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        6
+      ]
+    },
+    {
+      "case_index": 330,
+      "input": "헤엄",
+      "clauses": "K7-8 p.6",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        6
+      ]
+    },
+    {
+      "case_index": 331,
+      "input": "지혜",
+      "clauses": "K7-8 p.6",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        6
+      ]
+    },
+    {
+      "case_index": 332,
+      "input": "광주리",
+      "clauses": "K7-8 p.6",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        6
+      ]
+    },
+    {
+      "case_index": 333,
+      "input": "쾌활",
+      "clauses": "K7-8 p.6",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        6
+      ]
+    },
+    {
+      "case_index": 334,
+      "input": "피뢰침",
+      "clauses": "K7-8 p.6",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        6
+      ]
+    },
+    {
+      "case_index": 335,
+      "input": "권리",
+      "clauses": "K7-8 p.6",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        6
+      ]
+    },
+    {
+      "case_index": 336,
+      "input": "우렁쉥이",
+      "clauses": "K7-8 p.6",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        6
+      ]
+    },
+    {
+      "case_index": 337,
+      "input": "쉼터",
+      "clauses": "K7-8 p.6",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        6
+      ]
+    },
+    {
+      "case_index": 338,
+      "input": "무늬",
+      "clauses": "K7-8 p.6",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        6
+      ]
+    },
+    {
+      "case_index": 339,
+      "input": "가지",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 340,
+      "input": "나비",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 341,
+      "input": "다리미",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 342,
+      "input": "라디오",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 343,
+      "input": "고구마",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 344,
+      "input": "바느질",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 345,
+      "input": "사위",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 346,
+      "input": "아궁이",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 347,
+      "input": "도자기",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 348,
+      "input": "기차",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 349,
+      "input": "카메라",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 350,
+      "input": "실타래",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 351,
+      "input": "파도",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 352,
+      "input": "하루",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 353,
+      "input": "낮잠",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 354,
+      "input": "단란",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 355,
+      "input": "만찬",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 356,
+      "input": "안방",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 357,
+      "input": "바캉스",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 358,
+      "input": "갈비탕",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 359,
+      "input": "판소리",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 360,
+      "input": "합창",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 361,
+      "input": "까마귀",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 362,
+      "input": "깜깜하다",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 363,
+      "input": "따님",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 364,
+      "input": "딱따구리",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 365,
+      "input": "오빠",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 366,
+      "input": "빵집",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 367,
+      "input": "싸구려",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 368,
+      "input": "찹쌀",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 369,
+      "input": "짜장",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 370,
+      "input": "짱구",
+      "clauses": "K13-14 p.9",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        9
+      ]
+    },
+    {
+      "case_index": 371,
+      "input": "억새",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 372,
+      "input": "추억",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 373,
+      "input": "언어",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 374,
+      "input": "격언",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 375,
+      "input": "얼룩",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 376,
+      "input": "하얼빈",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 377,
+      "input": "연필",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 378,
+      "input": "자연",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 379,
+      "input": "열매",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 380,
+      "input": "가열",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 381,
+      "input": "영어",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 382,
+      "input": "환영",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 383,
+      "input": "옥수수",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 384,
+      "input": "가옥",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 385,
+      "input": "온도",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 386,
+      "input": "오리온",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 387,
+      "input": "옹고집",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 388,
+      "input": "새옹지마",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 389,
+      "input": "운동장",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 390,
+      "input": "행운",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 391,
+      "input": "울타리",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 392,
+      "input": "겨울",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 393,
+      "input": "은하수",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 394,
+      "input": "양은",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 395,
+      "input": "을지로",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 396,
+      "input": "가을",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 397,
+      "input": "인내",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 398,
+      "input": "거인",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 399,
+      "input": "것이다",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 400,
+      "input": "이것",
+      "clauses": "K14-15 p.10",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        10
+      ]
+    },
+    {
+      "case_index": 401,
+      "input": "개천절",
+      "clauses": "K15-16 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 402,
+      "input": "옷걸이",
+      "clauses": "K15-16 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 403,
+      "input": "헌혈",
+      "clauses": "K15-16 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 404,
+      "input": "가곡",
+      "clauses": "K15-16 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 405,
+      "input": "용돈",
+      "clauses": "K15-16 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 406,
+      "input": "탁구공",
+      "clauses": "K15-16 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 407,
+      "input": "숭례문",
+      "clauses": "K15-16 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 408,
+      "input": "일출",
+      "clauses": "K15-16 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 409,
+      "input": "마흔",
+      "clauses": "K15-16 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 410,
+      "input": "구슬",
+      "clauses": "K15-16 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 411,
+      "input": "어린이",
+      "clauses": "K15-16 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 412,
+      "input": "깡충깡충",
+      "clauses": "K15-16 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 413,
+      "input": "싸리나무",
+      "clauses": "K15-16 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    },
+    {
+      "case_index": 414,
+      "input": "쌍둥이",
+      "clauses": "K15-16 p.11",
+      "status": "MATCH",
+      "matched_printed_pages": [
+        11
+      ]
+    }
+  ]
+}
