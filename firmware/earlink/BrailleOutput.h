@@ -31,7 +31,7 @@ class BrailleOutput {
   static void logMapping() {
     const auto validation = mapping::validate(mapping::LOGICAL_TO_CHANNEL);
     Serial.printf("[mapping] valid=%u physical=%s missing=%05lX invalid=%05lX\n",
-      validation.valid(), mapping::PHYSICAL_LAYOUT_VERIFIED ? "verified" : "UNVERIFIED/provisional",
+      validation.valid(), mapping::PHYSICAL_LAYOUT_VERIFIED ? "user-confirmed" : "UNVERIFIED/provisional",
       static_cast<unsigned long>(validation.missingChannels), static_cast<unsigned long>(validation.invalidPositions));
     for (size_t i = 0; i < mapping::LOGICAL_TO_CHANNEL.size(); ++i)
       Serial.printf("[mapping] cell=%u dot=%u -> T%u\n",

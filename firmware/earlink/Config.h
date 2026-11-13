@@ -9,7 +9,7 @@ constexpr int LATCH_PIN = 17;
 constexpr int CLOCK_PIN = 18;
 constexpr uint8_t CELL_COUNT = 3;
 // All 18 logical/physical assignments now live in BrailleMapping.h.
-// GPIO output enabled. Physical dot positions are still unverified.
+// GPIO output enabled. Mapping uses the user-confirmed solenoid layout.
 // false still runs BLE, conversion and pagination, with Serial output only.
 constexpr bool OUTPUT_ENABLED = true;
 constexpr uint32_t PAGE_MS = 3000;

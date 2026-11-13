@@ -97,11 +97,35 @@ static void mappingTests() {
     for (size_t byte = 0; byte < 3; ++byte)
       assert(output[byte] == (byte == size_t(channel/6) ? (63 ^ (1 << (channel%6))) : 63));
   }
-  // Exhaustive comparison with the old invert-and-reverse-byte driver.
-  // This checks byte compatibility, not actual PCB dot positions or solenoids.
+  // Independent geometry: the user's layout as horizontal rows, viewed from
+  // the reading side. Do not derive this oracle from LOGICAL_TO_CHANNEL.
+  const uint8_t physicalRows[3][6] = {
+    {1, 2, 12, 11, 18, 17},
+    {3, 4, 10,  9, 16, 15},
+    {5, 6,  8,  7, 14, 13}
+  };
+  // Each logical dot must raise exactly its specified solenoid.
+  for (size_t row = 0; row < 3; ++row) for (size_t column = 0; column < 6; ++column) {
+    std::array<uint8_t,3> cells = {{0,0,0}};
+    cells[column/2] = uint8_t(1u << (row + 3*(column%2)));
+    std::array<uint8_t,3> expected = {{63,63,63}};
+    const auto channel = physicalRows[row][column] - 1;
+    expected[channel/6] ^= uint8_t(1u << (channel%6));
+    assert(shiftBytes(cells) == expected);
+  }
+  assert(shiftBytes({{0,0,0}}) == (std::array<uint8_t,3>{{63,63,63}}));
+  assert(shiftBytes({{63,63,63}}) == (std::array<uint8_t,3>{{0,0,0}}));
+  assert(shiftBytes({{1,2,4}}) == (std::array<uint8_t,3>{{62,55,61}}));
+  // Exhaustive comparison against the physical geometry for all 18-bit pages.
   for (unsigned a = 0; a < 64; ++a) for (unsigned b = 0; b < 64; ++b) for (unsigned c = 0; c < 64; ++c) {
     const std::array<uint8_t,3> cells = {{uint8_t(a),uint8_t(b),uint8_t(c)}};
-    assert(shiftBytes(cells) == (std::array<uint8_t,3>{{uint8_t(63^c),uint8_t(63^b),uint8_t(63^a)}}));
+    std::array<uint8_t,3> expected = {{63,63,63}};
+    for (size_t row = 0; row < 3; ++row) for (size_t column = 0; column < 6; ++column) {
+      if (!(cells[column/2] & (1u << (row + 3*(column%2))))) continue;
+      const auto channel = physicalRows[row][column] - 1;
+      expected[channel/6] ^= uint8_t(1u << (channel%6));
+    }
+    assert(shiftBytes(cells) == expected);
   }
 }
 
@@ -171,5 +195,5 @@ static void receiverTests(const char* packetsPath, const char* textPath) {
 int main(int argc, char** argv) {
   assert(argc == 3);
   translationTests(); mappingTests(); pagerTests(); receiverTests(argv[1], argv[2]);
-  std::cout << "PASS: software regression checks; 11172 syllable bounds; 262144 legacy output-byte comparisons; pagination/queue/timing/browser packets. Hardware UNVERIFIED.\n";
+  std::cout << "PASS: software regression checks; 11172 syllable bounds; 18 individual dots and 262144 user-layout output comparisons; pagination/queue/timing/browser packets. Device execution UNVERIFIED.\n";
 }

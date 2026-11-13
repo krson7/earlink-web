@@ -20,7 +20,7 @@ constexpr int LATCH_PIN = 17;
 constexpr int CLOCK_PIN = 18;
 constexpr uint8_t CELL_COUNT = 3;
 // All 18 logical/physical assignments now live in BrailleMapping.h.
-// GPIO output enabled. Physical dot positions are still unverified.
+// GPIO output enabled. Mapping uses the user-confirmed solenoid layout.
 // false still runs BLE, conversion and pagination, with Serial output only.
 constexpr bool OUTPUT_ENABLED = true;
 constexpr uint32_t PAGE_MS = 3000;
@@ -598,14 +598,17 @@ namespace earlink {
 namespace mapping {
 // T1..T6 = bits 0..5 of FIRST shiftOut byte; T7..T12 = SECOND;
 // T13..T18 = THIRD. Bits 6/7 stay 0, exactly as in the original driver.
-// These are software channel labels, NOT verified PCB pin/physical-dot numbers.
+// T numbers are software channel labels, not 74HC595 Q pin numbers.
 // Index = logical cell * 6 + dot - 1, reading orientation: 1 4 / 2 5 / 3 6.
-// This provisional table preserves the previous reverse-cell-order output.
-constexpr bool PHYSICAL_LAYOUT_VERIFIED = false;
+// User-confirmed solenoid columns, left to right, each top to bottom:
+// (1,3,5) (2,4,6) | (12,10,8) (11,9,7) | (18,16,14) (17,15,13).
+// Solenoid numbers are interpreted as T1..T18 above. Confirmation describes
+// the supplied layout; it does not mean this firmware was run on the device.
+constexpr bool PHYSICAL_LAYOUT_VERIFIED = true;
 constexpr std::array<uint8_t, 18> LOGICAL_TO_CHANNEL = {{
-  13, 14, 15, 16, 17, 18, // logical cell 1, dots 1..6
-   7,  8,  9, 10, 11, 12, // logical cell 2, dots 1..6
-   1,  2,  3,  4,  5,  6  // logical cell 3, dots 1..6
+   1,  3,  5,  2,  4,  6, // logical cell 1, dots 1..6
+  12, 10,  8, 11,  9,  7, // logical cell 2, dots 1..6
+  18, 16, 14, 17, 15, 13  // logical cell 3, dots 1..6
 }};
 struct Validation {
   bool outOfRange = false, duplicate = false;
@@ -682,7 +685,7 @@ class BrailleOutput {
   static void logMapping() {
     const auto validation = mapping::validate(mapping::LOGICAL_TO_CHANNEL);
     Serial.printf("[mapping] valid=%u physical=%s missing=%05lX invalid=%05lX\n",
-      validation.valid(), mapping::PHYSICAL_LAYOUT_VERIFIED ? "verified" : "UNVERIFIED/provisional",
+      validation.valid(), mapping::PHYSICAL_LAYOUT_VERIFIED ? "user-confirmed" : "UNVERIFIED/provisional",
       static_cast<unsigned long>(validation.missingChannels), static_cast<unsigned long>(validation.invalidPositions));
     for (size_t i = 0; i < mapping::LOGICAL_TO_CHANNEL.size(); ++i)
       Serial.printf("[mapping] cell=%u dot=%u -> T%u\n",
@@ -1133,11 +1136,35 @@ static void mappingTests() {
     for (size_t byte = 0; byte < 3; ++byte)
       assert(output[byte] == (byte == size_t(channel/6) ? (63 ^ (1 << (channel%6))) : 63));
   }
-  // Exhaustive comparison with the old invert-and-reverse-byte driver.
-  // This checks byte compatibility, not actual PCB dot positions or solenoids.
+  // Independent geometry: the user's layout as horizontal rows, viewed from
+  // the reading side. Do not derive this oracle from LOGICAL_TO_CHANNEL.
+  const uint8_t physicalRows[3][6] = {
+    {1, 2, 12, 11, 18, 17},
+    {3, 4, 10,  9, 16, 15},
+    {5, 6,  8,  7, 14, 13}
+  };
+  // Each logical dot must raise exactly its specified solenoid.
+  for (size_t row = 0; row < 3; ++row) for (size_t column = 0; column < 6; ++column) {
+    std::array<uint8_t,3> cells = {{0,0,0}};
+    cells[column/2] = uint8_t(1u << (row + 3*(column%2)));
+    std::array<uint8_t,3> expected = {{63,63,63}};
+    const auto channel = physicalRows[row][column] - 1;
+    expected[channel/6] ^= uint8_t(1u << (channel%6));
+    assert(shiftBytes(cells) == expected);
+  }
+  assert(shiftBytes({{0,0,0}}) == (std::array<uint8_t,3>{{63,63,63}}));
+  assert(shiftBytes({{63,63,63}}) == (std::array<uint8_t,3>{{0,0,0}}));
+  assert(shiftBytes({{1,2,4}}) == (std::array<uint8_t,3>{{62,55,61}}));
+  // Exhaustive comparison against the physical geometry for all 18-bit pages.
   for (unsigned a = 0; a < 64; ++a) for (unsigned b = 0; b < 64; ++b) for (unsigned c = 0; c < 64; ++c) {
     const std::array<uint8_t,3> cells = {{uint8_t(a),uint8_t(b),uint8_t(c)}};
-    assert(shiftBytes(cells) == (std::array<uint8_t,3>{{uint8_t(63^c),uint8_t(63^b),uint8_t(63^a)}}));
+    std::array<uint8_t,3> expected = {{63,63,63}};
+    for (size_t row = 0; row < 3; ++row) for (size_t column = 0; column < 6; ++column) {
+      if (!(cells[column/2] & (1u << (row + 3*(column%2))))) continue;
+      const auto channel = physicalRows[row][column] - 1;
+      expected[channel/6] ^= uint8_t(1u << (channel%6));
+    }
+    assert(shiftBytes(cells) == expected);
   }
 }
 
@@ -1207,7 +1234,7 @@ static void receiverTests(const char* packetsPath, const char* textPath) {
 int main(int argc, char** argv) {
   assert(argc == 3);
   translationTests(); mappingTests(); pagerTests(); receiverTests(argv[1], argv[2]);
-  std::cout << "PASS: software regression checks; 11172 syllable bounds; 262144 legacy output-byte comparisons; pagination/queue/timing/browser packets. Hardware UNVERIFIED.\n";
+  std::cout << "PASS: software regression checks; 11172 syllable bounds; 18 individual dots and 262144 user-layout output comparisons; pagination/queue/timing/browser packets. Device execution UNVERIFIED.\n";
 }
 ```
 

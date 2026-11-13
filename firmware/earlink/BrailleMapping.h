@@ -7,14 +7,17 @@ namespace earlink {
 namespace mapping {
 // T1..T6 = bits 0..5 of FIRST shiftOut byte; T7..T12 = SECOND;
 // T13..T18 = THIRD. Bits 6/7 stay 0, exactly as in the original driver.
-// These are software channel labels, NOT verified PCB pin/physical-dot numbers.
+// T numbers are software channel labels, not 74HC595 Q pin numbers.
 // Index = logical cell * 6 + dot - 1, reading orientation: 1 4 / 2 5 / 3 6.
-// This provisional table preserves the previous reverse-cell-order output.
-constexpr bool PHYSICAL_LAYOUT_VERIFIED = false;
+// User-confirmed solenoid columns, left to right, each top to bottom:
+// (1,3,5) (2,4,6) | (12,10,8) (11,9,7) | (18,16,14) (17,15,13).
+// Solenoid numbers are interpreted as T1..T18 above. Confirmation describes
+// the supplied layout; it does not mean this firmware was run on the device.
+constexpr bool PHYSICAL_LAYOUT_VERIFIED = true;
 constexpr std::array<uint8_t, 18> LOGICAL_TO_CHANNEL = {{
-  13, 14, 15, 16, 17, 18, // logical cell 1, dots 1..6
-   7,  8,  9, 10, 11, 12, // logical cell 2, dots 1..6
-   1,  2,  3,  4,  5,  6  // logical cell 3, dots 1..6
+   1,  3,  5,  2,  4,  6, // logical cell 1, dots 1..6
+  12, 10,  8, 11,  9,  7, // logical cell 2, dots 1..6
+  18, 16, 14, 17, 15, 13  // logical cell 3, dots 1..6
 }};
 struct Validation {
   bool outOfRange = false, duplicate = false;

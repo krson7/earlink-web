@@ -1,7 +1,7 @@
 [
   {
     "path": "firmware/earlink/Config.h",
-    "sha256": "59be731b013b529321fe82314a4114dd3a2585d19e17b29e109ddfcbef3e13fa"
+    "sha256": "6e403891e48ee0c230a43cfc704e6287d0113b5064a3763c694fd481ea3a8302"
   },
   {
     "path": "firmware/earlink/EarlinkLimits.h",
@@ -21,11 +21,11 @@
   },
   {
     "path": "firmware/earlink/BrailleMapping.h",
-    "sha256": "c6f6f58c525c1d97705a4f5df0bd41dd526ae6a544b84505b2bd81106146836d"
+    "sha256": "da94e130a899ba48e94318e461d3e559ef5f6422738b9f7bb015bd86c40b7a7a"
   },
   {
     "path": "firmware/earlink/BrailleOutput.h",
-    "sha256": "1e1dfa91e825faa8efbbbabd40d26a23bc93a7a1cdedf798a4e32c55f40d0208"
+    "sha256": "1f480d9042b20024f4b7e240fffbbc2afc23385db1d8fde3e18c18984dbdd8e8"
   },
   {
     "path": "firmware/earlink/Protocol.h",
@@ -41,7 +41,7 @@
   },
   {
     "path": "firmware/tests/core_test.cpp",
-    "sha256": "99da4cdadd882f5ee1723508cc641603fb838375d2f38ac27f8120e79a9367d8"
+    "sha256": "bcf49ed2a07cf594d7d939353542f6ee489bc89d8ef2e090c4ea9b8a47dc7382"
   },
   {
     "path": "firmware/tests/cases_2024.py",
