@@ -15,17 +15,17 @@ class BrailleOutput {
     digitalWrite(config::LATCH_PIN, HIGH);
   }
   void begin() const {
+    if (config::OUTPUT_ENABLED) {
+      pinMode(config::DATA_PIN, OUTPUT);
+      pinMode(config::LATCH_PIN, OUTPUT);
+      pinMode(config::CLOCK_PIN, OUTPUT);
+      digitalWrite(config::DATA_PIN, LOW);
+      digitalWrite(config::CLOCK_PIN, LOW);
+      digitalWrite(config::LATCH_PIN, LOW);
+      write({{0, 0, 0}}); // Release before logging or BLE initialization.
+      Serial.println("[BRAILLE] Initial output 00 00 00 (all channels released)");
+    }
     logMapping();
-    if (!config::OUTPUT_ENABLED) return;
-    pinMode(config::DATA_PIN, OUTPUT);
-    pinMode(config::LATCH_PIN, OUTPUT);
-    pinMode(config::CLOCK_PIN, OUTPUT);
-    digitalWrite(config::DATA_PIN, LOW);
-    digitalWrite(config::CLOCK_PIN, LOW);
-    digitalWrite(config::LATCH_PIN, LOW);
-    delay(100); // retained hardware initialization delay
-    write({{0, 0, 0}});
-    Serial.println("[BRAILLE] Initial output sent (all dots DOWN)");
   }
  private:
   static void logMapping() {

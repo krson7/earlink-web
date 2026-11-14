@@ -12,7 +12,9 @@ constexpr uint8_t CELL_COUNT = 3;
 // GPIO output enabled. Mapping uses the user-confirmed solenoid layout.
 // false still runs BLE, conversion and pagination, with Serial output only.
 constexpr bool OUTPUT_ENABLED = true;
-constexpr uint32_t PAGE_MS = 3000;
+constexpr uint32_t CONNECT_PULSE_MS = 200; // One vertical column (3 channels).
+constexpr uint32_t CONNECT_GAP_MS = 50;    // Release before the next column.
+constexpr uint32_t PAGE_MS = 2000;
 constexpr uint32_t BLANK_MS = 250;
 constexpr uint32_t RECEIVE_TIMEOUT_MS = 10000;
 constexpr uint32_t HOLD_TIMEOUT_MS = 10000; // Clear held page; next/previous can redisplay.

@@ -4,10 +4,11 @@
 #include <BLEUtils.h>
 #include <BLE2902.h>
 #include <esp_heap_caps.h>
+#include <esp_system.h>
 #include <atomic>
 #include "Config.h"
 #include "Protocol.h"
-#include "Pager.h"
+#include "DisplayController.h"
 #include "BrailleOutput.h"
 
 // Existing UUIDs and v1 wire format are unchanged.
@@ -18,25 +19,53 @@ struct Event { uint8_t kind, size, data[20]; };
 QueueHandle_t events = nullptr;
 BLECharacteristic* statusCharacteristic = nullptr;
 std::atomic<bool> connected(false), disconnected(false), overflow(false);
+std::atomic<bool> connectionPending(false);
 earlink::Receiver receiver;
-earlink::Pager pager;
+earlink::DisplayController display;
+earlink::Pager& pager = display.pager;
 earlink::BrailleOutput brailleOutput;
 uint16_t acknowledgedId = 0;
 earlink::Result acknowledgedResult = earlink::NONE;
 
+const char* resetReasonName(esp_reset_reason_t reason) {
+  switch (reason) {
+    case ESP_RST_POWERON: return "POWERON";
+    case ESP_RST_SW: return "SOFTWARE";
+    case ESP_RST_PANIC: return "PANIC";
+    case ESP_RST_INT_WDT: return "INTERRUPT_WATCHDOG";
+    case ESP_RST_TASK_WDT: return "TASK_WATCHDOG";
+    case ESP_RST_WDT: return "WATCHDOG";
+    case ESP_RST_BROWNOUT: return "BROWNOUT";
+    default: return "OTHER";
+  }
+}
+void logHealth(uint32_t now) {
+  static uint32_t lastAt = 0;
+  if (uint32_t(now - lastAt) < 1000) return;
+  lastAt = now;
+  Serial.printf("[health] uptime_ms=%lu free=%u largest=%u connected=%u wave=%u\n",
+    static_cast<unsigned long>(now), unsigned(heap_caps_get_free_size(MALLOC_CAP_8BIT)),
+    unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)), unsigned(connected.load()),
+    unsigned(display.wave.active()));
+}
+
 void writeOutput() {
-  const auto cells = pager.output();
-  brailleOutput.write(cells);
-  Serial.printf("[page] id=%u %u/%u cells=%02X,%02X,%02X output=%s\n",
+  const auto raised = pager.output();
+  const auto lowered = display.output();
+  const auto wire = earlink::mapping::shiftBytes(lowered);
+  brailleOutput.write(lowered);
+  Serial.printf("[page] source=%s id=%u %u/%u braille=%02X,%02X,%02X down=%02X,%02X,%02X wire=%02X,%02X,%02X output=%s\n",
+    display.wave.active() ? "wave" : (display.pageVisible() ? "page" : "idle"),
     pager.current.id, pager.active() ? pager.page + 1 : 0, pager.pages(),
-    cells[0], cells[1], cells[2], config::OUTPUT_ENABLED ? "GPIO" : "preview");
+    raised[0], raised[1], raised[2], lowered[0], lowered[1], lowered[2],
+    wire[0], wire[1], wire[2], config::OUTPUT_ENABLED ? "GPIO" : "preview");
 }
 void publishStatus() {
   if (!statusCharacteristic) return;
   uint8_t state[16] = {};
   state[0] = 1;
   state[1] = (pager.active() ? 1 : 0) | (pager.automatic ? 2 : 0) |
-             (config::OUTPUT_ENABLED ? 4 : 0) | (pager.visible ? 8 : 0);
+             (config::OUTPUT_ENABLED ? 4 : 0) | (display.pageVisible() ? 8 : 0);
   earlink::write16(state + 2, acknowledgedId);
   state[4] = acknowledgedResult; state[5] = pager.queued();
   earlink::write16(state + 6, pager.current.id);
@@ -49,7 +78,7 @@ void publishStatus() {
 }
 class ServerCallbacks : public BLEServerCallbacks {
   void onConnect(BLEServer*) override {
-    connected.store(true); Serial.println("[BLE] Connected");
+    connected.store(true); connectionPending.store(true); Serial.println("[BLE] Connected");
   }
   void onDisconnect(BLEServer*) override {
     connected.store(false); disconnected.store(true); Serial.println("[BLE] Disconnected");
@@ -76,7 +105,7 @@ void handleCommand(const Event& event, uint32_t now) {
   switch (event.data[1]) {
     case 1: pager.setAutomatic(false, now); pager.next(now); break;
     case 2: pager.setAutomatic(false, now); pager.previous(now); break;
-    case 3: pager.clear(); receiver.reset(); break;
+    case 3: display.clear(); receiver.reset(); break;
     case 4: pager.setAutomatic(false, now); break;
     case 5: pager.setAutomatic(true, now); break;
     case 6:
@@ -121,12 +150,19 @@ void acceptText(uint32_t now) {
 }
 void setup() {
   Serial.begin(115200);
-  brailleOutput.begin(); // retains active-low, LSBFIRST, 3-byte startup all DOWN
+  brailleOutput.begin(); // Active-high; startup releases every channel.
+  const auto reason = esp_reset_reason();
+  Serial.printf("[boot] reset=%s code=%u startup_bytes=00,00,00 output=%s\n",
+    resetReasonName(reason), unsigned(reason), config::OUTPUT_ENABLED ? "GPIO" : "preview");
+  display.wave.pulseMs = config::CONNECT_PULSE_MS;
+  display.wave.gapMs = config::CONNECT_GAP_MS;
   pager.intervalMs = config::PAGE_MS; pager.blankMs = config::BLANK_MS;
   pager.holdTimeoutMs = config::HOLD_TIMEOUT_MS;
   events = xQueueCreate(16, sizeof(Event));
   if (!events) { Serial.println("[ERROR] Event queue allocation failed"); return; }
+  Serial.println("[boot] Initializing BLE");
   BLEDevice::init("EarLink");
+  Serial.println("[boot] BLE initialized");
   BLEServer* server = BLEDevice::createServer();
   server->setCallbacks(new ServerCallbacks());
   BLEService* service = server->createService(SERVICE_UUID);
@@ -139,15 +175,17 @@ void setup() {
   publishStatus(); service->start();
   auto* advertising = server->getAdvertising();
   advertising->addServiceUUID(SERVICE_UUID); advertising->setScanResponse(true); advertising->start();
-  Serial.println("[EARLINK READY] 3 cells / 18 dots; 1=DOWN / 0=UP; initial=DOWN");
+  Serial.println("[EARLINK READY] HIGH=DOWN / LOW=UP; page: braille=LOW, background=HIGH; idle=00,00,00; BLE connect=column wave");
 }
 void loop() {
+  logHealth(millis());
   if (!events) { delay(100); return; }
   if (disconnected.exchange(false)) {
-    xQueueReset(events); receiver.reset(); pager.clear();
+    xQueueReset(events); receiver.reset(); display.clear();
     acknowledgedId = 0; acknowledgedResult = earlink::NONE;
-    writeOutput(); publishStatus(); BLEDevice::startAdvertising();
-    Serial.println("[BRAILLE] Disconnected - all dots DOWN");
+    writeOutput(); publishStatus();
+    if (!connected.load()) BLEDevice::startAdvertising();
+    Serial.println("[BRAILLE] Disconnected - all channels released");
   }
   if (overflow.exchange(false)) {
     xQueueReset(events); receiver.reset();
@@ -155,6 +193,11 @@ void loop() {
     Serial.println("[BLE] Invalid write or event queue overflow"); publishStatus();
   }
   const uint32_t now = millis();
+  if (connectionPending.exchange(false) && connected.load()) {
+    display.startConnectionWave(now);
+    writeOutput(); publishStatus();
+    Serial.println("[wave] Begin: six columns, three channels per pulse");
+  }
   Event event{};
   while (xQueueReceive(events, &event, 0) == pdTRUE) {
     if (!connected.load()) continue;
@@ -171,6 +214,6 @@ void loop() {
     acknowledgedId = receiver.id; acknowledgedResult = earlink::TIMED_OUT;
     receiver.reset(); Serial.println("[BLE] Receive timeout"); publishStatus();
   }
-  if (pager.tick(now)) { writeOutput(); publishStatus(); }
+  if (display.tick(millis())) { writeOutput(); publishStatus(); }
   delay(2);
 }

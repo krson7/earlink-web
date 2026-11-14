@@ -1,0 +1,90 @@
+#include <Arduino.h>
+
+// Based on the user's working individual-solenoid test.
+// 1 = apply the tested channel signal; 0 = release, as in allRelease().
+// Each register uses only bits 0..5; unused bits 6 and 7 remain 0.
+#define DATA_PIN 16
+#define LATCH_PIN 17
+#define CLOCK_PIN 18
+#define CELL_COUNT 3
+
+constexpr uint8_t ALL_DOWN_MASK = 0x3F;
+uint8_t data[CELL_COUNT] = {0, 0, 0};
+
+// Keep the working test's reverse register order and LSBFIRST.
+void refresh() {
+  digitalWrite(LATCH_PIN, LOW);
+  for (int i = CELL_COUNT - 1; i >= 0; --i) {
+    shiftOut(DATA_PIN, CLOCK_PIN, LSBFIRST, data[i]);
+  }
+  digitalWrite(LATCH_PIN, HIGH);
+}
+
+void allRelease() {
+  for (int i = 0; i < CELL_COUNT; ++i) {
+    data[i] = 0;
+  }
+  refresh();
+}
+
+void allDown() {
+  for (int i = 0; i < CELL_COUNT; ++i) {
+    data[i] = ALL_DOWN_MASK;
+  }
+  refresh();
+}
+
+void printStatus() {
+  Serial.printf("[status] bytes=%02X %02X %02X uptime_ms=%lu\n",
+    unsigned(data[2]), unsigned(data[1]), unsigned(data[0]),
+    static_cast<unsigned long>(millis()));
+  Serial.println("위 값은 전송한 명령값이며 실제 위치나 전류 측정값은 아닙니다.");
+}
+
+void printHelp() {
+  Serial.println("on / down : 전체 18채널 신호 유지 (3F 3F 3F)");
+  Serial.println("off       : 전체 신호 해제 (00 00 00)");
+  Serial.println("status    : 전송값과 동작 시간 확인");
+  Serial.println("help      : 명령어 출력");
+}
+
+void setup() {
+  Serial.begin(115200);
+  Serial.setTimeout(100);
+
+  pinMode(DATA_PIN, OUTPUT);
+  pinMode(LATCH_PIN, OUTPUT);
+  pinMode(CLOCK_PIN, OUTPUT);
+  digitalWrite(DATA_PIN, LOW);
+  digitalWrite(CLOCK_PIN, LOW);
+  digitalWrite(LATCH_PIN, LOW);
+
+  allDown();
+  Serial.println("EARLINK ESP32 ALL-DOWN HOLD TEST");
+  Serial.println("전체 18채널에 신호를 보냈습니다. off 또는 전원 차단 전까지 유지합니다.");
+  printStatus();
+  printHelp();
+}
+
+void loop() {
+  if (Serial.available() > 0) {
+    String command = Serial.readStringUntil('\n');
+    command.trim();
+    command.toLowerCase();
+
+    if (command == "on" || command == "down") {
+      allDown();
+      Serial.println("전체 18채널 신호 유지");
+    } else if (command == "off") {
+      allRelease();
+      Serial.println("전체 신호 해제");
+    } else if (command == "status") {
+      printStatus();
+    } else if (command == "help") {
+      printHelp();
+    } else if (command.length() > 0) {
+      Serial.println("알 수 없는 명령어. help를 입력하세요.");
+    }
+  }
+  delay(10);
+}

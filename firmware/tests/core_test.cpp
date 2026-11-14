@@ -6,6 +6,7 @@
 #include "../earlink/Protocol.h"
 #include "../earlink/Pager.h"
 #include "../earlink/BrailleMapping.h"
+#include "../earlink/DisplayController.h"
 
 using namespace earlink;
 
@@ -84,7 +85,7 @@ static void mappingTests() {
   auto bad = LOGICAL_TO_CHANNEL;
   bad[0] = 0;
   assert(validate(bad).outOfRange && validate(bad).missingChannels && validate(bad).invalidPositions);
-  assert(shiftBytes({{63,63,63}}, bad) == (std::array<uint8_t,3>{{63,63,63}}));
+  assert(shiftBytes({{63,63,63}}, bad) == (std::array<uint8_t,3>{{0,0,0}}));
   bad = LOGICAL_TO_CHANNEL; bad[0] = 19; assert(validate(bad).outOfRange);
   bad = LOGICAL_TO_CHANNEL; bad[0] = bad[1];
   assert(validate(bad).duplicate && validate(bad).missingChannels);
@@ -95,7 +96,7 @@ static void mappingTests() {
     const auto output = shiftBytes(cells, crossCell);
     const auto channel = crossCell[dot] - 1;
     for (size_t byte = 0; byte < 3; ++byte)
-      assert(output[byte] == (byte == size_t(channel/6) ? (63 ^ (1 << (channel%6))) : 63));
+      assert(output[byte] == (byte == size_t(2-channel/6) ? (1 << (channel%6)) : 0));
   }
   // Independent geometry: the user's layout as horizontal rows, viewed from
   // the reading side. Do not derive this oracle from LOGICAL_TO_CHANNEL.
@@ -104,45 +105,147 @@ static void mappingTests() {
     {3, 4, 10,  9, 16, 15},
     {5, 6,  8,  7, 14, 13}
   };
-  // Each logical dot must raise exactly its specified solenoid.
+  // Each requested lowering bit must signal its specified solenoid, HIGH=DOWN.
   for (size_t row = 0; row < 3; ++row) for (size_t column = 0; column < 6; ++column) {
     std::array<uint8_t,3> cells = {{0,0,0}};
     cells[column/2] = uint8_t(1u << (row + 3*(column%2)));
-    std::array<uint8_t,3> expected = {{63,63,63}};
+    std::array<uint8_t,3> expected = {{0,0,0}};
     const auto channel = physicalRows[row][column] - 1;
-    expected[channel/6] ^= uint8_t(1u << (channel%6));
+    expected[2-channel/6] |= uint8_t(1u << (channel%6));
     assert(shiftBytes(cells) == expected);
   }
-  assert(shiftBytes({{0,0,0}}) == (std::array<uint8_t,3>{{63,63,63}}));
-  assert(shiftBytes({{63,63,63}}) == (std::array<uint8_t,3>{{0,0,0}}));
-  assert(shiftBytes({{1,2,4}}) == (std::array<uint8_t,3>{{62,55,61}}));
+  assert(shiftBytes({{0,0,0}}) == (std::array<uint8_t,3>{{0,0,0}}));
+  assert(shiftBytes({{63,63,63}}) == (std::array<uint8_t,3>{{63,63,63}}));
+  assert(shiftBytes({{1,2,4}}) == (std::array<uint8_t,3>{{2,8,1}}));
   // Exhaustive comparison against the physical geometry for all 18-bit pages.
   for (unsigned a = 0; a < 64; ++a) for (unsigned b = 0; b < 64; ++b) for (unsigned c = 0; c < 64; ++c) {
     const std::array<uint8_t,3> cells = {{uint8_t(a),uint8_t(b),uint8_t(c)}};
-    std::array<uint8_t,3> expected = {{63,63,63}};
+    std::array<uint8_t,3> expected = {{0,0,0}};
     for (size_t row = 0; row < 3; ++row) for (size_t column = 0; column < 6; ++column) {
       if (!(cells[column/2] & (1u << (row + 3*(column%2))))) continue;
       const auto channel = physicalRows[row][column] - 1;
-      expected[channel/6] ^= uint8_t(1u << (channel%6));
+      expected[2-channel/6] |= uint8_t(1u << (channel%6));
     }
     assert(shiftBytes(cells) == expected);
   }
+}
+
+static void connectionWaveTests() {
+  const std::array<uint8_t,3> released = {{0,0,0}};
+  // Expected serial bytes from the user's six physical columns and working
+  // data[2] -> data[0] test. Only one group of three channels may be HIGH.
+  const std::array<uint8_t,3> expected[] = {
+    {{0,0,0x15}}, {{0,0,0x2a}}, {{0,0x2a,0}},
+    {{0,0x15,0}}, {{0x2a,0,0}}, {{0x15,0,0}}
+  };
+  ConnectionWave wave;
+  assert(!wave.active() && wave.output() == released && !wave.tick(100000));
+  wave.start(100);
+  uint32_t now = 100;
+  for (size_t column = 0; column < 6; ++column) {
+    assert(wave.active() && mapping::shiftBytes(wave.output()) == expected[column]);
+    assert(!wave.tick(now + 199));
+    assert(mapping::shiftBytes(wave.output()) == expected[column]);
+    assert(wave.tick(now + 200));
+    assert(wave.output() == released);
+    if (column < 5) {
+      assert(wave.active() && !wave.tick(now + 249));
+      assert(wave.tick(now + 250));
+      now += 250;
+    }
+  }
+  assert(!wave.active() && !wave.tick(100000));
+  wave.start(0xffffff80u);
+  assert(!wave.tick(uint32_t(0xffffff80u + 199u)));
+  assert(wave.tick(uint32_t(0xffffff80u + 200u)) && wave.output() == released);
+  wave.cancel(); assert(!wave.active() && wave.output() == released);
+  wave.start(42); assert(mapping::shiftBytes(wave.output()) == expected[0]);
+
+  DisplayController display;
+  display.startConnectionWave(0);
+  assert(display.pager.enqueue(message(1, {1,2,3,4}), 10));
+  assert(!display.pageVisible());
+  assert(mapping::shiftBytes(display.output()) == expected[0]);
+  for (uint32_t at = 200; at <= 1450; at += 250) {
+    assert(display.tick(at));
+    if (at < 1450) { assert(display.output() == released); assert(display.tick(at + 50)); }
+  }
+  assert(!display.wave.active() && display.pageVisible());
+  assert(display.pager.page == 0 && display.output() == (std::array<uint8_t,3>{{62,61,60}}));
+  assert(!display.tick(3449)); // Full 2000ms starts AFTER the wave, not at enqueue.
+  assert(display.tick(3450) && display.output() == released);
+  assert(display.tick(3700) && display.output() == (std::array<uint8_t,3>{{59,63,63}}));
+  display.startConnectionWave(5000);
+  assert(!display.pager.active());
+  display.clear(); // Both disconnect and explicit clear must cancel the wave.
+  assert(!display.wave.active() && !display.pageVisible() && display.output() == released);
+  assert(!display.tick(100000));
+  display.startConnectionWave(100001);
+  assert(mapping::shiftBytes(display.output()) == expected[0]);
+  display.clear();
+  // A delayed/idle loop never starts a wave or energizes the default output.
+  assert(!display.tick(200000) && mapping::shiftBytes(display.output()) == released);
+}
+
+static void raisedBrailleOutputTests() {
+  const std::array<uint8_t,3> released = {{0,0,0}};
+  DisplayController display;
+  assert(mapping::shiftBytes(display.output()) == released);
+  assert(display.pager.enqueue(message(1, {1,1,1}), 0));
+  // Dot 1 must stay UP in each cell. All other dots go DOWN.
+  assert(mapping::shiftBytes(display.output()) == (std::array<uint8_t,3>{{0x1f,0x1f,0x3e}}));
+  // Independent horizontal geometry; do not use LOGICAL_TO_CHANNEL or the
+  // controller's inversion formula to calculate the expected electrical state.
+  const uint8_t rows[3][6] = {
+    {1,2,12,11,18,17}, {3,4,10,9,16,15}, {5,6,8,7,14,13}
+  };
+  for (unsigned a = 0; a < 64; ++a) for (unsigned b = 0; b < 64; ++b) for (unsigned c = 0; c < 64; ++c) {
+    auto& cells = display.pager.current.translation.cells;
+    cells[0] = uint8_t(a); cells[1] = uint8_t(b); cells[2] = uint8_t(c);
+    std::array<uint8_t,3> expected = released;
+    for (size_t row = 0; row < 3; ++row) for (size_t column = 0; column < 6; ++column) {
+      const bool mustStayRaised = (cells[column/2] & (1u << (row + 3*(column%2)))) != 0;
+      if (!mustStayRaised) {
+        const auto channel = rows[row][column] - 1;
+        expected[2-channel/6] |= uint8_t(1u << (channel%6));
+      }
+    }
+    assert(mapping::shiftBytes(display.output()) == expected);
+  }
+  display.clear(); assert(display.output() == released);
+  assert(display.pager.enqueue(message(2, {0}), 0));
+  // A displayed blank/padding must be DOWN, while IDLE remains entirely UP.
+  assert(display.pageVisible() && display.output() == (std::array<uint8_t,3>{{63,63,63}}));
+  assert(display.tick(2000) && display.output() == released);
+  assert(display.tick(2250) && !display.pageVisible() && display.output() == released);
+  display.pager.setAutomatic(false, 0);
+  assert(display.pager.enqueue(message(3, {1}), 0));
+  assert(display.output() == (std::array<uint8_t,3>{{62,63,63}}));
+  assert(display.tick(10000) && display.output() == released);
+  display.pager.previous(10001);
+  assert(display.tick(10251) && display.output() == (std::array<uint8_t,3>{{62,63,63}}));
+  display.clear(); assert(display.output() == released);
+  const auto translated = translate(u8"가나다");
+  assert(translated.unsupported == 0);
+  Message word; word.id = 4; word.translation = translated;
+  assert(display.pager.enqueue(std::move(word), 0));
+  assert(mapping::shiftBytes(display.output()) == (std::array<uint8_t,3>{{0x27,0x0f,0x18}}));
 }
 
 static void pagerTests() {
   Pager p;
   assert(p.enqueue(message(1, {1, 2, 3, 4}), 0));
   assert(p.pages() == 2 && p.output() == (std::array<uint8_t, 3>{1, 2, 3}));
-  assert(!p.tick(2999)); assert(p.tick(3000));
+  assert(!p.tick(1999)); assert(p.tick(2000));
   assert(p.output() == (std::array<uint8_t, 3>{0, 0, 0}));
-  assert(!p.tick(3249)); assert(p.tick(3250));
+  assert(!p.tick(2249)); assert(p.tick(2250));
   assert(p.output() == (std::array<uint8_t, 3>{4, 0, 0}));
-  assert(p.enqueue(message(2, {5}), 3251));
-  assert(p.enqueue(message(3, {6}), 3251));
-  assert(p.enqueue(message(4, {7}), 3251));
-  assert(!p.enqueue(message(5, {8}), 3251));
-  assert(p.tick(6250)); assert(!p.active());
-  assert(p.tick(6500)); assert(p.current.id == 2);
+  assert(p.enqueue(message(2, {5}), 2251));
+  assert(p.enqueue(message(3, {6}), 2251));
+  assert(p.enqueue(message(4, {7}), 2251));
+  assert(!p.enqueue(message(5, {8}), 2251));
+  assert(p.tick(4250)); assert(!p.active());
+  assert(p.tick(4500)); assert(p.current.id == 2);
   p.clear(); assert(!p.active() && p.queued() == 0 && !p.visible);
   assert(!p.enqueue(message(8, {}), 0));
   Message rejected = message(8, {1}); rejected.translation.unsupported = 1;
@@ -158,7 +261,7 @@ static void pagerTests() {
   p.clear();
   p.setAutomatic(true, 0xfffffff0);
   assert(p.enqueue(message(10, {1}), 0xfffffff0));
-  assert(p.tick(uint32_t(0xfffffff0u + 3000u))); // millis wraparound
+  assert(p.tick(uint32_t(0xfffffff0u + 2000u))); // millis wraparound
 }
 
 static void receiverTests(const char* packetsPath, const char* textPath) {
@@ -194,6 +297,6 @@ static void receiverTests(const char* packetsPath, const char* textPath) {
 
 int main(int argc, char** argv) {
   assert(argc == 3);
-  translationTests(); mappingTests(); pagerTests(); receiverTests(argv[1], argv[2]);
-  std::cout << "PASS: software regression checks; 11172 syllable bounds; 18 individual dots and 262144 user-layout output comparisons; pagination/queue/timing/browser packets. Device execution UNVERIFIED.\n";
+  translationTests(); mappingTests(); raisedBrailleOutputTests(); connectionWaveTests(); pagerTests(); receiverTests(argv[1], argv[2]);
+  std::cout << "PASS: 11172 syllable bounds; 262144 lowering-mask and 262144 raised-braille electrical comparisons; blank/padding/manual expiry/idle polarity; six-column wave/timing/cancel/reconnect/page handover; browser packets. Device execution UNVERIFIED.\n";
 }

@@ -1,7 +1,8 @@
 # EARLINK 파일별 전체 코드
 
 실제 프로젝트 파일을 그대로 읽어 생성한 문서입니다. 파일별 전체 내용을 생략 없이 수록합니다.
-`earlink`의 헤더 9개와 `earlink.ino`를 같은 스케치 폴더에 둡니다. 테스트·도구·웹 설정은 해당 경로를 따릅니다.
+현재 펌웨어는 2024 점역·BLE·연결 파도를 사용합니다. 문자 돌출점은 LOW, 배경은 HIGH이며 대기·종료는 전체 LOW입니다.
+`earlink`의 헤더 11개와 `earlink.ino`를 같은 스케치 폴더에 둡니다. `backups`는 이전 동작의 보관본이며 현재 출력 정책으로 사용하지 않습니다.
 지원 범위와 미구현 사항은 [RULES_2024.md](RULES_2024.md), 검증은 [결과 표](validation/BRAILLE_RESULTS.md)를 참조하세요.
 
 코드 수정 후 `python firmware/tools/export_full_code.py`로 다시 생성합니다.
@@ -23,7 +24,9 @@ constexpr uint8_t CELL_COUNT = 3;
 // GPIO output enabled. Mapping uses the user-confirmed solenoid layout.
 // false still runs BLE, conversion and pagination, with Serial output only.
 constexpr bool OUTPUT_ENABLED = true;
-constexpr uint32_t PAGE_MS = 3000;
+constexpr uint32_t CONNECT_PULSE_MS = 200; // One vertical column (3 channels).
+constexpr uint32_t CONNECT_GAP_MS = 50;    // Release before the next column.
+constexpr uint32_t PAGE_MS = 2000;
 constexpr uint32_t BLANK_MS = 250;
 constexpr uint32_t RECEIVE_TIMEOUT_MS = 10000;
 constexpr uint32_t HOLD_TIMEOUT_MS = 10000; // Clear held page; next/previous can redisplay.
@@ -596,8 +599,9 @@ inline Translation translate(const std::string& text) { return translate(text, n
 
 namespace earlink {
 namespace mapping {
-// T1..T6 = bits 0..5 of FIRST shiftOut byte; T7..T12 = SECOND;
-// T13..T18 = THIRD. Bits 6/7 stay 0, exactly as in the original driver.
+// Match the user's working test: T1..T6 = data[0] bits 0..5;
+// T7..T12 = data[1], T13..T18 = data[2]. Send data[2] first.
+// Unused bits 6/7 remain 0.
 // T numbers are software channel labels, not 74HC595 Q pin numbers.
 // Index = logical cell * 6 + dot - 1, reading orientation: 1 4 / 2 5 / 3 6.
 // User-confirmed solenoid columns, left to right, each top to bottom:
@@ -632,15 +636,18 @@ constexpr Validation validate(const std::array<uint8_t, 18>& table) {
 }
 static_assert(validate(LOGICAL_TO_CHANNEL).valid(), "Braille mapping must contain T1..T18 exactly once");
 
-// Active-low polarity belongs here, never in the translator.
-inline std::array<uint8_t, 3> shiftBytes(const std::array<uint8_t, 3>& cells,
+// Input bits name actuators to LOWER, not raised braille dots.
+// HIGH=DOWN, LOW=UP/released, as confirmed by the connection wave.
+// DisplayController handles page polarity; mapping must not invert again.
+// Empty lowering mask / invalid mapping releases every channel.
+inline std::array<uint8_t, 3> shiftBytes(const std::array<uint8_t, 3>& lowered,
                                       const std::array<uint8_t, 18>& table = LOGICAL_TO_CHANNEL) {
-  std::array<uint8_t, 3> bytes = {{0x3f, 0x3f, 0x3f}}; // 1=DOWN, 0=UP
-  if (!validate(table).valid()) return bytes; // invalid custom table -> all DOWN
+  std::array<uint8_t, 3> bytes = {{0, 0, 0}};
+  if (!validate(table).valid()) return bytes;
   for (size_t logical = 0; logical < 18; ++logical) {
-    if (cells[logical / 6] & (1u << (logical % 6))) {
+    if (lowered[logical / 6] & (1u << (logical % 6))) {
       const uint8_t index = uint8_t(table[logical] - 1);
-      bytes[index / 6] &= uint8_t(~(1u << (index % 6)));
+      bytes[2 - index / 6] |= uint8_t(1u << (index % 6));
     }
   }
   return bytes;
@@ -669,17 +676,17 @@ class BrailleOutput {
     digitalWrite(config::LATCH_PIN, HIGH);
   }
   void begin() const {
+    if (config::OUTPUT_ENABLED) {
+      pinMode(config::DATA_PIN, OUTPUT);
+      pinMode(config::LATCH_PIN, OUTPUT);
+      pinMode(config::CLOCK_PIN, OUTPUT);
+      digitalWrite(config::DATA_PIN, LOW);
+      digitalWrite(config::CLOCK_PIN, LOW);
+      digitalWrite(config::LATCH_PIN, LOW);
+      write({{0, 0, 0}}); // Release before logging or BLE initialization.
+      Serial.println("[BRAILLE] Initial output 00 00 00 (all channels released)");
+    }
     logMapping();
-    if (!config::OUTPUT_ENABLED) return;
-    pinMode(config::DATA_PIN, OUTPUT);
-    pinMode(config::LATCH_PIN, OUTPUT);
-    pinMode(config::CLOCK_PIN, OUTPUT);
-    digitalWrite(config::DATA_PIN, LOW);
-    digitalWrite(config::CLOCK_PIN, LOW);
-    digitalWrite(config::LATCH_PIN, LOW);
-    delay(100); // retained hardware initialization delay
-    write({{0, 0, 0}});
-    Serial.println("[BRAILLE] Initial output sent (all dots DOWN)");
   }
  private:
   static void logMapping() {
@@ -774,7 +781,7 @@ class Pager {
  public:
   bool automatic = true;
   bool visible = false;
-  uint32_t intervalMs = 3000;
+  uint32_t intervalMs = 2000;
   uint32_t blankMs = 250;
   uint32_t holdTimeoutMs = 10000;
   uint16_t page = 0;
@@ -837,6 +844,8 @@ class Pager {
     automatic = value; changedAt = now;
     if (value && active() && !gap) visible = true;
   }
+  // Queued text must get its full display time after the connection wave.
+  void restartDisplayTimer(uint32_t now) { changedAt = now; }
   void clear() {
     waiting.clear(); current = Message{}; page = 0; visible = false; gap = false;
   }
@@ -853,6 +862,86 @@ class Pager {
 }
 ```
 
+## firmware/earlink/ConnectionWave.h
+
+```cpp
+#pragma once
+#include <array>
+#include <stdint.h>
+
+namespace earlink {
+// Nonblocking left-to-right sweep of six vertical columns. Each pulse has
+// exactly three selected dots; each gap and the final state release all dots.
+class ConnectionWave {
+ public:
+  uint32_t pulseMs = 200;
+  uint32_t gapMs = 50;
+  bool active() const { return running; }
+  void start(uint32_t now) {
+    running = true; energized = true; column = 0; changedAt = now;
+  }
+  void cancel() { running = false; energized = false; column = 0; }
+  std::array<uint8_t, 3> output() const {
+    std::array<uint8_t, 3> cells = {{0, 0, 0}};
+    if (running && energized) cells[column / 2] = column % 2 ? 0x38 : 0x07;
+    return cells;
+  }
+  bool tick(uint32_t now) {
+    if (!running || uint32_t(now - changedAt) < (energized ? pulseMs : gapMs)) return false;
+    changedAt = now;
+    if (energized) {
+      energized = false;
+      if (column == 5) running = false;
+    } else {
+      ++column; energized = true;
+    }
+    return true;
+  }
+ private:
+  bool running = false, energized = false;
+  uint8_t column = 0;
+  uint32_t changedAt = 0;
+};
+}
+```
+
+## firmware/earlink/DisplayController.h
+
+```cpp
+#pragma once
+#include "Pager.h"
+#include "ConnectionWave.h"
+
+namespace earlink {
+// BLE reception/translation can continue during the wave. The page timer is
+// suspended until the indication ends, and only one source drives the output.
+// Pager bits name RAISED braille dots; output() bits name LOWERED actuators.
+class DisplayController {
+ public:
+  Pager pager;
+  ConnectionWave wave;
+  void clear() { wave.cancel(); pager.clear(); }
+  void startConnectionWave(uint32_t now) { clear(); wave.start(now); }
+  bool pageVisible() const { return !wave.active() && pager.active() && pager.visible; }
+  std::array<uint8_t, 3> output() const {
+    if (wave.active()) return wave.output(); // Wave already names dots to lower.
+    if (!pageVisible()) return {{0, 0, 0}}; // Idle/gaps/clear must release all.
+    auto lowered = pager.output();
+    // HIGH lowers a dot, LOW leaves it raised. Invert ONLY a visible page,
+    // including its blank cells/padding, without an all-HIGH pre-clear step.
+    for (auto& cell : lowered) cell = uint8_t((~cell) & 0x3f);
+    return lowered;
+  }
+  bool tick(uint32_t now) {
+    if (!wave.active()) return pager.tick(now);
+    if (!wave.tick(now)) return false;
+    if (!wave.active()) pager.restartDisplayTimer(now);
+    return true;
+  }
+};
+}
+```
+
 ## firmware/earlink/earlink.ino
 
 ```cpp
@@ -862,6 +951,231 @@ class Pager {
 #include <BLEUtils.h>
 #include <BLE2902.h>
 #include <esp_heap_caps.h>
+#include <esp_system.h>
+#include <atomic>
+#include "Config.h"
+#include "Protocol.h"
+#include "DisplayController.h"
+#include "BrailleOutput.h"
+
+// Existing UUIDs and v1 wire format are unchanged.
+static const char* SERVICE_UUID = "8f3a0001-7c3b-4b8a-9f52-123456789abc";
+static const char* TEXT_UUID = "8f3a0002-7c3b-4b8a-9f52-123456789abc";
+static const char* STATUS_UUID = "8f3a0003-7c3b-4b8a-9f52-123456789abc";
+struct Event { uint8_t kind, size, data[20]; };
+QueueHandle_t events = nullptr;
+BLECharacteristic* statusCharacteristic = nullptr;
+std::atomic<bool> connected(false), disconnected(false), overflow(false);
+std::atomic<bool> connectionPending(false);
+earlink::Receiver receiver;
+earlink::DisplayController display;
+earlink::Pager& pager = display.pager;
+earlink::BrailleOutput brailleOutput;
+uint16_t acknowledgedId = 0;
+earlink::Result acknowledgedResult = earlink::NONE;
+
+const char* resetReasonName(esp_reset_reason_t reason) {
+  switch (reason) {
+    case ESP_RST_POWERON: return "POWERON";
+    case ESP_RST_SW: return "SOFTWARE";
+    case ESP_RST_PANIC: return "PANIC";
+    case ESP_RST_INT_WDT: return "INTERRUPT_WATCHDOG";
+    case ESP_RST_TASK_WDT: return "TASK_WATCHDOG";
+    case ESP_RST_WDT: return "WATCHDOG";
+    case ESP_RST_BROWNOUT: return "BROWNOUT";
+    default: return "OTHER";
+  }
+}
+void logHealth(uint32_t now) {
+  static uint32_t lastAt = 0;
+  if (uint32_t(now - lastAt) < 1000) return;
+  lastAt = now;
+  Serial.printf("[health] uptime_ms=%lu free=%u largest=%u connected=%u wave=%u\n",
+    static_cast<unsigned long>(now), unsigned(heap_caps_get_free_size(MALLOC_CAP_8BIT)),
+    unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)), unsigned(connected.load()),
+    unsigned(display.wave.active()));
+}
+
+void writeOutput() {
+  const auto raised = pager.output();
+  const auto lowered = display.output();
+  const auto wire = earlink::mapping::shiftBytes(lowered);
+  brailleOutput.write(lowered);
+  Serial.printf("[page] source=%s id=%u %u/%u braille=%02X,%02X,%02X down=%02X,%02X,%02X wire=%02X,%02X,%02X output=%s\n",
+    display.wave.active() ? "wave" : (display.pageVisible() ? "page" : "idle"),
+    pager.current.id, pager.active() ? pager.page + 1 : 0, pager.pages(),
+    raised[0], raised[1], raised[2], lowered[0], lowered[1], lowered[2],
+    wire[0], wire[1], wire[2], config::OUTPUT_ENABLED ? "GPIO" : "preview");
+}
+void publishStatus() {
+  if (!statusCharacteristic) return;
+  uint8_t state[16] = {};
+  state[0] = 1;
+  state[1] = (pager.active() ? 1 : 0) | (pager.automatic ? 2 : 0) |
+             (config::OUTPUT_ENABLED ? 4 : 0) | (display.pageVisible() ? 8 : 0);
+  earlink::write16(state + 2, acknowledgedId);
+  state[4] = acknowledgedResult; state[5] = pager.queued();
+  earlink::write16(state + 6, pager.current.id);
+  earlink::write16(state + 8, pager.active() ? pager.page + 1 : 0);
+  earlink::write16(state + 10, pager.pages());
+  earlink::write16(state + 12, pager.current.translation.unsupported);
+  earlink::write16(state + 14, uint16_t(pager.intervalMs));
+  statusCharacteristic->setValue(state, sizeof(state));
+  if (connected.load()) statusCharacteristic->notify();
+}
+class ServerCallbacks : public BLEServerCallbacks {
+  void onConnect(BLEServer*) override {
+    connected.store(true); connectionPending.store(true); Serial.println("[BLE] Connected");
+  }
+  void onDisconnect(BLEServer*) override {
+    connected.store(false); disconnected.store(true); Serial.println("[BLE] Disconnected");
+  }
+};
+class WriteCallbacks : public BLECharacteristicCallbacks {
+ public:
+  explicit WriteCallbacks(uint8_t eventKind) : kind(eventKind) {}
+  void onWrite(BLECharacteristic* characteristic) override {
+    const auto value = characteristic->getValue(); // String (3.x) / std::string (2.x)
+    Event event{}; event.kind = kind;
+    if (!events || value.length() == 0 || value.length() > sizeof(event.data)) {
+      overflow.store(true); return;
+    }
+    event.size = uint8_t(value.length());
+    memcpy(event.data, value.c_str(), event.size);
+    if (xQueueSend(events, &event, 0) != pdTRUE) overflow.store(true);
+  }
+ private:
+  uint8_t kind;
+};
+void handleCommand(const Event& event, uint32_t now) {
+  if (event.size < 2 || event.data[0] != 1) return;
+  switch (event.data[1]) {
+    case 1: pager.setAutomatic(false, now); pager.next(now); break;
+    case 2: pager.setAutomatic(false, now); pager.previous(now); break;
+    case 3: display.clear(); receiver.reset(); break;
+    case 4: pager.setAutomatic(false, now); break;
+    case 5: pager.setAutomatic(true, now); break;
+    case 6:
+      if (event.size == 4) {
+        const uint16_t interval = earlink::read16(event.data + 2);
+        if (interval >= 1000 && interval <= 10000) pager.intervalMs = interval;
+      }
+      break;
+    default: return;
+  }
+  writeOutput(); publishStatus();
+}
+void logTranslationIssue(const earlink::Audit& record, void* context) {
+  if (!record.issue) return;
+  auto& logged = *static_cast<unsigned*>(context);
+  if (logged++ < 32)
+    Serial.printf("[translate] byte=%u character=%u U+%04lX reason=%s\n",
+      unsigned(record.byteOffset), unsigned(record.characterOffset),
+      static_cast<unsigned long>(record.codepoint), record.rule);
+}
+void acceptText(uint32_t now) {
+  const auto measured = earlink::measureTranslation(receiver.text);
+  if (measured.unsupported || !measured.cells) {
+    unsigned logged = 0;
+    earlink::measureTranslation(receiver.text, logTranslationIssue, &logged);
+    Serial.printf("[translate] REJECT id=%u unsupported=%u; detailed logs capped at 32\n",
+      receiver.id, measured.unsupported);
+    acknowledgedResult = earlink::BAD_PACKET; // existing code: no partial/misleading output
+    return;
+  }
+  const size_t freeBytes = heap_caps_get_free_size(MALLOC_CAP_8BIT);
+  const size_t largest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+  if (!pager.canEnqueue(measured.cells) || measured.cells + config::MIN_FREE_HEAP_BYTES > freeBytes ||
+      measured.cells > largest) {
+    Serial.printf("[translate] REJECT capacity id=%u cells=%u free=%u largest=%u\n",
+      receiver.id, unsigned(measured.cells), unsigned(freeBytes), unsigned(largest));
+    acknowledgedResult = earlink::QUEUE_FULL; return;
+  }
+  earlink::Message message; message.id = receiver.id;
+  message.translation = earlink::translate(receiver.text);
+  if (!pager.enqueue(std::move(message), now)) acknowledgedResult = earlink::QUEUE_FULL;
+}
+void setup() {
+  Serial.begin(115200);
+  brailleOutput.begin(); // Active-high; startup releases every channel.
+  const auto reason = esp_reset_reason();
+  Serial.printf("[boot] reset=%s code=%u startup_bytes=00,00,00 output=%s\n",
+    resetReasonName(reason), unsigned(reason), config::OUTPUT_ENABLED ? "GPIO" : "preview");
+  display.wave.pulseMs = config::CONNECT_PULSE_MS;
+  display.wave.gapMs = config::CONNECT_GAP_MS;
+  pager.intervalMs = config::PAGE_MS; pager.blankMs = config::BLANK_MS;
+  pager.holdTimeoutMs = config::HOLD_TIMEOUT_MS;
+  events = xQueueCreate(16, sizeof(Event));
+  if (!events) { Serial.println("[ERROR] Event queue allocation failed"); return; }
+  Serial.println("[boot] Initializing BLE");
+  BLEDevice::init("EarLink");
+  Serial.println("[boot] BLE initialized");
+  BLEServer* server = BLEDevice::createServer();
+  server->setCallbacks(new ServerCallbacks());
+  BLEService* service = server->createService(SERVICE_UUID);
+  auto* textCharacteristic = service->createCharacteristic(TEXT_UUID, BLECharacteristic::PROPERTY_WRITE);
+  textCharacteristic->setCallbacks(new WriteCallbacks(1));
+  statusCharacteristic = service->createCharacteristic(STATUS_UUID,
+    BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY);
+  statusCharacteristic->addDescriptor(new BLE2902());
+  statusCharacteristic->setCallbacks(new WriteCallbacks(2));
+  publishStatus(); service->start();
+  auto* advertising = server->getAdvertising();
+  advertising->addServiceUUID(SERVICE_UUID); advertising->setScanResponse(true); advertising->start();
+  Serial.println("[EARLINK READY] HIGH=DOWN / LOW=UP; page: braille=LOW, background=HIGH; idle=00,00,00; BLE connect=column wave");
+}
+void loop() {
+  logHealth(millis());
+  if (!events) { delay(100); return; }
+  if (disconnected.exchange(false)) {
+    xQueueReset(events); receiver.reset(); display.clear();
+    acknowledgedId = 0; acknowledgedResult = earlink::NONE;
+    writeOutput(); publishStatus();
+    if (!connected.load()) BLEDevice::startAdvertising();
+    Serial.println("[BRAILLE] Disconnected - all channels released");
+  }
+  if (overflow.exchange(false)) {
+    xQueueReset(events); receiver.reset();
+    acknowledgedId = receiver.id; acknowledgedResult = earlink::BAD_PACKET;
+    Serial.println("[BLE] Invalid write or event queue overflow"); publishStatus();
+  }
+  const uint32_t now = millis();
+  if (connectionPending.exchange(false) && connected.load()) {
+    display.startConnectionWave(now);
+    writeOutput(); publishStatus();
+    Serial.println("[wave] Begin: six columns, three channels per pulse");
+  }
+  Event event{};
+  while (xQueueReceive(events, &event, 0) == pdTRUE) {
+    if (!connected.load()) continue;
+    if (event.kind == 2) { handleCommand(event, now); continue; }
+    const auto result = receiver.accept(event.data, event.size, now);
+    if (result == earlink::NONE) continue;
+    acknowledgedId = receiver.id; acknowledgedResult = result;
+    if (result == earlink::ACCEPTED) {
+      acceptText(now); receiver.reset(); writeOutput();
+    } else Serial.printf("[BLE] Packet rejected id=%u reason=%u\n", receiver.id, result);
+    publishStatus();
+  }
+  if (receiver.receiving && uint32_t(now - receiver.lastAt) >= config::RECEIVE_TIMEOUT_MS) {
+    acknowledgedId = receiver.id; acknowledgedResult = earlink::TIMED_OUT;
+    receiver.reset(); Serial.println("[BLE] Receive timeout"); publishStatus();
+  }
+  if (display.tick(millis())) { writeOutput(); publishStatus(); }
+  delay(2);
+}
+```
+
+## firmware/backups/earlink-full.ino.txt
+
+```cpp
+#include <Arduino.h>
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+#include <BLE2902.h>
+#include <esp_heap_caps.h>
+#include <esp_system.h>
 #include <atomic>
 #include "Config.h"
 #include "Protocol.h"
@@ -881,6 +1195,28 @@ earlink::Pager pager;
 earlink::BrailleOutput brailleOutput;
 uint16_t acknowledgedId = 0;
 earlink::Result acknowledgedResult = earlink::NONE;
+
+const char* resetReasonName(esp_reset_reason_t reason) {
+  switch (reason) {
+    case ESP_RST_POWERON: return "POWERON";
+    case ESP_RST_SW: return "SOFTWARE";
+    case ESP_RST_PANIC: return "PANIC";
+    case ESP_RST_INT_WDT: return "INTERRUPT_WATCHDOG";
+    case ESP_RST_TASK_WDT: return "TASK_WATCHDOG";
+    case ESP_RST_WDT: return "WATCHDOG";
+    case ESP_RST_BROWNOUT: return "BROWNOUT";
+    default: return "OTHER";
+  }
+}
+void logHealth(uint32_t now) {
+  static uint32_t lastAt = 0;
+  if (uint32_t(now - lastAt) < 1000) return;
+  lastAt = now;
+  Serial.printf("[health] uptime_ms=%lu free=%u largest=%u connected=%u mode=%s\n",
+    static_cast<unsigned long>(now), unsigned(heap_caps_get_free_size(MALLOC_CAP_8BIT)),
+    unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)), unsigned(connected.load()),
+    config::STARTUP_HOLD_DIAGNOSTIC ? "startup-hold" : "normal");
+}
 
 void writeOutput() {
   const auto cells = pager.output();
@@ -980,11 +1316,20 @@ void acceptText(uint32_t now) {
 void setup() {
   Serial.begin(115200);
   brailleOutput.begin(); // retains active-low, LSBFIRST, 3-byte startup all DOWN
+  const auto reason = esp_reset_reason();
+  Serial.printf("[boot] reset=%s code=%u startup_bytes=3F,3F,3F output=%s\n",
+    resetReasonName(reason), unsigned(reason), config::OUTPUT_ENABLED ? "GPIO" : "preview");
+  if (config::STARTUP_HOLD_DIAGNOSTIC) {
+    Serial.println("[diagnostic] Startup output latched once; BLE and paging skipped; drive level unchanged");
+    return;
+  }
   pager.intervalMs = config::PAGE_MS; pager.blankMs = config::BLANK_MS;
   pager.holdTimeoutMs = config::HOLD_TIMEOUT_MS;
   events = xQueueCreate(16, sizeof(Event));
   if (!events) { Serial.println("[ERROR] Event queue allocation failed"); return; }
+  Serial.println("[boot] Initializing BLE");
   BLEDevice::init("EarLink");
+  Serial.println("[boot] BLE initialized");
   BLEServer* server = BLEDevice::createServer();
   server->setCallbacks(new ServerCallbacks());
   BLEService* service = server->createService(SERVICE_UUID);
@@ -1000,6 +1345,8 @@ void setup() {
   Serial.println("[EARLINK READY] 3 cells / 18 dots; 1=DOWN / 0=UP; initial=DOWN");
 }
 void loop() {
+  logHealth(millis());
+  if (config::STARTUP_HOLD_DIAGNOSTIC) { delay(2); return; }
   if (!events) { delay(100); return; }
   if (disconnected.exchange(false)) {
     xQueueReset(events); receiver.reset(); pager.clear();
@@ -1034,6 +1381,101 @@ void loop() {
 }
 ```
 
+## firmware/backups/solenoid-all-high-hold.ino.txt
+
+```cpp
+#include <Arduino.h>
+
+// Based on the user's working individual-solenoid test.
+// 1 = apply the tested channel signal; 0 = release, as in allRelease().
+// Each register uses only bits 0..5; unused bits 6 and 7 remain 0.
+#define DATA_PIN 16
+#define LATCH_PIN 17
+#define CLOCK_PIN 18
+#define CELL_COUNT 3
+
+constexpr uint8_t ALL_DOWN_MASK = 0x3F;
+uint8_t data[CELL_COUNT] = {0, 0, 0};
+
+// Keep the working test's reverse register order and LSBFIRST.
+void refresh() {
+  digitalWrite(LATCH_PIN, LOW);
+  for (int i = CELL_COUNT - 1; i >= 0; --i) {
+    shiftOut(DATA_PIN, CLOCK_PIN, LSBFIRST, data[i]);
+  }
+  digitalWrite(LATCH_PIN, HIGH);
+}
+
+void allRelease() {
+  for (int i = 0; i < CELL_COUNT; ++i) {
+    data[i] = 0;
+  }
+  refresh();
+}
+
+void allDown() {
+  for (int i = 0; i < CELL_COUNT; ++i) {
+    data[i] = ALL_DOWN_MASK;
+  }
+  refresh();
+}
+
+void printStatus() {
+  Serial.printf("[status] bytes=%02X %02X %02X uptime_ms=%lu\n",
+    unsigned(data[2]), unsigned(data[1]), unsigned(data[0]),
+    static_cast<unsigned long>(millis()));
+  Serial.println("위 값은 전송한 명령값이며 실제 위치나 전류 측정값은 아닙니다.");
+}
+
+void printHelp() {
+  Serial.println("on / down : 전체 18채널 신호 유지 (3F 3F 3F)");
+  Serial.println("off       : 전체 신호 해제 (00 00 00)");
+  Serial.println("status    : 전송값과 동작 시간 확인");
+  Serial.println("help      : 명령어 출력");
+}
+
+void setup() {
+  Serial.begin(115200);
+  Serial.setTimeout(100);
+
+  pinMode(DATA_PIN, OUTPUT);
+  pinMode(LATCH_PIN, OUTPUT);
+  pinMode(CLOCK_PIN, OUTPUT);
+  digitalWrite(DATA_PIN, LOW);
+  digitalWrite(CLOCK_PIN, LOW);
+  digitalWrite(LATCH_PIN, LOW);
+
+  allDown();
+  Serial.println("EARLINK ESP32 ALL-DOWN HOLD TEST");
+  Serial.println("전체 18채널에 신호를 보냈습니다. off 또는 전원 차단 전까지 유지합니다.");
+  printStatus();
+  printHelp();
+}
+
+void loop() {
+  if (Serial.available() > 0) {
+    String command = Serial.readStringUntil('\n');
+    command.trim();
+    command.toLowerCase();
+
+    if (command == "on" || command == "down") {
+      allDown();
+      Serial.println("전체 18채널 신호 유지");
+    } else if (command == "off") {
+      allRelease();
+      Serial.println("전체 신호 해제");
+    } else if (command == "status") {
+      printStatus();
+    } else if (command == "help") {
+      printHelp();
+    } else if (command.length() > 0) {
+      Serial.println("알 수 없는 명령어. help를 입력하세요.");
+    }
+  }
+  delay(10);
+}
+```
+
 ## firmware/tests/core_test.cpp
 
 ```cpp
@@ -1045,6 +1487,7 @@ void loop() {
 #include "../earlink/Protocol.h"
 #include "../earlink/Pager.h"
 #include "../earlink/BrailleMapping.h"
+#include "../earlink/DisplayController.h"
 
 using namespace earlink;
 
@@ -1123,7 +1566,7 @@ static void mappingTests() {
   auto bad = LOGICAL_TO_CHANNEL;
   bad[0] = 0;
   assert(validate(bad).outOfRange && validate(bad).missingChannels && validate(bad).invalidPositions);
-  assert(shiftBytes({{63,63,63}}, bad) == (std::array<uint8_t,3>{{63,63,63}}));
+  assert(shiftBytes({{63,63,63}}, bad) == (std::array<uint8_t,3>{{0,0,0}}));
   bad = LOGICAL_TO_CHANNEL; bad[0] = 19; assert(validate(bad).outOfRange);
   bad = LOGICAL_TO_CHANNEL; bad[0] = bad[1];
   assert(validate(bad).duplicate && validate(bad).missingChannels);
@@ -1134,7 +1577,7 @@ static void mappingTests() {
     const auto output = shiftBytes(cells, crossCell);
     const auto channel = crossCell[dot] - 1;
     for (size_t byte = 0; byte < 3; ++byte)
-      assert(output[byte] == (byte == size_t(channel/6) ? (63 ^ (1 << (channel%6))) : 63));
+      assert(output[byte] == (byte == size_t(2-channel/6) ? (1 << (channel%6)) : 0));
   }
   // Independent geometry: the user's layout as horizontal rows, viewed from
   // the reading side. Do not derive this oracle from LOGICAL_TO_CHANNEL.
@@ -1143,45 +1586,147 @@ static void mappingTests() {
     {3, 4, 10,  9, 16, 15},
     {5, 6,  8,  7, 14, 13}
   };
-  // Each logical dot must raise exactly its specified solenoid.
+  // Each requested lowering bit must signal its specified solenoid, HIGH=DOWN.
   for (size_t row = 0; row < 3; ++row) for (size_t column = 0; column < 6; ++column) {
     std::array<uint8_t,3> cells = {{0,0,0}};
     cells[column/2] = uint8_t(1u << (row + 3*(column%2)));
-    std::array<uint8_t,3> expected = {{63,63,63}};
+    std::array<uint8_t,3> expected = {{0,0,0}};
     const auto channel = physicalRows[row][column] - 1;
-    expected[channel/6] ^= uint8_t(1u << (channel%6));
+    expected[2-channel/6] |= uint8_t(1u << (channel%6));
     assert(shiftBytes(cells) == expected);
   }
-  assert(shiftBytes({{0,0,0}}) == (std::array<uint8_t,3>{{63,63,63}}));
-  assert(shiftBytes({{63,63,63}}) == (std::array<uint8_t,3>{{0,0,0}}));
-  assert(shiftBytes({{1,2,4}}) == (std::array<uint8_t,3>{{62,55,61}}));
+  assert(shiftBytes({{0,0,0}}) == (std::array<uint8_t,3>{{0,0,0}}));
+  assert(shiftBytes({{63,63,63}}) == (std::array<uint8_t,3>{{63,63,63}}));
+  assert(shiftBytes({{1,2,4}}) == (std::array<uint8_t,3>{{2,8,1}}));
   // Exhaustive comparison against the physical geometry for all 18-bit pages.
   for (unsigned a = 0; a < 64; ++a) for (unsigned b = 0; b < 64; ++b) for (unsigned c = 0; c < 64; ++c) {
     const std::array<uint8_t,3> cells = {{uint8_t(a),uint8_t(b),uint8_t(c)}};
-    std::array<uint8_t,3> expected = {{63,63,63}};
+    std::array<uint8_t,3> expected = {{0,0,0}};
     for (size_t row = 0; row < 3; ++row) for (size_t column = 0; column < 6; ++column) {
       if (!(cells[column/2] & (1u << (row + 3*(column%2))))) continue;
       const auto channel = physicalRows[row][column] - 1;
-      expected[channel/6] ^= uint8_t(1u << (channel%6));
+      expected[2-channel/6] |= uint8_t(1u << (channel%6));
     }
     assert(shiftBytes(cells) == expected);
   }
+}
+
+static void connectionWaveTests() {
+  const std::array<uint8_t,3> released = {{0,0,0}};
+  // Expected serial bytes from the user's six physical columns and working
+  // data[2] -> data[0] test. Only one group of three channels may be HIGH.
+  const std::array<uint8_t,3> expected[] = {
+    {{0,0,0x15}}, {{0,0,0x2a}}, {{0,0x2a,0}},
+    {{0,0x15,0}}, {{0x2a,0,0}}, {{0x15,0,0}}
+  };
+  ConnectionWave wave;
+  assert(!wave.active() && wave.output() == released && !wave.tick(100000));
+  wave.start(100);
+  uint32_t now = 100;
+  for (size_t column = 0; column < 6; ++column) {
+    assert(wave.active() && mapping::shiftBytes(wave.output()) == expected[column]);
+    assert(!wave.tick(now + 199));
+    assert(mapping::shiftBytes(wave.output()) == expected[column]);
+    assert(wave.tick(now + 200));
+    assert(wave.output() == released);
+    if (column < 5) {
+      assert(wave.active() && !wave.tick(now + 249));
+      assert(wave.tick(now + 250));
+      now += 250;
+    }
+  }
+  assert(!wave.active() && !wave.tick(100000));
+  wave.start(0xffffff80u);
+  assert(!wave.tick(uint32_t(0xffffff80u + 199u)));
+  assert(wave.tick(uint32_t(0xffffff80u + 200u)) && wave.output() == released);
+  wave.cancel(); assert(!wave.active() && wave.output() == released);
+  wave.start(42); assert(mapping::shiftBytes(wave.output()) == expected[0]);
+
+  DisplayController display;
+  display.startConnectionWave(0);
+  assert(display.pager.enqueue(message(1, {1,2,3,4}), 10));
+  assert(!display.pageVisible());
+  assert(mapping::shiftBytes(display.output()) == expected[0]);
+  for (uint32_t at = 200; at <= 1450; at += 250) {
+    assert(display.tick(at));
+    if (at < 1450) { assert(display.output() == released); assert(display.tick(at + 50)); }
+  }
+  assert(!display.wave.active() && display.pageVisible());
+  assert(display.pager.page == 0 && display.output() == (std::array<uint8_t,3>{{62,61,60}}));
+  assert(!display.tick(3449)); // Full 2000ms starts AFTER the wave, not at enqueue.
+  assert(display.tick(3450) && display.output() == released);
+  assert(display.tick(3700) && display.output() == (std::array<uint8_t,3>{{59,63,63}}));
+  display.startConnectionWave(5000);
+  assert(!display.pager.active());
+  display.clear(); // Both disconnect and explicit clear must cancel the wave.
+  assert(!display.wave.active() && !display.pageVisible() && display.output() == released);
+  assert(!display.tick(100000));
+  display.startConnectionWave(100001);
+  assert(mapping::shiftBytes(display.output()) == expected[0]);
+  display.clear();
+  // A delayed/idle loop never starts a wave or energizes the default output.
+  assert(!display.tick(200000) && mapping::shiftBytes(display.output()) == released);
+}
+
+static void raisedBrailleOutputTests() {
+  const std::array<uint8_t,3> released = {{0,0,0}};
+  DisplayController display;
+  assert(mapping::shiftBytes(display.output()) == released);
+  assert(display.pager.enqueue(message(1, {1,1,1}), 0));
+  // Dot 1 must stay UP in each cell. All other dots go DOWN.
+  assert(mapping::shiftBytes(display.output()) == (std::array<uint8_t,3>{{0x1f,0x1f,0x3e}}));
+  // Independent horizontal geometry; do not use LOGICAL_TO_CHANNEL or the
+  // controller's inversion formula to calculate the expected electrical state.
+  const uint8_t rows[3][6] = {
+    {1,2,12,11,18,17}, {3,4,10,9,16,15}, {5,6,8,7,14,13}
+  };
+  for (unsigned a = 0; a < 64; ++a) for (unsigned b = 0; b < 64; ++b) for (unsigned c = 0; c < 64; ++c) {
+    auto& cells = display.pager.current.translation.cells;
+    cells[0] = uint8_t(a); cells[1] = uint8_t(b); cells[2] = uint8_t(c);
+    std::array<uint8_t,3> expected = released;
+    for (size_t row = 0; row < 3; ++row) for (size_t column = 0; column < 6; ++column) {
+      const bool mustStayRaised = (cells[column/2] & (1u << (row + 3*(column%2)))) != 0;
+      if (!mustStayRaised) {
+        const auto channel = rows[row][column] - 1;
+        expected[2-channel/6] |= uint8_t(1u << (channel%6));
+      }
+    }
+    assert(mapping::shiftBytes(display.output()) == expected);
+  }
+  display.clear(); assert(display.output() == released);
+  assert(display.pager.enqueue(message(2, {0}), 0));
+  // A displayed blank/padding must be DOWN, while IDLE remains entirely UP.
+  assert(display.pageVisible() && display.output() == (std::array<uint8_t,3>{{63,63,63}}));
+  assert(display.tick(2000) && display.output() == released);
+  assert(display.tick(2250) && !display.pageVisible() && display.output() == released);
+  display.pager.setAutomatic(false, 0);
+  assert(display.pager.enqueue(message(3, {1}), 0));
+  assert(display.output() == (std::array<uint8_t,3>{{62,63,63}}));
+  assert(display.tick(10000) && display.output() == released);
+  display.pager.previous(10001);
+  assert(display.tick(10251) && display.output() == (std::array<uint8_t,3>{{62,63,63}}));
+  display.clear(); assert(display.output() == released);
+  const auto translated = translate(u8"가나다");
+  assert(translated.unsupported == 0);
+  Message word; word.id = 4; word.translation = translated;
+  assert(display.pager.enqueue(std::move(word), 0));
+  assert(mapping::shiftBytes(display.output()) == (std::array<uint8_t,3>{{0x27,0x0f,0x18}}));
 }
 
 static void pagerTests() {
   Pager p;
   assert(p.enqueue(message(1, {1, 2, 3, 4}), 0));
   assert(p.pages() == 2 && p.output() == (std::array<uint8_t, 3>{1, 2, 3}));
-  assert(!p.tick(2999)); assert(p.tick(3000));
+  assert(!p.tick(1999)); assert(p.tick(2000));
   assert(p.output() == (std::array<uint8_t, 3>{0, 0, 0}));
-  assert(!p.tick(3249)); assert(p.tick(3250));
+  assert(!p.tick(2249)); assert(p.tick(2250));
   assert(p.output() == (std::array<uint8_t, 3>{4, 0, 0}));
-  assert(p.enqueue(message(2, {5}), 3251));
-  assert(p.enqueue(message(3, {6}), 3251));
-  assert(p.enqueue(message(4, {7}), 3251));
-  assert(!p.enqueue(message(5, {8}), 3251));
-  assert(p.tick(6250)); assert(!p.active());
-  assert(p.tick(6500)); assert(p.current.id == 2);
+  assert(p.enqueue(message(2, {5}), 2251));
+  assert(p.enqueue(message(3, {6}), 2251));
+  assert(p.enqueue(message(4, {7}), 2251));
+  assert(!p.enqueue(message(5, {8}), 2251));
+  assert(p.tick(4250)); assert(!p.active());
+  assert(p.tick(4500)); assert(p.current.id == 2);
   p.clear(); assert(!p.active() && p.queued() == 0 && !p.visible);
   assert(!p.enqueue(message(8, {}), 0));
   Message rejected = message(8, {1}); rejected.translation.unsupported = 1;
@@ -1197,7 +1742,7 @@ static void pagerTests() {
   p.clear();
   p.setAutomatic(true, 0xfffffff0);
   assert(p.enqueue(message(10, {1}), 0xfffffff0));
-  assert(p.tick(uint32_t(0xfffffff0u + 3000u))); // millis wraparound
+  assert(p.tick(uint32_t(0xfffffff0u + 2000u))); // millis wraparound
 }
 
 static void receiverTests(const char* packetsPath, const char* textPath) {
@@ -1233,8 +1778,8 @@ static void receiverTests(const char* packetsPath, const char* textPath) {
 
 int main(int argc, char** argv) {
   assert(argc == 3);
-  translationTests(); mappingTests(); pagerTests(); receiverTests(argv[1], argv[2]);
-  std::cout << "PASS: software regression checks; 11172 syllable bounds; 18 individual dots and 262144 user-layout output comparisons; pagination/queue/timing/browser packets. Device execution UNVERIFIED.\n";
+  translationTests(); mappingTests(); raisedBrailleOutputTests(); connectionWaveTests(); pagerTests(); receiverTests(argv[1], argv[2]);
+  std::cout << "PASS: 11172 syllable bounds; 262144 lowering-mask and 262144 raised-braille electrical comparisons; blank/padding/manual expiry/idle polarity; six-column wave/timing/cancel/reconnect/page handover; browser packets. Device execution UNVERIFIED.\n";
 }
 ```
 
@@ -7689,7 +8234,11 @@ FILES = [
     'firmware/earlink/BrailleOutput.h',
     'firmware/earlink/Protocol.h',
     'firmware/earlink/Pager.h',
+    'firmware/earlink/ConnectionWave.h',
+    'firmware/earlink/DisplayController.h',
     'firmware/earlink/earlink.ino',
+    'firmware/backups/earlink-full.ino.txt',
+    'firmware/backups/solenoid-all-high-hold.ino.txt',
     'firmware/tests/core_test.cpp',
     'firmware/tests/cases_2024.py',
     'firmware/tests/braille_cli.cpp',
@@ -7709,14 +8258,15 @@ FILES = [
 def main():
     lines = ['# EARLINK 파일별 전체 코드', '',
         '실제 프로젝트 파일을 그대로 읽어 생성한 문서입니다. 파일별 전체 내용을 생략 없이 수록합니다.',
-        '`earlink`의 헤더 9개와 `earlink.ino`를 같은 스케치 폴더에 둡니다. 테스트·도구·웹 설정은 해당 경로를 따릅니다.',
+        '현재 펌웨어는 2024 점역·BLE·연결 파도를 사용합니다. 문자 돌출점은 LOW, 배경은 HIGH이며 대기·종료는 전체 LOW입니다.',
+        '`earlink`의 헤더 11개와 `earlink.ino`를 같은 스케치 폴더에 둡니다. `backups`는 이전 동작의 보관본이며 현재 출력 정책으로 사용하지 않습니다.',
         '지원 범위와 미구현 사항은 [RULES_2024.md](RULES_2024.md), 검증은 [결과 표](validation/BRAILLE_RESULTS.md)를 참조하세요.', '',
         '코드 수정 후 `python firmware/tools/export_full_code.py`로 다시 생성합니다.', '']
     manifest = []
     for name in FILES:
         data = (ROOT / name).read_bytes()
         content = data.decode('utf-8').replace('\r\n', '\n')
-        language = 'python' if name.endswith('.py') else 'json' if name.endswith('.json') else 'cpp' if name.endswith(('.h', '.cpp', '.ino')) else 'gitignore'
+        language = 'python' if name.endswith('.py') else 'json' if name.endswith('.json') else 'cpp' if name.endswith(('.h', '.cpp', '.ino', '.ino.txt')) else 'gitignore'
         lines += [f'## {name}', '', f'```{language}', content.rstrip('\n'), '```', '']
         manifest.append(dict(path=name, sha256=hashlib.sha256(content.encode('utf-8')).hexdigest()))
     (ROOT / 'firmware/FULL_CODE.md').write_text('\n'.join(lines), encoding='utf-8')

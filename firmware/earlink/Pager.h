@@ -14,7 +14,7 @@ class Pager {
  public:
   bool automatic = true;
   bool visible = false;
-  uint32_t intervalMs = 3000;
+  uint32_t intervalMs = 2000;
   uint32_t blankMs = 250;
   uint32_t holdTimeoutMs = 10000;
   uint16_t page = 0;
@@ -77,6 +77,8 @@ class Pager {
     automatic = value; changedAt = now;
     if (value && active() && !gap) visible = true;
   }
+  // Queued text must get its full display time after the connection wave.
+  void restartDisplayTimer(uint32_t now) { changedAt = now; }
   void clear() {
     waiting.clear(); current = Message{}; page = 0; visible = false; gap = false;
   }
