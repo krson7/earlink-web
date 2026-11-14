@@ -24,7 +24,7 @@ def run(args, **kwargs):
 def compile_tests():
     compiler = shutil.which('g++') or shutil.which('clang++')
     extension = '.exe' if os.name == 'nt' else ''
-    programs = ['core_test', 'braille_cli', 'context_test']
+    programs = ['core_test', 'braille_cli', 'context_test', 'input_test']
     if compiler:
         for program in programs:
             run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror',
@@ -73,9 +73,12 @@ def main():
     run([node, '--experimental-strip-types', '--test', 'tests/earlink-protocol.test.mjs'])
     oracle = BUILD / 'hangul-oracle.bin'
     write_oracle(oracle)
-    core, cli, context = compile_tests()
+    core, cli, context, keys = compile_tests()
     run([str(core), str(BUILD / 'protocol-fixture.bin'), str(BUILD / 'protocol-text.txt')])
     run([str(context), str(oracle), str(REPORT / 'context-coverage.json')])
+    # Perkins key input: braille -> text, chords, and real device packets for the web test.
+    run([str(keys), str(BUILD / 'input-fixture.bin'), str(BUILD / 'input-expected.json')])
+    run([node, '--experimental-strip-types', '--test', 'tests/earlink-input.test.mjs'])
     inputs = BUILD / 'braille-inputs.hex'
     inputs.write_text(''.join(case['text'].encode('utf-8').hex() + '\n' for case in CASES), encoding='ascii')
     output = run([str(cli), str(inputs)], capture_output=True, text=True).stdout.splitlines()

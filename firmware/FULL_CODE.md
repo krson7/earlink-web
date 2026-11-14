@@ -2,7 +2,7 @@
 
 실제 프로젝트 파일을 그대로 읽어 생성한 문서입니다. 파일별 전체 내용을 생략 없이 수록합니다.
 현재 펌웨어는 2024 점역·BLE·연결 파도를 사용합니다. 문자 돌출점은 LOW, 배경은 HIGH이며 대기·종료는 전체 LOW입니다.
-`earlink`의 헤더 11개와 `earlink.ino`를 같은 스케치 폴더에 둡니다. `backups`는 이전 동작의 보관본이며 현재 출력 정책으로 사용하지 않습니다.
+`earlink`의 헤더 14개와 `earlink.ino`를 같은 스케치 폴더에 둡니다. `backups`는 이전 동작의 보관본이며 현재 출력 정책으로 사용하지 않습니다.
 지원 범위와 미구현 사항은 [RULES_2024.md](RULES_2024.md), 검증은 [결과 표](validation/BRAILLE_RESULTS.md)를 참조하세요.
 
 코드 수정 후 `python firmware/tools/export_full_code.py`로 다시 생성합니다.
@@ -31,6 +31,27 @@ constexpr uint32_t BLANK_MS = 250;
 constexpr uint32_t RECEIVE_TIMEOUT_MS = 10000;
 constexpr uint32_t HOLD_TIMEOUT_MS = 10000; // Clear held page; next/previous can redisplay.
 constexpr size_t MIN_FREE_HEAP_BYTES = 16384; // reserve for existing BLE/event processing
+
+// ===== Perkins-style keys (typing -> app) =====
+// Pressed = connected to GND, read with INPUT_PULLUP (LOW = pressed).
+// GPIO12 is a boot strapping pin: GND-side buttons are safe for it.
+namespace keyrole {
+constexpr uint16_t DOT1 = 1u << 0, DOT2 = 1u << 1, DOT3 = 1u << 2,
+                   DOT4 = 1u << 3, DOT5 = 1u << 4, DOT6 = 1u << 5,
+                   SPACE = 1u << 6, SEND = 1u << 7, ERASE = 1u << 8;
+constexpr uint16_t ALL_DOTS = 0x3f;
+}
+// Left to right as the keys sit on the device.
+constexpr int KEY_COUNT = 9;
+constexpr int KEY_PINS[KEY_COUNT] = {14, 21, 27, 26, 13, 33, 12, 32, 25};
+constexpr uint16_t KEY_ROLES[KEY_COUNT] = {
+  keyrole::SEND, keyrole::DOT3, keyrole::DOT2, keyrole::DOT1, keyrole::SPACE,
+  keyrole::DOT4, keyrole::DOT5, keyrole::DOT6, keyrole::ERASE
+};
+constexpr uint32_t KEY_DEBOUNCE_MS = 25;
+constexpr uint32_t KEY_CLEAR_HOLD_MS = 800;  // hold ERASE alone: clear everything
+constexpr size_t MAX_INPUT_CELLS = 256;
+constexpr uint32_t INPUT_PACKET_GAP_MS = 8;  // between BLE notifications
 }
 ```
 
@@ -942,6 +963,511 @@ class DisplayController {
 }
 ```
 
+## firmware/earlink/KeyInput.h
+
+```cpp
+#pragma once
+#include <stdint.h>
+#include <string>
+#include "Config.h"
+
+// Perkins-style chording on the 9 keys in Config.h.
+// A chord is every key pressed between the first press and the moment all
+// keys are up again; it takes effect on release. Holding ERASE alone for
+// KEY_CLEAR_HOLD_MS clears everything at once (nothing more on release).
+namespace earlink {
+namespace keys {
+using namespace config::keyrole;
+
+enum class Action : uint8_t { NONE, CELL, SPACE, ERASE, CLEAR, SEND, IGNORED };
+struct Event { Action action = Action::NONE; uint8_t cell = 0; uint16_t chord = 0; };
+
+inline std::string describe(uint16_t chord) {
+  static const char* const names[] = {"점1","점2","점3","점4","점5","점6","띄어쓰기","전송","지우기"};
+  std::string s;
+  for (unsigned i = 0; i < 9; ++i)
+    if (chord & (1u << i)) { if (!s.empty()) s += '+'; s += names[i]; }
+  return s.empty() ? std::string("-") : s;
+}
+inline const char* actionName(Action a) {
+  switch (a) {
+    case Action::CELL: return "cell";
+    case Action::SPACE: return "space";
+    case Action::ERASE: return "erase";
+    case Action::CLEAR: return "clear";
+    case Action::SEND: return "send";
+    case Action::IGNORED: return "ignored";
+    default: return "none";
+  }
+}
+
+// Pure logic: feed the raw "pressed" mask and the time; no Arduino calls.
+class ChordReader {
+ public:
+  uint32_t debounceMs = config::KEY_DEBOUNCE_MS;
+  uint32_t holdMs = config::KEY_CLEAR_HOLD_MS;
+  uint16_t pressed() const { return stable; }
+
+  Event update(uint16_t raw, uint32_t now) {
+    Event event;
+    if (raw != candidate) { candidate = raw; candidateAt = now; }
+    else if (candidate != stable && uint32_t(now - candidateAt) >= debounceMs) {
+      if (!chord && candidate) pressedAt = now;
+      stable = candidate;
+      chord |= stable;
+      if (!stable && chord) {
+        if (!consumed) event = classify(chord);
+        chord = 0; consumed = false;
+      }
+    }
+    if (!consumed && stable == ERASE && chord == ERASE && uint32_t(now - pressedAt) >= holdMs) {
+      consumed = true; event.action = Action::CLEAR; event.chord = chord;
+    }
+    return event;
+  }
+
+ private:
+  uint16_t candidate = 0, stable = 0, chord = 0;
+  uint32_t candidateAt = 0, pressedAt = 0;
+  bool consumed = false;
+
+  static Event classify(uint16_t chord) {
+    Event e; e.chord = chord;
+    if (!(chord & ~ALL_DOTS)) { e.action = Action::CELL; e.cell = uint8_t(chord & ALL_DOTS); }
+    else if (chord == SPACE) e.action = Action::SPACE;
+    else if (chord == ERASE) e.action = Action::ERASE;
+    else if (chord == SEND) e.action = Action::SEND;
+    else e.action = Action::IGNORED; // dots mixed with a function key
+    return e;
+  }
+};
+
+#ifdef ARDUINO
+class KeyInput {
+ public:
+  ChordReader reader;
+  void begin() const {
+    for (int i = 0; i < config::KEY_COUNT; ++i) pinMode(config::KEY_PINS[i], INPUT_PULLUP);
+  }
+  uint16_t read() const {
+    uint16_t mask = 0;
+    for (int i = 0; i < config::KEY_COUNT; ++i)
+      if (digitalRead(config::KEY_PINS[i]) == LOW) mask |= config::KEY_ROLES[i];
+    return mask;
+  }
+  Event poll(uint32_t now) { return reader.update(read(), now); }
+};
+#endif
+}
+}
+```
+
+## firmware/earlink/BrailleInput.h
+
+```cpp
+#pragma once
+#include <stdint.h>
+#include <algorithm>
+#include <cstring>
+#include <string>
+#include <vector>
+#include "BrailleText.h"
+
+// Braille cells typed on the Perkins keys -> UTF-8 text for the app.
+//
+// The forward translator (BrailleText.h) is the single source of truth. A word
+// is accepted only when translate(decoded) reproduces exactly the typed cells
+// with no issue, so every context rule (ㅏ omission exceptions, 36 separator,
+// abbreviations, number rules) is honoured without being re-implemented here.
+// Candidates are tried in preference order; the first exact match wins.
+//
+// Scope: Hangul syllables and contractions, the 7 abbreviation words, numbers,
+// . , ? ! ... … - ~ : ; /, isolated/attached jamo (ㅋㅋ, ㅠㅠ). Anything else is
+// sent as Unicode braille (U+2800 + cell), which the forward translator accepts
+// back unchanged, so nothing is dropped or guessed.
+//
+// Inherent braille ambiguities, resolved by preference:
+//  - final ㅍ/ㅌ/ㅋ use the same cell as . ? ! — at the end of a word (or before
+//    more of those marks) the mark wins unless the word ends with a noun in
+//    FINAL_NOUNS (앞, 끝, 부엌 ...). Inside a word the final wins (같이, 앞으로).
+//  - 123456 alone is 옹 and also the isolated-jamo sign: ㅋ/ㅠ win after a
+//    non-Hangul character (ㅋㅋ, ㅠㅠ), 옹 wins otherwise.
+//  - ㅖ is 34 and final ㅆ is 34, so 났/녜, 탔/톄, 잤/졔 ... share cells (only 팠
+//    is spelled out by the rules). The ㅆ reading wins (만났다, 탔어, 바빴다),
+//    except ㅎ where 혜 wins (지혜, 은혜, 혜택) over the rare 핬.
+//  - a number followed by ㄴㄷㅁㅋㅌㅍㅎ/운 is printed with a blank, so "5명"
+//    comes back as "5 명".
+namespace earlink {
+namespace input {
+
+inline void appendUtf8(std::string& s, uint32_t cp) {
+  if (cp < 0x80) s += char(cp);
+  else if (cp < 0x800) { s += char(0xc0 | (cp >> 6)); s += char(0x80 | (cp & 63)); }
+  else if (cp < 0x10000) {
+    s += char(0xe0 | (cp >> 12)); s += char(0x80 | ((cp >> 6) & 63)); s += char(0x80 | (cp & 63));
+  } else {
+    s += char(0xf0 | (cp >> 18)); s += char(0x80 | ((cp >> 12) & 63));
+    s += char(0x80 | ((cp >> 6) & 63)); s += char(0x80 | (cp & 63));
+  }
+}
+inline void appendRaw(std::string& s, const uint8_t* cells, size_t n) {
+  for (size_t i = 0; i < n; ++i) appendUtf8(s, 0x2800 + (cells[i] & 0x3f));
+}
+// Forward translation of a candidate; returns the issue count.
+inline uint16_t encode(const std::string& text, std::vector<uint8_t>& cells) {
+  cells.clear();
+  return detail::Translator(text, &cells).run().unsupported;
+}
+// Matches a rules pattern ("6-4"; "" matches zero cells) at cells[at..limit).
+inline bool match(const char* pattern, const uint8_t* cells, size_t limit, size_t at, size_t& end) {
+  end = at;
+  if (!*pattern) return true;
+  uint8_t mask = 0;
+  for (;; ++pattern) {
+    if (*pattern == '-' || !*pattern) {
+      if (end >= limit || cells[end] != mask) return false;
+      ++end; mask = 0;
+      if (!*pattern) return true;
+    } else if (*pattern >= '1' && *pattern <= '6') mask |= uint8_t(1u << (*pattern - '1'));
+  }
+}
+
+// Nouns that really end in ㅍ/ㅌ/ㅋ and often end a word ("집 앞", "끝.").
+static const char* const FINAL_NOUNS[] = {
+  "앞","옆","숲","잎","늪","짚","섶","무릎","헝겊",
+  "끝","밭","밑","볕","솥","팥","겉","숱","부엌","녘"
+};
+struct Mark { const char* text; const char* pattern; };
+static const Mark MARKS[] = {
+  {"...","256-256-256"},{"…","6-6-6"},{".","256"},{",","5"},{"?","236"},{"!","235"},
+  {"-","36"},{"~","4-35"},{":","5-2"},{";","56-23"},{"/","456-34"}
+};
+
+enum Kind : uint8_t { START, HANGUL, ABBREVIATION, NUMBER, PUNCT, JAMO };
+struct Candidate { std::string text; size_t end; Kind kind; };
+
+class WordDecoder {
+ public:
+  unsigned budget = 4000; // candidate trials per word, all attempts together
+  unsigned used = 0;
+
+  // Always returns a string; Unicode braille marks the cells it could not read.
+  std::string decode(const uint8_t* cells, size_t n) {
+    used = 0;
+    std::string text;
+    if (!n) return text;
+    if (search(cells, n, n, text)) return text;
+    // Usually the syllable still being typed (an initial without its vowel).
+    for (size_t k = 1; k <= 3 && k < n; ++k)
+      if (search(cells, n, n - k, text)) { appendRaw(text, cells + n - k, k); return text; }
+    text.clear(); appendRaw(text, cells, n);
+    return text;
+  }
+
+ private:
+  struct Frame { size_t pos; std::vector<Candidate> options; size_t next; };
+  std::vector<Frame> frames;
+  std::vector<uint8_t> scratch;
+
+  static uint8_t cell(const char* dots) { return earlink::dots(dots); }
+  static bool punctLike(uint8_t c) { return c == cell("256") || c == cell("236") || c == cell("235"); }
+  static bool endsWith(const std::string& s, const char* tail) {
+    const size_t n = std::strlen(tail);
+    return s.size() >= n && s.compare(s.size() - n, n, tail) == 0;
+  }
+
+  std::string joined() const {
+    std::string s;
+    for (const auto& f : frames) s += f.options[f.next - 1].text;
+    return s;
+  }
+  // Every token except the last must already encode to exactly the typed cells
+  // (a token's cells depend on at most the token after it).
+  bool prefixOk(const std::string& text, const uint8_t* cells, size_t pos) {
+    encode(text, scratch);
+    return scratch.size() >= pos && std::equal(cells, cells + pos, scratch.begin());
+  }
+  bool finalOk(const std::string& text, const uint8_t* cells, size_t n, size_t limit) {
+    std::string full = text;
+    appendRaw(full, cells + limit, n - limit);
+    return encode(full, scratch) == 0 && scratch.size() == n && std::equal(cells, cells + n, scratch.begin());
+  }
+
+  bool search(const uint8_t* cells, size_t n, size_t limit, std::string& out) {
+    frames.clear();
+    frames.push_back(Frame{0, {}, 0});
+    generate(cells, limit, 0, START, std::string(), frames.back().options);
+    while (!frames.empty()) {
+      Frame& f = frames.back();
+      if (f.next == f.options.size()) { frames.pop_back(); continue; }
+      if (used >= budget) return false;
+      ++used;
+      const Candidate& c = f.options[f.next++];
+      const std::string text = joined();
+      if (!prefixOk(text, cells, f.pos)) continue;
+      if (c.end == limit) {
+        if (finalOk(text, cells, n, limit)) { out = text; return true; }
+        continue;
+      }
+      const size_t end = c.end; const Kind kind = c.kind;
+      frames.push_back(Frame{end, {}, 0});
+      generate(cells, limit, end, kind, text, frames.back().options);
+    }
+    return false;
+  }
+
+  void generate(const uint8_t* cells, size_t limit, size_t pos, Kind prev, const std::string& before,
+                std::vector<Candidate>& out) const {
+    size_t end = 0;
+    // K18 abbreviations only start a word.
+    if (prev == START || prev == PUNCT) {
+      for (const auto& word : rules::WORDS) {
+        if (!match(word.pattern, cells, limit, pos, end)) continue;
+        std::string text;
+        for (unsigned w = 0; w < 4 && word.syllables[w]; ++w) appendUtf8(text, word.syllables[w]);
+        out.push_back({text, end, ABBREVIATION});
+      }
+    }
+    number(cells, limit, pos, out);
+    std::vector<Candidate> early, late;
+    jamo(cells, limit, pos, prev, early, late);
+    out.insert(out.end(), early.begin(), early.end());
+    syllables(cells, limit, pos, before, out);
+    for (const auto& mark : MARKS)
+      if (match(mark.pattern, cells, limit, pos, end)) out.push_back({mark.text, end, PUNCT});
+    out.insert(out.end(), late.begin(), late.end());
+  }
+
+  static void number(const uint8_t* cells, size_t limit, size_t pos, std::vector<Candidate>& out) {
+    if (pos >= limit || cells[pos] != cell("3456")) return;
+    auto digitOf = [&](size_t at) -> int {
+      if (at >= limit) return -1;
+      for (int d = 0; d < 10; ++d) if (cells[at] == cell(rules::LATIN[d])) return d == 9 ? 0 : d + 1;
+      return -1;
+    };
+    std::string text; size_t at = pos + 1; unsigned digits = 0;
+    while (at < limit) {
+      const int d = digitOf(at);
+      if (d >= 0) { text += char('0' + d); ++at; ++digits; continue; }
+      if (digits && (cells[at] == cell("2") || cells[at] == cell("256")) && digitOf(at + 1) >= 0) {
+        text += cells[at] == cell("2") ? ',' : '.'; ++at; continue;
+      }
+      break;
+    }
+    if (digits) out.push_back({text, at, NUMBER});
+  }
+
+  static void jamo(const uint8_t* cells, size_t limit, size_t pos, Kind prev,
+                   std::vector<Candidate>& early, std::vector<Candidate>& late) {
+    size_t mid = 0, end = 0;
+    const bool afterHangul = prev == HANGUL || prev == ABBREVIATION;
+    if (match("123456", cells, limit, pos, mid)) {
+      for (uint32_t cp = 0x3131; cp <= 0x314e; ++cp) {
+        const int c = detail::consonant(cp);
+        if (c < 0 || !match(rules::FINAL[c], cells, limit, mid, end)) continue;
+        std::string text; appendUtf8(text, cp);
+        (afterHangul ? late : early).push_back({text, end, JAMO});
+      }
+      for (int v = 0; v < 21; ++v) {
+        if (!match(rules::VOWEL[v], cells, limit, mid, end)) continue;
+        std::string text; appendUtf8(text, 0x314f + v);
+        const bool favourite = v == 13 || v == 17 || v == 18; // ㅜ ㅠ ㅡ
+        (!afterHangul && favourite ? early : late).push_back({text, end, JAMO});
+      }
+    }
+    if (match("456", cells, limit, pos, mid)) {
+      for (uint32_t cp = 0x3131; cp <= 0x314e; ++cp) {
+        const int c = detail::consonant(cp);
+        if (c < 0 || !match(rules::FINAL[c], cells, limit, mid, end)) continue;
+        std::string text; appendUtf8(text, cp);
+        late.push_back({text, end, JAMO});
+      }
+    }
+  }
+
+  struct Syllable { uint32_t cp; size_t end; bool demoted; bool rare; };
+  static bool sjc(int l) { return l == 9 || l == 10 || l == 12 || l == 13 || l == 14; } // ㅅㅆㅈㅉㅊ
+
+  static void syllables(const uint8_t* cells, size_t limit, size_t pos, const std::string& before,
+                        std::vector<Candidate>& out) {
+    std::vector<Syllable> found;
+    auto add = [&](int l, int v, int t, size_t finalStart, size_t end) {
+      const uint32_t cp = 0xac00 + uint32_t(l) * 588 + uint32_t(v) * 28 + uint32_t(t);
+      bool demoted = false;
+      if (end > finalStart && punctLike(cells[end - 1]) && (end == limit || punctLike(cells[end]))) {
+        std::string word = before; appendUtf8(word, cp);
+        demoted = true;
+        for (const char* noun : FINAL_NOUNS) if (endsWith(word, noun)) demoted = false;
+      }
+      found.push_back({cp, end, demoted, l == 18 && v == 0 && t == 20}); // 핬 vs 혜
+    };
+    auto finals = [&](int l, int v, size_t at) {
+      size_t end = 0;
+      for (int t = 0; t < 28; ++t) if (match(rules::FINAL[t], cells, limit, at, end)) add(l, v, t, at, end);
+    };
+    for (int sep = 0; sep < 2; ++sep) {
+      size_t p0 = pos;
+      if (sep) { if (pos >= limit || cells[pos] != cell("36")) break; p0 = pos + 1; }
+      size_t p1 = 0, p2 = 0, p3 = 0;
+      if (!sep) {
+        // K15/K16 것, 껏
+        if (match("456-234", cells, limit, p0, p1)) add(0, 4, 19, p1, p1);
+        if (match("6-456-234", cells, limit, p0, p1)) add(1, 4, 19, p1, p1);
+        // K13 ㅏ omitted / 가, 사
+        for (int l = 0; l < 19; ++l) {
+          if (!*rules::A_SYLLABLE[l] || !match(rules::A_SYLLABLE[l], cells, limit, p0, p1)) continue;
+          finals(l, 0, p1);
+        }
+      }
+      for (int l = 0; l < 19; ++l) {
+        if (sep && l != 11) continue; // separator precedes ㅇ+ㅖ/ㅐ only
+        if (!match(rules::INITIAL[l], cells, limit, p0, p1)) continue;
+        if (!sep && sjc(l) && match("12456", cells, limit, p1, p2)) add(l, 4, 21, p2, p2); // 성 정 청
+        for (const auto& c : rules::VC) {
+          if (sep || (c.vowel == 6 && c.final == 21 && sjc(l))) continue;
+          if (!match(c.pattern, cells, limit, p1, p2)) continue;
+          for (int t = 0; t < 28; ++t)
+            if (rules::FIRST_FINAL[t] == c.final && match(rules::REMAINDER[t], cells, limit, p2, p3))
+              add(l, c.vowel, t, p2, p3);
+        }
+        for (int v = 0; v < 21; ++v) {
+          if (sep && v != 7 && v != 1) continue;
+          if (p1 == p0 && l != 11) continue;
+          if (match(rules::VOWEL[v], cells, limit, p1, p2)) finals(l, v, p2);
+        }
+      }
+    }
+    std::stable_sort(found.begin(), found.end(), [](const Syllable& a, const Syllable& b) {
+      if (a.demoted != b.demoted) return !a.demoted;
+      if (a.end != b.end) return a.end > b.end;
+      return !a.rare && b.rare;
+    });
+    for (const auto& s : found) { std::string text; appendUtf8(text, s.cp); out.push_back({text, s.end, HANGUL}); }
+  }
+};
+
+// The typed cells plus their decoded text. Words (split at blank cells) are
+// cached, so typing only re-decodes the word being edited.
+class Composer {
+ public:
+  explicit Composer(size_t maxCells = 256) : limit(maxCells) {}
+  const std::vector<uint8_t>& cells() const { return typed; }
+  bool empty() const { return typed.empty(); }
+  bool add(uint8_t cell) {
+    if (typed.size() >= limit) return false;
+    typed.push_back(cell & 0x3f); return true;
+  }
+  bool erase() { if (typed.empty()) return false; typed.pop_back(); return true; }
+  bool clear() { const bool had = !typed.empty(); typed.clear(); return had; }
+  std::string text() {
+    std::string result;
+    std::vector<Word> words;
+    size_t start = 0;
+    for (size_t i = 0; i <= typed.size(); ++i) {
+      if (i < typed.size() && typed[i]) continue;
+      Word word{std::vector<uint8_t>(typed.begin() + start, typed.begin() + i), std::string()};
+      const size_t index = words.size();
+      if (index < cache.size() && cache[index].cells == word.cells) word.text = cache[index].text;
+      else word.text = decoder.decode(word.cells.data(), word.cells.size());
+      result += word.text;
+      if (i < typed.size()) result += ' ';
+      words.push_back(std::move(word));
+      start = i + 1;
+    }
+    cache = std::move(words);
+    return result;
+  }
+ private:
+  struct Word { std::vector<uint8_t> cells; std::string text; };
+  size_t limit;
+  std::vector<uint8_t> typed;
+  std::vector<Word> cache;
+  WordDecoder decoder;
+};
+}
+}
+```
+
+## firmware/earlink/InputSender.h
+
+```cpp
+#pragma once
+#include <stdint.h>
+#include <deque>
+#include <string>
+#include "Protocol.h"
+
+// ===== Typed text, device -> app (for the app developer) =====
+// Characteristic 8f3a0004-7c3b-4b8a-9f52-123456789abc, NOTIFY only.
+// Subscribe (CCCD) to receive it. Same framing as the text the app writes,
+// little-endian, one message = START, DATA..., END with the same nonzero id:
+//   START  45 4C 01 01 id(2) length(2) flags(1)      9 bytes
+//   DATA   45 4C 01 02 id(2) offset(2) bytes(1..12)  at most 20 bytes
+//   END    45 4C 01 03 id(2)                         6 bytes
+// Payload is UTF-8, `length` bytes in total (0 = the input is now empty).
+// flags bit0 = 1: the user pressed SEND -> post it as a chat message and clear
+//               the input field.
+// flags bit0 = 0: preview while typing -> replace the whole input field.
+// A newer START may arrive before an unfinished preview's END: drop the old
+// one. Sent (flag 1) messages are always delivered completely and in order.
+// Cells the device could not read arrive as Unicode braille (U+2800..U+283F).
+namespace earlink {
+class InputSender {
+ public:
+  using Notify = void (*)(const uint8_t* data, size_t size, void* context);
+  uint32_t gapMs = 8;
+
+  void push(const std::string& text, bool committed) {
+    // A newer state replaces any preview that is waiting or half sent.
+    if (sending && !queue.front().committed) { queue.pop_front(); sending = false; }
+    for (auto it = queue.begin(); it != queue.end();) {
+      if (!it->committed && !(sending && it == queue.begin())) it = queue.erase(it);
+      else ++it;
+    }
+    Job job; job.id = nextId++; if (!nextId) nextId = 1;
+    job.committed = committed;
+    job.text = text.size() > 0xffff ? text.substr(0, 0xffff) : text;
+    queue.push_back(std::move(job));
+  }
+  void reset() { queue.clear(); sending = false; }
+  bool idle() const { return queue.empty(); }
+
+  // Sends at most one packet. Returns true when a packet went out.
+  bool tick(uint32_t now, Notify notify, void* context) {
+    if (queue.empty() || uint32_t(now - lastAt) < gapMs) return false;
+    Job& job = queue.front();
+    uint8_t packet[20] = {0x45, 0x4c, 1, 0};
+    write16(packet + 4, job.id);
+    size_t size = 6;
+    if (!sending) {
+      sending = true; offset = 0;
+      packet[3] = 1; write16(packet + 6, uint16_t(job.text.size())); packet[8] = job.committed ? 1 : 0;
+      size = 9;
+    } else if (offset < job.text.size()) {
+      const size_t chunk = job.text.size() - offset < 12 ? job.text.size() - offset : 12;
+      packet[3] = 2; write16(packet + 6, uint16_t(offset));
+      for (size_t i = 0; i < chunk; ++i) packet[8 + i] = uint8_t(job.text[offset + i]);
+      offset += chunk; size = 8 + chunk;
+    } else {
+      packet[3] = 3;
+      queue.pop_front(); sending = false;
+    }
+    lastAt = now;
+    notify(packet, size, context);
+    return true;
+  }
+
+ private:
+  struct Job { uint16_t id = 0; bool committed = false; std::string text; };
+  std::deque<Job> queue;
+  bool sending = false;
+  size_t offset = 0;
+  uint16_t nextId = 1;
+  uint32_t lastAt = 0;
+};
+}
+```
+
 ## firmware/earlink/earlink.ino
 
 ```cpp
@@ -957,20 +1483,29 @@ class DisplayController {
 #include "Protocol.h"
 #include "DisplayController.h"
 #include "BrailleOutput.h"
+#include "KeyInput.h"
+#include "BrailleInput.h"
+#include "InputSender.h"
 
 // Existing UUIDs and v1 wire format are unchanged.
 static const char* SERVICE_UUID = "8f3a0001-7c3b-4b8a-9f52-123456789abc";
 static const char* TEXT_UUID = "8f3a0002-7c3b-4b8a-9f52-123456789abc";
 static const char* STATUS_UUID = "8f3a0003-7c3b-4b8a-9f52-123456789abc";
+// New: text typed on the Perkins keys, device -> app. Format in InputSender.h.
+static const char* INPUT_UUID = "8f3a0004-7c3b-4b8a-9f52-123456789abc";
 struct Event { uint8_t kind, size, data[20]; };
 QueueHandle_t events = nullptr;
 BLECharacteristic* statusCharacteristic = nullptr;
+BLECharacteristic* inputCharacteristic = nullptr;
 std::atomic<bool> connected(false), disconnected(false), overflow(false);
 std::atomic<bool> connectionPending(false);
 earlink::Receiver receiver;
 earlink::DisplayController display;
 earlink::Pager& pager = display.pager;
 earlink::BrailleOutput brailleOutput;
+earlink::keys::KeyInput keyInput;
+earlink::input::Composer composer(config::MAX_INPUT_CELLS);
+earlink::InputSender inputSender;
 uint16_t acknowledgedId = 0;
 earlink::Result acknowledgedResult = earlink::NONE;
 
@@ -1095,9 +1630,49 @@ void acceptText(uint32_t now) {
   message.translation = earlink::translate(receiver.text);
   if (!pager.enqueue(std::move(message), now)) acknowledgedResult = earlink::QUEUE_FULL;
 }
+void notifyInput(const uint8_t* data, size_t size, void*) {
+  if (!inputCharacteristic) return;
+  inputCharacteristic->setValue(const_cast<uint8_t*>(data), size);
+  inputCharacteristic->notify();
+}
+void handleKey(const earlink::keys::Event& event) {
+  using earlink::keys::Action;
+  bool changed = false;
+  switch (event.action) {
+    case Action::CELL:
+    case Action::SPACE:
+      changed = composer.add(event.cell);
+      if (!changed) Serial.printf("[key] input full (%u cells)\n", unsigned(config::MAX_INPUT_CELLS));
+      break;
+    case Action::ERASE: changed = composer.erase(); break;
+    case Action::CLEAR: changed = composer.clear(); break;
+    case Action::SEND: {
+      const std::string text = composer.text();
+      if (text.empty()) { Serial.println("[key] send: nothing typed"); return; }
+      if (!connected.load()) { Serial.printf("[key] send: not connected, kept \"%s\"\n", text.c_str()); return; }
+      inputSender.push(text, true); composer.clear();
+      Serial.printf("[key] SEND bytes=%u text=\"%s\"\n", unsigned(text.size()), text.c_str());
+      return;
+    }
+    case Action::IGNORED:
+      Serial.printf("[key] ignored keys=%s (dots mixed with space/send/erase)\n", earlink::keys::describe(event.chord).c_str());
+      return;
+    default: return;
+  }
+  const uint32_t started = micros();
+  const std::string text = composer.text();
+  const uint32_t decodeUs = micros() - started;
+  const auto& cells = composer.cells();
+  Serial.printf("[key] keys=%s action=%s cell=%02X cells=%u/%u decode_us=%lu text=\"%s\"\n",
+    earlink::keys::describe(event.chord).c_str(), earlink::keys::actionName(event.action),
+    cells.empty() || event.action != Action::CELL ? 0 : cells.back(), unsigned(cells.size()),
+    unsigned(config::MAX_INPUT_CELLS), static_cast<unsigned long>(decodeUs), text.c_str());
+  if (changed && connected.load()) inputSender.push(text, false);
+}
 void setup() {
   Serial.begin(115200);
   brailleOutput.begin(); // Active-high; startup releases every channel.
+  keyInput.begin();
   const auto reason = esp_reset_reason();
   Serial.printf("[boot] reset=%s code=%u startup_bytes=00,00,00 output=%s\n",
     resetReasonName(reason), unsigned(reason), config::OUTPUT_ENABLED ? "GPIO" : "preview");
@@ -1119,10 +1694,13 @@ void setup() {
     BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY);
   statusCharacteristic->addDescriptor(new BLE2902());
   statusCharacteristic->setCallbacks(new WriteCallbacks(2));
+  inputCharacteristic = service->createCharacteristic(INPUT_UUID, BLECharacteristic::PROPERTY_NOTIFY);
+  inputCharacteristic->addDescriptor(new BLE2902());
   publishStatus(); service->start();
   auto* advertising = server->getAdvertising();
   advertising->addServiceUUID(SERVICE_UUID); advertising->setScanResponse(true); advertising->start();
   Serial.println("[EARLINK READY] HIGH=DOWN / LOW=UP; page: braille=LOW, background=HIGH; idle=00,00,00; BLE connect=column wave");
+  Serial.println("[key] Perkins keys: 14=send 21=dot3 27=dot2 26=dot1 13=space 33=dot4 12=dot5 32=dot6 25=erase (hold=clear)");
 }
 void loop() {
   logHealth(millis());
@@ -1130,6 +1708,7 @@ void loop() {
   if (disconnected.exchange(false)) {
     xQueueReset(events); receiver.reset(); display.clear();
     acknowledgedId = 0; acknowledgedResult = earlink::NONE;
+    composer.clear(); inputSender.reset();
     writeOutput(); publishStatus();
     if (!connected.load()) BLEDevice::startAdvertising();
     Serial.println("[BRAILLE] Disconnected - all channels released");
@@ -1144,7 +1723,11 @@ void loop() {
     display.startConnectionWave(now);
     writeOutput(); publishStatus();
     Serial.println("[wave] Begin: six columns, three channels per pulse");
+    if (!composer.empty()) inputSender.push(composer.text(), false);
   }
+  const auto keyEvent = keyInput.poll(now);
+  if (keyEvent.action != earlink::keys::Action::NONE) handleKey(keyEvent);
+  if (connected.load()) inputSender.tick(now, notifyInput, nullptr);
   Event event{};
   while (xQueueReceive(events, &event, 0) == pdTRUE) {
     if (!connected.load()) continue;
@@ -1518,7 +2101,7 @@ static void translationTests() {
   assert(translate(u8"ㄱ").unsupported == 0);
   assert(translate(u8"⠁⠂⠄").cells == std::vector<uint8_t>({1, 2, 4}));
   assert(translate(std::string("\xf0\x80\x80\x80", 4)).unsupported == 1);
-  for (const auto bad : {std::string("\xc0\xaf", 2), std::string("\xed\xa0\x80", 3),
+  for (const auto& bad : {std::string("\xc0\xaf", 2), std::string("\xed\xa0\x80", 3),
                         std::string("\xf4\x90\x80\x80", 4), std::string("\xe3\x80", 2)})
     assert(translate(bad).unsupported == 1);
   assert(translate(std::string("\xe3", 1) + "7").cells == translate("7").cells);
@@ -2034,7 +2617,7 @@ def run(args, **kwargs):
 def compile_tests():
     compiler = shutil.which('g++') or shutil.which('clang++')
     extension = '.exe' if os.name == 'nt' else ''
-    programs = ['core_test', 'braille_cli', 'context_test']
+    programs = ['core_test', 'braille_cli', 'context_test', 'input_test']
     if compiler:
         for program in programs:
             run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror',
@@ -2083,9 +2666,12 @@ def main():
     run([node, '--experimental-strip-types', '--test', 'tests/earlink-protocol.test.mjs'])
     oracle = BUILD / 'hangul-oracle.bin'
     write_oracle(oracle)
-    core, cli, context = compile_tests()
+    core, cli, context, keys = compile_tests()
     run([str(core), str(BUILD / 'protocol-fixture.bin'), str(BUILD / 'protocol-text.txt')])
     run([str(context), str(oracle), str(REPORT / 'context-coverage.json')])
+    # Perkins key input: braille -> text, chords, and real device packets for the web test.
+    run([str(keys), str(BUILD / 'input-fixture.bin'), str(BUILD / 'input-expected.json')])
+    run([node, '--experimental-strip-types', '--test', 'tests/earlink-input.test.mjs'])
     inputs = BUILD / 'braille-inputs.hex'
     inputs.write_text(''.join(case['text'].encode('utf-8').hex() + '\n' for case in CASES), encoding='ascii')
     output = run([str(cli), str(inputs)], capture_output=True, text=True).stdout.splitlines()
@@ -8124,6 +8710,185 @@ int main(int argc, char** argv) {
 }
 ```
 
+## firmware/tests/input_test.cpp
+
+```cpp
+// Perkins key input: braille cells -> text (BrailleInput.h), chords (KeyInput.h)
+// and the device -> web framing (InputSender.h).
+// Usage: input_test <fixture.bin> <expected.json>
+// The fixture holds real InputSender packets ([length][packet]...) for
+// tests/earlink-input.test.mjs, which reassembles them with the web code.
+#include <cstdio>
+#include <fstream>
+#include <map>
+#include <string>
+#include <vector>
+#include "../earlink/BrailleText.h"
+#include "../earlink/BrailleInput.h"
+#include "../earlink/KeyInput.h"
+#include "../earlink/InputSender.h"
+
+using namespace earlink;
+static int failures = 0;
+
+static void check(bool ok, const std::string& what) {
+  if (ok) return;
+  ++failures;
+  std::printf("FAIL %s\n", what.c_str());
+}
+static std::string character(uint32_t cp) { std::string s; input::appendUtf8(s, cp); return s; }
+
+// text -> cells (firmware translator) -> typed into Composer -> text.
+// Whatever comes back must translate to exactly the typed cells again.
+static std::string roundTrip(const std::string& text) {
+  const Translation typed = translate(text);
+  input::Composer composer(100000);
+  for (const uint8_t cell : typed.cells) composer.add(cell);
+  const std::string read = composer.text();
+  const Translation again = translate(read);
+  check(!again.unsupported && again.cells == typed.cells, "cell-exact: " + text + " -> " + read);
+  return read;
+}
+static void expect(const std::string& text, const std::string& want) {
+  const std::string got = roundTrip(text);
+  check(got == want, "read " + text + " -> " + got + ", expected " + want);
+}
+
+static void sentences() {
+  const char* const same[] = {
+    "안녕하세요", "가방", "그래서 밥을 먹었어요.", "오늘 3시에 만나요.", "밥 먹었어?", "가격은 5,000원입니다!",
+    "ㅋㅋㅋ 진짜?", "진짜ㅋㅋ", "ㅠㅠ", "ㅎㅎ 좋아", "아예 몰라", "얘기해", "야애", "와애", "와!", "같이 가자",
+    "집 앞 카페", "끝.", "숲 속", "부엌", "그런데 왜?", "그리하여", "그러므로", "그러면서", "것", "껏", "성공",
+    "정말", "청소", "셩", "옹기", "옹", "섞다", "읊다", "닭", "값", "삶", "않다", "괜찮아", "웨딩", "쉬어", "뛰어",
+    "의자", "희망", "1.5", "3,000", "10시 30분", "2층", "1월", "3원", "사과", "싸다", "까치", "차", "팠다",
+    "나아가", "자아", "음...", "뭐…", "뭐?!", "가?", "가.", "가!", "아...", "오케이~", "점심: 김밥", "나/너",
+    "만났다", "탔어", "잤다", "바빴다", "지혜", "은혜", "혜택", "예", "쇠", "의의", "영어", "연필",
+  };
+  for (const char* text : same) expect(text, text);
+  // Same braille, different reading: documented preferences.
+  expect("3명", "3 명");   // K44 blank after a number
+  expect("2통", "2 통");
+  expect("아.", "앞");      // final ㅍ = '.'; 앞 is in FINAL_NOUNS
+  expect("옹!", "ㅋ");      // 123456 + 235 at word start reads as jamo
+  expect("녜", "났");       // ㅖ and final ㅆ are both 34
+  expect("핬", "혜");
+  // Outside the input scope: sent as Unicode braille, still cell-exact.
+  for (const char* text : {"a/b", "(웃음)"}) {
+    const std::string got = roundTrip(text);
+    check(got.find("\xe2\xa0") != std::string::npos, std::string("raw braille for ") + text);
+  }
+  // Preview of a syllable still being typed: an initial alone stays raw.
+  input::Composer composer;
+  for (const uint8_t cell : translate("고").cells) composer.add(cell);
+  composer.erase();
+  check(composer.text() == character(0x2808), "dangling initial ㄱ previews as ⠈");
+}
+
+static void exhaustive() {
+  struct Context { const char* before; const char* after; };
+  const Context contexts[] = {
+    {"", "다"}, {"", "아"}, {"", "애"}, {"", "예"}, {"", "이"}, {"", "요"}, {"", "어"}, {"", "우"},
+    {"", "의"}, {"", "와"}, {"아", "다"}, {"야", "다"}, {"와", "다"}, {"우", "다"}, {"워", "다"},
+    {"가", "다"}, {"나", "다"}, {"", ""}
+  };
+  long total = 0, known = 0, endMark = 0;
+  for (const auto& context : contexts) {
+    for (uint32_t cp = 0xac00; cp <= 0xd7a3; ++cp) {
+      const std::string text = std::string(context.before) + character(cp) + context.after;
+      ++total;
+      if (roundTrip(text) == text) continue;
+      const int l = int((cp - 0xac00) / 588), v = int((cp - 0xac00) % 588 / 28), t = int((cp - 0xac00) % 28);
+      // ㅖ (34) and final ㅆ (34) after an initial that is also its ㅏ contraction.
+      const bool shared = *rules::A_SYLLABLE[l] && std::string(rules::A_SYLLABLE[l]) == rules::INITIAL[l];
+      if (shared && (v == 7 || (v == 0 && t == 20))) { ++known; continue; }
+      // 옹 + ㅜ/예 at word start reads as jamo (123456 + 134 / 34).
+      if (cp == 0xc639 && (std::string(context.after) == "우" || std::string(context.after) == "예")) { ++known; continue; }
+      // A lone syllable ending in ㄾ ㄿ ㅋ ㅌ ㅍ reads as a mark (. ? !).
+      if (!*context.before && !*context.after && (t == 13 || t == 14 || t == 24 || t == 25 || t == 26)) { ++endMark; continue; }
+      check(false, "context " + text);
+    }
+  }
+  std::printf("input exhaustive: %ld texts, all cell-exact; %ld shared ㅖ/ㅆ or 옹 readings, %ld lone final-as-mark\n",
+              total, known, endMark);
+}
+
+static void chords() {
+  using namespace config::keyrole;
+  keys::ChordReader reader;
+  uint32_t now = 0;
+  std::vector<keys::Event> events;
+  auto hold = [&](uint16_t mask, uint32_t ms) {
+    for (uint32_t i = 0; i < ms; i += 2, now += 2) {
+      const auto event = reader.update(mask, now);
+      if (event.action != keys::Action::NONE) events.push_back(event);
+    }
+  };
+  auto expectOne = [&](const char* name, keys::Action action, uint8_t cell) {
+    check(events.size() == 1 && events[0].action == action && events[0].cell == cell, std::string("chord ") + name);
+    events.clear();
+  };
+  hold(DOT1, 10); hold(DOT1 | DOT2, 15); hold(DOT1 | DOT2 | DOT4 | DOT6, 120); hold(DOT2 | DOT4, 10); hold(0, 60);
+  expectOne("staggered 1246", keys::Action::CELL, 0x2b);
+  for (int i = 0; i < 4; ++i) { hold(DOT3, 2); hold(0, 2); }
+  hold(DOT3, 80);
+  for (int i = 0; i < 3; ++i) { hold(0, 2); hold(DOT3, 2); }
+  hold(0, 60);
+  expectOne("bouncing dot 3", keys::Action::CELL, 0x04);
+  hold(DOT1 | SPACE, 1); hold(0, 60);
+  check(events.empty(), "1 ms glitch ignored"); events.clear();
+  hold(SPACE, 80); hold(0, 60); expectOne("space", keys::Action::SPACE, 0);
+  hold(ERASE, 80); hold(0, 60); expectOne("erase tap", keys::Action::ERASE, 0);
+  hold(ERASE, 1000); hold(0, 60); expectOne("erase hold clears once", keys::Action::CLEAR, 0);
+  hold(SEND, 80); hold(0, 60); expectOne("send", keys::Action::SEND, 0);
+  hold(DOT1 | SEND, 80); hold(0, 60); expectOne("dot + send ignored", keys::Action::IGNORED, 0);
+  check(keys::describe(DOT1 | DOT2 | SPACE) == "점1+점2+띄어쓰기", "describe chord");
+}
+
+// Typing session through Composer + InputSender, recorded for the web test.
+struct Recorder { std::vector<std::vector<uint8_t>> packets; };
+static void record(const uint8_t* data, size_t size, void* context) {
+  static_cast<Recorder*>(context)->packets.emplace_back(data, data + size);
+}
+static void sender(const char* fixturePath, const char* expectedPath) {
+  Recorder recorder;
+  InputSender out;
+  input::Composer composer;
+  uint32_t now = 0;
+  auto pump = [&](int ticks) { for (int i = 0; i < ticks; ++i) { now += 8; out.tick(now, record, &recorder); } };
+  auto type = [&](const char* text, int ticksPerCell) {
+    for (const uint8_t cell : translate(text).cells) { composer.add(cell); out.push(composer.text(), false); pump(ticksPerCell); }
+  };
+  type("안녕하세요 반갑습니다!", 2);   // fast typing: most previews are superseded mid-way
+  const std::string sent = composer.text();
+  out.push(sent, true); composer.clear();
+  type("ㅋㅋ", 40);
+  const std::string draft = composer.text();
+  while (!out.idle()) pump(1);
+  for (const auto& packet : recorder.packets) check(packet.size() <= 20, "packet fits 20 bytes");
+  check(sent == "안녕하세요 반갑습니다!" && draft == "ㅋㅋ", "typed session text");
+
+  std::ofstream fixture(fixturePath, std::ios::binary);
+  for (const auto& packet : recorder.packets) {
+    fixture.put(char(packet.size()));
+    fixture.write(reinterpret_cast<const char*>(packet.data()), std::streamsize(packet.size()));
+  }
+  std::ofstream expected(expectedPath, std::ios::binary);
+  expected << "{\"committed\":[\"" << sent << "\"],\"draft\":\"" << draft << "\"}\n";
+  check(bool(fixture) && bool(expected), "write fixture");
+  std::printf("input sender: %zu packets\n", recorder.packets.size());
+}
+
+int main(int argc, char** argv) {
+  if (argc != 3) { std::fprintf(stderr, "usage: input_test <fixture.bin> <expected.json>\n"); return 2; }
+  sentences();
+  chords();
+  sender(argv[1], argv[2]);
+  exhaustive();
+  std::printf("input tests: %s (%d failures)\n", failures ? "FAILED" : "PASS", failures);
+  return failures ? 1 : 0;
+}
+```
+
 ## firmware/tests/run_deep_tests.py
 
 ```python
@@ -8236,6 +9001,9 @@ FILES = [
     'firmware/earlink/Pager.h',
     'firmware/earlink/ConnectionWave.h',
     'firmware/earlink/DisplayController.h',
+    'firmware/earlink/KeyInput.h',
+    'firmware/earlink/BrailleInput.h',
+    'firmware/earlink/InputSender.h',
     'firmware/earlink/earlink.ino',
     'firmware/backups/earlink-full.ino.txt',
     'firmware/backups/solenoid-all-high-hold.ino.txt',
@@ -8247,6 +9015,7 @@ FILES = [
     'firmware/tests/syllable_oracle_2024.py',
     'firmware/tests/deep_test.cpp',
     'firmware/tests/context_test.cpp',
+    'firmware/tests/input_test.cpp',
     'firmware/tests/run_deep_tests.py',
     'firmware/tools/export_full_code.py',
     'firmware/tools/check_official_source.py',
@@ -8259,7 +9028,7 @@ def main():
     lines = ['# EARLINK 파일별 전체 코드', '',
         '실제 프로젝트 파일을 그대로 읽어 생성한 문서입니다. 파일별 전체 내용을 생략 없이 수록합니다.',
         '현재 펌웨어는 2024 점역·BLE·연결 파도를 사용합니다. 문자 돌출점은 LOW, 배경은 HIGH이며 대기·종료는 전체 LOW입니다.',
-        '`earlink`의 헤더 11개와 `earlink.ino`를 같은 스케치 폴더에 둡니다. `backups`는 이전 동작의 보관본이며 현재 출력 정책으로 사용하지 않습니다.',
+        '`earlink`의 헤더 14개와 `earlink.ino`를 같은 스케치 폴더에 둡니다. `backups`는 이전 동작의 보관본이며 현재 출력 정책으로 사용하지 않습니다.',
         '지원 범위와 미구현 사항은 [RULES_2024.md](RULES_2024.md), 검증은 [결과 표](validation/BRAILLE_RESULTS.md)를 참조하세요.', '',
         '코드 수정 후 `python firmware/tools/export_full_code.py`로 다시 생성합니다.', '']
     manifest = []
@@ -8448,7 +9217,7 @@ if __name__ == '__main__':
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:earlink": "node --experimental-strip-types --test tests/earlink-protocol.test.mjs",
+    "test:earlink": "node --experimental-strip-types --test tests/earlink-protocol.test.mjs tests/earlink-input.test.mjs",
     "test:firmware": "python firmware/tests/run_tests.py",
     "test:firmware:deep": "python firmware/tests/run_deep_tests.py --seconds 600",
     "test:firmware:asan": "python firmware/tests/run_deep_tests.py --seconds 600 --asan"

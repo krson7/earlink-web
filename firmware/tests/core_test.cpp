@@ -37,7 +37,7 @@ static void translationTests() {
   assert(translate(u8"ㄱ").unsupported == 0);
   assert(translate(u8"⠁⠂⠄").cells == std::vector<uint8_t>({1, 2, 4}));
   assert(translate(std::string("\xf0\x80\x80\x80", 4)).unsupported == 1);
-  for (const auto bad : {std::string("\xc0\xaf", 2), std::string("\xed\xa0\x80", 3),
+  for (const auto& bad : {std::string("\xc0\xaf", 2), std::string("\xed\xa0\x80", 3),
                         std::string("\xf4\x90\x80\x80", 4), std::string("\xe3\x80", 2)})
     assert(translate(bad).unsupported == 1);
   assert(translate(std::string("\xe3", 1) + "7").cells == translate("7").cells);

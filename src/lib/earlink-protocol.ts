@@ -94,3 +94,77 @@ export function deviceError(result: number): string {
     6: "기기 메시지 수신 시간이 초과되었습니다.",
   } as Record<number, string>)[result] ?? "기기에서 메시지를 처리하지 못했습니다.";
 }
+
+/**
+ * Text typed on the device's Perkins keys, device -> web (NOTIFY).
+ * Keep in sync with firmware/earlink/InputSender.h.
+ *   START  45 4C 01 01 id:u16 length:u16 flags:u8   (flags bit0 = sent with the SEND key)
+ *   DATA   45 4C 01 02 id:u16 offset:u16 bytes(1..12)
+ *   END    45 4C 01 03 id:u16
+ */
+export const EARLINK_INPUT_UUID = "8f3a0004-7c3b-4b8a-9f52-123456789abc";
+
+export type EarLinkTypedText = {
+  /** UTF-8 text; cells the device could not read arrive as Unicode braille U+2800..U+283F. */
+  text: string;
+  /** true: the user pressed SEND, post it. false: live preview, replace the draft. */
+  committed: boolean;
+};
+
+/** Reassembles INPUT notifications. A newer START drops an unfinished one. */
+export class EarLinkInputAssembler {
+  private id = 0;
+  private length = 0;
+  private committed = false;
+  private bytes: number[] | null = null;
+
+  reset(): void {
+    this.bytes = null;
+  }
+
+  push(value: DataView): EarLinkTypedText | null {
+    if (value.byteLength < 6 || value.getUint8(0) !== 0x45 || value.getUint8(1) !== 0x4c || value.getUint8(2) !== 1) {
+      this.bytes = null;
+      return null;
+    }
+    const op = value.getUint8(3);
+    const id = value.getUint16(4, true);
+    if (op === 1) {
+      if (value.byteLength !== 9 || !id) { this.bytes = null; return null; }
+      this.id = id;
+      this.length = value.getUint16(6, true);
+      this.committed = (value.getUint8(8) & 1) === 1;
+      this.bytes = [];
+      return null;
+    }
+    if (!this.bytes || id !== this.id) return null;
+    if (op === 2) {
+      if (value.byteLength < 9 || value.getUint16(6, true) !== this.bytes.length ||
+          this.bytes.length + value.byteLength - 8 > this.length) {
+        this.bytes = null;
+        return null;
+      }
+      for (let index = 8; index < value.byteLength; index += 1) this.bytes.push(value.getUint8(index));
+      return null;
+    }
+    const bytes = this.bytes;
+    this.bytes = null;
+    if (op !== 3 || value.byteLength !== 6 || bytes.length !== this.length) return null;
+    try {
+      const text = new TextDecoder("utf-8", { fatal: true }).decode(new Uint8Array(bytes));
+      return { text, committed: this.committed };
+    } catch {
+      return null;
+    }
+  }
+}
+
+/** Number of braille cells the device sent unread (Unicode braille block). */
+export function countUnreadCells(text: string): number {
+  let count = 0;
+  for (const character of text) {
+    const code = character.codePointAt(0) ?? 0;
+    if (code >= 0x2800 && code <= 0x283f) count += 1;
+  }
+  return count;
+}

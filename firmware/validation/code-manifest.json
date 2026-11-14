@@ -1,7 +1,7 @@
 [
   {
     "path": "firmware/earlink/Config.h",
-    "sha256": "17d49bb17b9b097ec76ebafefc0c81b7d6c7c3e75272b2ad5e6e93511b8dc89d"
+    "sha256": "a3a75f638b0240bac424ff81bb9a49c8b81778328e1b7878320505e7dacab3e2"
   },
   {
     "path": "firmware/earlink/EarlinkLimits.h",
@@ -44,8 +44,20 @@
     "sha256": "f16a559e83cdc445ad94dc8ed42d806e997a72da7017d3e716c39bb70ee62928"
   },
   {
+    "path": "firmware/earlink/KeyInput.h",
+    "sha256": "17ce431e3f959c4617f2ea5a25e6d8783bd2a13afff4138b353485e574c4ee62"
+  },
+  {
+    "path": "firmware/earlink/BrailleInput.h",
+    "sha256": "6a05720da9626748c40196e4c34ecdf672002b08e9ebb3a6b9b101d6f7fbdfff"
+  },
+  {
+    "path": "firmware/earlink/InputSender.h",
+    "sha256": "0d4c60870102280d6d7d850b1ac8e1b0b1873d5b0fed7a2935305d6726df77a1"
+  },
+  {
     "path": "firmware/earlink/earlink.ino",
-    "sha256": "c62e7298c30cdd78c6063320eeef71c1ead0d95deae89254aeb51407bae0a946"
+    "sha256": "ac7d4043510fc8a7fd36e243e7b7eafbd8610263db4977f936217ea584cd6108"
   },
   {
     "path": "firmware/backups/earlink-full.ino.txt",
@@ -57,7 +69,7 @@
   },
   {
     "path": "firmware/tests/core_test.cpp",
-    "sha256": "cae3de7cc5478f3090acb50987e2127fc09152c570fb388ab6b5afafc3725f37"
+    "sha256": "85157ed80337df8b5f1c6eb533235d29822fa34a361aaaf2bbb5f1fcec249029"
   },
   {
     "path": "firmware/tests/cases_2024.py",
@@ -69,7 +81,7 @@
   },
   {
     "path": "firmware/tests/run_tests.py",
-    "sha256": "9dd1392cbb67cf5a5404456eaa3cefa3ec3eafb1c1f9fc3e06dfa3901f696295"
+    "sha256": "e9dd268396436c1ef0d70ffd1b65af2b579b45940146bcba7ccb1d4cc827616e"
   },
   {
     "path": "firmware/tests/official_words_2024.json",
@@ -88,12 +100,16 @@
     "sha256": "af7734c4eb1bdb81581aa71f3db8cedd493cd0fd4d1b4f1db60b9e95c088cbf6"
   },
   {
+    "path": "firmware/tests/input_test.cpp",
+    "sha256": "dce8ef089415ce829e3075d64486f5a0fefee7eb1f18493c92c54884c896795a"
+  },
+  {
     "path": "firmware/tests/run_deep_tests.py",
     "sha256": "1bd37658162221597397229d7b74f06a9063a4ee80c6608040ba228bff285df8"
   },
   {
     "path": "firmware/tools/export_full_code.py",
-    "sha256": "930e522e963e68bd0f3826dfbb5144fe21589474d4cac85e3dba4af49a7236ce"
+    "sha256": "d44122c72c6e3a41946f1c215f1b836ce86ddacffc5a297b9dce284de943fd5d"
   },
   {
     "path": "firmware/tools/check_official_source.py",
@@ -105,7 +121,7 @@
   },
   {
     "path": "package.json",
-    "sha256": "7988fa579c49a365876246a51d44ce9b553a5c294374907392d417ad2845d0e1"
+    "sha256": "7a27902f377ae439c37abb166d0de65820453c8c8d66cd769a61945eb72591f9"
   },
   {
     "path": ".gitignore",

@@ -10,20 +10,29 @@
 #include "Protocol.h"
 #include "DisplayController.h"
 #include "BrailleOutput.h"
+#include "KeyInput.h"
+#include "BrailleInput.h"
+#include "InputSender.h"
 
 // Existing UUIDs and v1 wire format are unchanged.
 static const char* SERVICE_UUID = "8f3a0001-7c3b-4b8a-9f52-123456789abc";
 static const char* TEXT_UUID = "8f3a0002-7c3b-4b8a-9f52-123456789abc";
 static const char* STATUS_UUID = "8f3a0003-7c3b-4b8a-9f52-123456789abc";
+// New: text typed on the Perkins keys, device -> app. Format in InputSender.h.
+static const char* INPUT_UUID = "8f3a0004-7c3b-4b8a-9f52-123456789abc";
 struct Event { uint8_t kind, size, data[20]; };
 QueueHandle_t events = nullptr;
 BLECharacteristic* statusCharacteristic = nullptr;
+BLECharacteristic* inputCharacteristic = nullptr;
 std::atomic<bool> connected(false), disconnected(false), overflow(false);
 std::atomic<bool> connectionPending(false);
 earlink::Receiver receiver;
 earlink::DisplayController display;
 earlink::Pager& pager = display.pager;
 earlink::BrailleOutput brailleOutput;
+earlink::keys::KeyInput keyInput;
+earlink::input::Composer composer(config::MAX_INPUT_CELLS);
+earlink::InputSender inputSender;
 uint16_t acknowledgedId = 0;
 earlink::Result acknowledgedResult = earlink::NONE;
 
@@ -148,9 +157,49 @@ void acceptText(uint32_t now) {
   message.translation = earlink::translate(receiver.text);
   if (!pager.enqueue(std::move(message), now)) acknowledgedResult = earlink::QUEUE_FULL;
 }
+void notifyInput(const uint8_t* data, size_t size, void*) {
+  if (!inputCharacteristic) return;
+  inputCharacteristic->setValue(const_cast<uint8_t*>(data), size);
+  inputCharacteristic->notify();
+}
+void handleKey(const earlink::keys::Event& event) {
+  using earlink::keys::Action;
+  bool changed = false;
+  switch (event.action) {
+    case Action::CELL:
+    case Action::SPACE:
+      changed = composer.add(event.cell);
+      if (!changed) Serial.printf("[key] input full (%u cells)\n", unsigned(config::MAX_INPUT_CELLS));
+      break;
+    case Action::ERASE: changed = composer.erase(); break;
+    case Action::CLEAR: changed = composer.clear(); break;
+    case Action::SEND: {
+      const std::string text = composer.text();
+      if (text.empty()) { Serial.println("[key] send: nothing typed"); return; }
+      if (!connected.load()) { Serial.printf("[key] send: not connected, kept \"%s\"\n", text.c_str()); return; }
+      inputSender.push(text, true); composer.clear();
+      Serial.printf("[key] SEND bytes=%u text=\"%s\"\n", unsigned(text.size()), text.c_str());
+      return;
+    }
+    case Action::IGNORED:
+      Serial.printf("[key] ignored keys=%s (dots mixed with space/send/erase)\n", earlink::keys::describe(event.chord).c_str());
+      return;
+    default: return;
+  }
+  const uint32_t started = micros();
+  const std::string text = composer.text();
+  const uint32_t decodeUs = micros() - started;
+  const auto& cells = composer.cells();
+  Serial.printf("[key] keys=%s action=%s cell=%02X cells=%u/%u decode_us=%lu text=\"%s\"\n",
+    earlink::keys::describe(event.chord).c_str(), earlink::keys::actionName(event.action),
+    cells.empty() || event.action != Action::CELL ? 0 : cells.back(), unsigned(cells.size()),
+    unsigned(config::MAX_INPUT_CELLS), static_cast<unsigned long>(decodeUs), text.c_str());
+  if (changed && connected.load()) inputSender.push(text, false);
+}
 void setup() {
   Serial.begin(115200);
   brailleOutput.begin(); // Active-high; startup releases every channel.
+  keyInput.begin();
   const auto reason = esp_reset_reason();
   Serial.printf("[boot] reset=%s code=%u startup_bytes=00,00,00 output=%s\n",
     resetReasonName(reason), unsigned(reason), config::OUTPUT_ENABLED ? "GPIO" : "preview");
@@ -172,10 +221,13 @@ void setup() {
     BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY);
   statusCharacteristic->addDescriptor(new BLE2902());
   statusCharacteristic->setCallbacks(new WriteCallbacks(2));
+  inputCharacteristic = service->createCharacteristic(INPUT_UUID, BLECharacteristic::PROPERTY_NOTIFY);
+  inputCharacteristic->addDescriptor(new BLE2902());
   publishStatus(); service->start();
   auto* advertising = server->getAdvertising();
   advertising->addServiceUUID(SERVICE_UUID); advertising->setScanResponse(true); advertising->start();
   Serial.println("[EARLINK READY] HIGH=DOWN / LOW=UP; page: braille=LOW, background=HIGH; idle=00,00,00; BLE connect=column wave");
+  Serial.println("[key] Perkins keys: 14=send 21=dot3 27=dot2 26=dot1 13=space 33=dot4 12=dot5 32=dot6 25=erase (hold=clear)");
 }
 void loop() {
   logHealth(millis());
@@ -183,6 +235,7 @@ void loop() {
   if (disconnected.exchange(false)) {
     xQueueReset(events); receiver.reset(); display.clear();
     acknowledgedId = 0; acknowledgedResult = earlink::NONE;
+    composer.clear(); inputSender.reset();
     writeOutput(); publishStatus();
     if (!connected.load()) BLEDevice::startAdvertising();
     Serial.println("[BRAILLE] Disconnected - all channels released");
@@ -197,7 +250,11 @@ void loop() {
     display.startConnectionWave(now);
     writeOutput(); publishStatus();
     Serial.println("[wave] Begin: six columns, three channels per pulse");
+    if (!composer.empty()) inputSender.push(composer.text(), false);
   }
+  const auto keyEvent = keyInput.poll(now);
+  if (keyEvent.action != earlink::keys::Action::NONE) handleKey(keyEvent);
+  if (connected.load()) inputSender.tick(now, notifyInput, nullptr);
   Event event{};
   while (xQueueReceive(events, &event, 0) == pdTRUE) {
     if (!connected.load()) continue;

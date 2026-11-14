@@ -63,8 +63,26 @@ export default function ChatScreen({
   const [failedMessages, setFailedMessages] = useState<ChatMessageItem[]>([]);
   const [retrying, setRetrying] = useState(false);
 
+  /*
+   * 기기 점자 키로 쓰고 전송 키를 눌렀지만 채팅 서버로 보내지 못한 글.
+   * 기기는 전송 키를 누르는 즉시 입력을 비우므로 앱이 보관한다.
+   */
+  const [unsentTyped, setUnsentTyped] = useState<string[]>([]);
+
   const accessibilityMode =
     participant.accessibility_mode;
+
+  function handleTypedMessage(text: string): void {
+    if (accessibilityMode !== "VISUAL") return;
+    if (!onSendMessage(text)) {
+      setUnsentTyped((previous) => [...previous, text]);
+    }
+  }
+
+  function retryUnsentTyped(): void {
+    const remaining = unsentTyped.filter((text) => !onSendMessage(text));
+    setUnsentTyped(remaining);
+  }
 
   /*
    * EarLink Bluetooth
@@ -80,7 +98,9 @@ export default function ChatScreen({
     status: earLinkStatus,
     control: controlEarLink,
     setIntervalMs: setEarLinkInterval,
-  } = useEarLinkBluetooth();
+    inputSupported: earLinkInputSupported,
+    inputDraft: earLinkInputDraft,
+  } = useEarLinkBluetooth({ onTypedMessage: handleTypedMessage });
 
   /*
    * 이미 확인한 채팅 메시지 ID
@@ -356,6 +376,12 @@ export default function ChatScreen({
             earLinkDeviceName
           }
           error={earLinkError}
+          inputSupported={earLinkInputSupported}
+          inputDraft={earLinkInputDraft}
+          unsentTypedCount={unsentTyped.length}
+          chatConnected={chatConnected}
+          chatErrorMessage={chatErrorMessage}
+          onRetryTyped={retryUnsentTyped}
           onConnect={connectEarLink}
           onDisconnect={
             disconnectEarLink

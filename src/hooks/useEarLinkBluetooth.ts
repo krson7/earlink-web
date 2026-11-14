@@ -3,8 +3,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ACK_TIMEOUT_MS, EARLINK_SERVICE_UUID, EARLINK_STATUS_UUID, EARLINK_TEXT_UUID,
-  decodeStatus, deviceError, encodeCommand, encodeInterval, encodeTextPackets,
+  ACK_TIMEOUT_MS, EARLINK_INPUT_UUID, EARLINK_SERVICE_UUID, EARLINK_STATUS_UUID, EARLINK_TEXT_UUID,
+  EarLinkInputAssembler, decodeStatus, deviceError, encodeCommand, encodeInterval, encodeTextPackets,
 } from "@/lib/earlink-protocol";
 import type { EarLinkCommand, EarLinkStatus } from "@/lib/earlink-protocol";
 
@@ -15,12 +15,21 @@ type Acknowledgement = {
   timer: ReturnType<typeof setTimeout> | null;
 };
 
-export function useEarLinkBluetooth() {
+type EarLinkBluetoothOptions = {
+  /** Text sent with the device's SEND key (Perkins keys). */
+  onTypedMessage?: (text: string) => void;
+};
+
+export function useEarLinkBluetooth({ onTypedMessage }: EarLinkBluetoothOptions = {}) {
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [deviceName, setDeviceName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<EarLinkStatus | null>(null);
+  const [inputSupported, setInputSupported] = useState(false);
+  const [inputDraft, setInputDraft] = useState("");
+  const onTypedMessageRef = useRef(onTypedMessage);
+  useEffect(() => { onTypedMessageRef.current = onTypedMessage; }, [onTypedMessage]);
   const deviceRef = useRef<BluetoothDevice | null>(null);
   const textRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
   const statusRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
@@ -51,6 +60,8 @@ export function useEarLinkBluetooth() {
     setConnecting(false);
     setDeviceName(null);
     setStatus(null);
+    setInputSupported(false);
+    setInputDraft("");
     setError(null);
   }, []);
 
@@ -107,15 +118,48 @@ export function useEarLinkBluetooth() {
       const onDisconnect = () => {
         if (session === sessionRef.current) disconnect();
       };
+      // Optional: firmware without the Perkins keys has no INPUT characteristic.
+      let inputCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
+      try {
+        inputCharacteristic = await service.getCharacteristic(EARLINK_INPUT_UUID);
+      } catch {
+        inputCharacteristic = null;
+      }
+      ensureCurrent();
+      const assembler = new EarLinkInputAssembler();
+      const onInput = () => {
+        if (session !== sessionRef.current || !inputCharacteristic?.value) return;
+        const typed = assembler.push(inputCharacteristic.value);
+        if (!typed) return;
+        if (typed.committed) {
+          setInputDraft("");
+          if (typed.text.trim()) onTypedMessageRef.current?.(typed.text);
+        } else {
+          setInputDraft(typed.text);
+        }
+      };
       const device = selected;
       device.addEventListener("gattserverdisconnected", onDisconnect);
       stateCharacteristic.addEventListener("characteristicvaluechanged", onStatus);
+      inputCharacteristic?.addEventListener("characteristicvaluechanged", onInput);
       removeListenersRef.current = () => {
         device.removeEventListener("gattserverdisconnected", onDisconnect);
         stateCharacteristic.removeEventListener("characteristicvaluechanged", onStatus);
+        inputCharacteristic?.removeEventListener("characteristicvaluechanged", onInput);
       };
       await stateCharacteristic.startNotifications();
       ensureCurrent();
+      if (inputCharacteristic) {
+        // Typing is an extra: the braille output connection stays usable without it.
+        let subscribed = true;
+        try {
+          await inputCharacteristic.startNotifications();
+        } catch {
+          subscribed = false;
+        }
+        ensureCurrent();
+        setInputSupported(subscribed);
+      }
       const state = await stateCharacteristic.readValue();
       ensureCurrent();
       receiveStatus(state);
@@ -202,5 +246,8 @@ export function useEarLinkBluetooth() {
   const control = useCallback((command: EarLinkCommand) => sendControl(encodeCommand(command)), [sendControl]);
   const setIntervalMs = useCallback((milliseconds: number) => sendControl(encodeInterval(milliseconds)), [sendControl]);
 
-  return { connected, connecting, deviceName, error, status, connect, disconnect, send, control, setIntervalMs };
+  return {
+    connected, connecting, deviceName, error, status, connect, disconnect, send, control, setIntervalMs,
+    inputSupported, inputDraft,
+  };
 }

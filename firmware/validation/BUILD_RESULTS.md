@@ -2,6 +2,23 @@
 
 검증 기간: 2026-11-12~14, Windows / Asia/Seoul. 실제 작업 트리의 최종 소스로 실행했다. 이 문서는 실물 구동 확인서가 아니다.
 
+## 퍼킨스 키 입력 추가
+
+2026-11-14, Linux(Ubuntu 24.04, g++ 13.3, Node 24.21, Python 3.12)에서 실행했다. 키 9개(GPIO 14·21·27·26·13·33·12·32·25)로 점자를 입력해 한글로 바꾸고 INPUT 특성(`8f3a0004`)으로 웹에 보내는 기능을 추가했다. 점역기·출력·매핑·BLE v1은 수정하지 않았다.
+
+| 이번 검사 | 결과 |
+|---|---|
+| `python3 firmware/tests/run_tests.py` | PASS; 기존 브라우저 프로토콜 5건, 점역 402 PASS / 13 UNVERIFIED / 회귀 실패 0, 추가 문맥 174250건 그대로 |
+| `input_test` 칸 → 한글 왕복 | PASS; 음절 11172개 × 18문맥 201096건 모두 다시 점역하면 입력 칸과 일치. 원문과 글자가 다른 것은 같은 점자 모양 270건(ㅖ/받침 ㅆ, 옹/낱자)과 단독 음절 받침 ㅍ/ㅌ/ㅋ/ㄾ/ㄿ의 문장부호 읽기 1919건뿐 |
+| 키 판정·INPUT 패킷 | PASS; 순서대로 누르기·떨림·1ms 잡음·길게 지우기·혼합 무시, 미리보기 교체와 확정 메시지 순서 |
+| 펌웨어 → 웹 패킷 대조 | PASS; C++ `InputSender`가 만든 57개 패킷을 `tests/earlink-input.test.mjs`가 웹 조립기로 재조립 |
+| 웹 `tsc --noEmit` / `next build` | PASS |
+| ESP32 Dev Module 컴파일 | PASS; PlatformIO espressif32 7.1.3(Arduino-ESP32 2.0.17), `-std=gnu++17`, huge_app: 플래시 1162317바이트 / 정적 RAM 39340바이트 |
+| Arduino-ESP32 3.3.12 컴파일 | **UNVERIFIED**; 이 환경에서 보드 패키지를 내려받지 못함 |
+| 실제 키·BLE·앱 연동 | **UNVERIFIED**; 업로드·키 누름·실제 브라우저 연결 안 함 |
+
+기존 `core_test.cpp`가 g++ 13의 `-Werror=range-loop-construct`에 걸려 Linux에서 컴파일되지 않던 문제를 참조 반복(`const auto&`)으로 고쳤다. 검사 내용은 같다. ESLint는 수어 훅 2곳(`useSignLanguageSocket.ts`, `useSignLanguageCamera.ts`)의 기존 오류로 실패하며 이번 변경 파일에서는 오류가 없다.
+
 ## 현재 돌출점 LOW·배경 HIGH 출력
 
 2026-11-14 추가 변경: 자동 페이지 표시 기본값을 3000ms에서 **2000ms**로 단축했다. 파도 종료 후 1999ms에는 표시를 유지하고 2000ms에 해제하는 경계, 250ms 후 다음 페이지와 큐 전환, 타이머 순환을 기존 검사에서 확인해 통과했다. 연결 파도 200/50ms, 페이지 간격 250ms, 수동 유지 만료 10000ms는 유지했다. 전체 빠른 검사도 다시 통과했다.

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { countUnreadCells } from "@/lib/earlink-protocol";
 import type { EarLinkCommand, EarLinkStatus } from "@/lib/earlink-protocol";
 
 type EarLinkConnectorProps = {
@@ -14,6 +15,14 @@ type EarLinkConnectorProps = {
   onRetry: () => Promise<void>;
   deviceName: string | null;
   error: string | null;
+  /** The firmware has the Perkins keys (INPUT characteristic). */
+  inputSupported: boolean;
+  /** Live preview of what is being typed on the device. */
+  inputDraft: string;
+  unsentTypedCount: number;
+  chatConnected: boolean;
+  chatErrorMessage: string;
+  onRetryTyped: () => void;
   onConnect: () => Promise<void>;
   onDisconnect: () => void;
 };
@@ -29,9 +38,16 @@ export default function EarLinkConnector({
   onRetry,
   deviceName,
   error,
+  inputSupported,
+  inputDraft,
+  unsentTypedCount,
+  chatConnected,
+  chatErrorMessage,
+  onRetryTyped,
   onConnect,
   onDisconnect,
 }: EarLinkConnectorProps) {
+  const unreadCells = countUnreadCells(inputDraft);
   const [busy, setBusy] = useState(false);
   async function run(operation: () => Promise<void>): Promise<void> {
     if (busy) return;
@@ -56,6 +72,16 @@ export default function EarLinkConnector({
           "max(0.75rem, env(safe-area-inset-bottom))",
       }}
     >
+      {/* 기기 키 입력을 채팅 서버로 보내지 못한 이유 */}
+      {chatErrorMessage && (
+        <div
+          role="alert"
+          className="mb-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-center text-xs font-medium text-red-700"
+        >
+          {chatErrorMessage}
+        </div>
+      )}
+
       {/* 실제 오류가 있을 때만 표시 */}
       {error && (
         <div
@@ -100,6 +126,7 @@ export default function EarLinkConnector({
 
             <p className="mt-1 text-xs text-slate-500">
               새 메시지를 점자 기기로 전달합니다.
+              {inputSupported && " 기기 키로 쓴 글은 전송 키를 누르면 채팅으로 보냅니다."}
             </p>
           </div>
 
@@ -132,6 +159,26 @@ export default function EarLinkConnector({
         >
           {connecting ? "EarLink 연결 중…" : "EarLink 연결"}
         </button>
+      )}
+
+      {connected && inputSupported && (
+        <div className="mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
+          <p className="text-[11px] font-semibold text-slate-500">기기 입력</p>
+          <p
+            aria-live="polite"
+            className="mt-0.5 min-h-5 whitespace-pre-wrap break-all text-sm text-slate-800"
+          >
+            {inputDraft || <span className="text-slate-400">점자 키로 입력하면 여기에 표시됩니다</span>}
+          </p>
+          {unreadCells > 0 && (
+            <p className="mt-1 text-xs text-amber-800">
+              읽지 못한 점자 칸 {unreadCells}개는 점자 기호(⠿)로 보냅니다.
+            </p>
+          )}
+          {!chatConnected && (
+            <p className="mt-1 text-xs text-amber-800">채팅 서버에 연결되면 보낼 수 있어요.</p>
+          )}
+        </div>
       )}
 
       {connected && status && (
@@ -184,6 +231,13 @@ export default function EarLinkConnector({
           onClick={() => void onRetry()}
           className="mt-2 rounded-lg border border-amber-300 px-3 py-2 text-xs text-amber-900 disabled:opacity-40">
           {retrying ? "다시 보내는 중…" : `전달 실패 ${failedCount}개 다시 보내기`}
+        </button>
+      )}
+      {unsentTypedCount > 0 && (
+        <button type="button" disabled={!chatConnected}
+          onClick={onRetryTyped}
+          className="mt-2 ml-2 rounded-lg border border-amber-300 px-3 py-2 text-xs text-amber-900 disabled:opacity-40">
+          {`기기에서 쓴 글 ${unsentTypedCount}개 채팅으로 다시 보내기`}
         </button>
       )}
     </div>
