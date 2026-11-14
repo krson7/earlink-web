@@ -24,7 +24,7 @@ def run(args, **kwargs):
 def compile_tests():
     compiler = shutil.which('g++') or shutil.which('clang++')
     extension = '.exe' if os.name == 'nt' else ''
-    programs = ['core_test', 'braille_cli', 'context_test']
+    programs = ['core_test', 'braille_cli', 'context_test', 'keyboard_test']
     if compiler:
         for program in programs:
             run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror',
@@ -73,7 +73,9 @@ def main():
     run([node, '--experimental-strip-types', '--test', 'tests/earlink-protocol.test.mjs'])
     oracle = BUILD / 'hangul-oracle.bin'
     write_oracle(oracle)
-    core, cli, context = compile_tests()
+    core, cli, context, keyboard = compile_tests()
+    run([str(keyboard), str(BUILD / 'keyboard-fixture.bin')])
+    run([node, '--experimental-strip-types', '--test', 'tests/earlink-keyboard.test.mjs'])
     run([str(core), str(BUILD / 'protocol-fixture.bin'), str(BUILD / 'protocol-text.txt')])
     run([str(context), str(oracle), str(REPORT / 'context-coverage.json')])
     inputs = BUILD / 'braille-inputs.hex'

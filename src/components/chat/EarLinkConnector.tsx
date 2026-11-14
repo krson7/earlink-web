@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import type { EarLinkCommand, EarLinkStatus } from "@/lib/earlink-protocol";
+import type { ReactNode } from "react";
 
 type EarLinkConnectorProps = {
+  children?: ReactNode;
   connected: boolean;
   connecting: boolean;
   status: EarLinkStatus | null;
@@ -19,6 +21,7 @@ type EarLinkConnectorProps = {
 };
 
 export default function EarLinkConnector({
+  children,
   connected,
   connecting,
   status,
@@ -186,6 +189,7 @@ export default function EarLinkConnector({
           {retrying ? "다시 보내는 중…" : `전달 실패 ${failedCount}개 다시 보내기`}
         </button>
       )}
+      {children}
     </div>
   );
 }

@@ -7,6 +7,8 @@ namespace config {
 constexpr int DATA_PIN = 16;   
 constexpr int LATCH_PIN = 17;  
 constexpr int CLOCK_PIN = 18;
+// Dot 1..6 followed by space, backspace, send. Switches connect GPIO to GND.
+constexpr int KEY_PINS[9] = {26, 27, 21, 33, 12, 32, 13, 25, 14};
 constexpr uint8_t CELL_COUNT = 3;
 // All 18 logical/physical assignments now live in BrailleMapping.h.
 // GPIO output enabled. Mapping uses the user-confirmed solenoid layout.

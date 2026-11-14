@@ -6,7 +6,7 @@
   "numeric_mode_resets": 11172,
   "partial_nfd": 10773,
   "long_packet_roundtrips": 12,
-  "seconds": 0.187736,
+  "seconds": 0.211226,
   "scope": "rule-derived context and software checks; hardware UNVERIFIED",
   "error": ""
 }

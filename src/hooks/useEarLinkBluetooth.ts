@@ -7,6 +7,14 @@ import {
   decodeStatus, deviceError, encodeCommand, encodeInterval, encodeTextPackets,
 } from "@/lib/earlink-protocol";
 import type { EarLinkCommand, EarLinkStatus } from "@/lib/earlink-protocol";
+import {
+  EARLINK_KEYBOARD_UUID, KeyboardSnapshotReceiver,
+  encodeKeyboardAck, encodeKeyboardReady, encodeKeyboardSync,
+} from "@/lib/earlink-keyboard-protocol";
+import type { KeyboardSnapshot } from "@/lib/earlink-keyboard-protocol";
+import { KeyboardSubmissionLedger } from "@/lib/earlink-keyboard-submission";
+
+type KeyboardOptions = { ready: boolean; onSend: (text: string) => boolean };
 
 type Acknowledgement = {
   id: number;
@@ -15,12 +23,22 @@ type Acknowledgement = {
   timer: ReturnType<typeof setTimeout> | null;
 };
 
-export function useEarLinkBluetooth() {
+export function useEarLinkBluetooth(keyboardOptions?: KeyboardOptions) {
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [deviceName, setDeviceName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<EarLinkStatus | null>(null);
+  const [keyboard, setKeyboard] = useState<KeyboardSnapshot | null>(null);
+  const [keyboardSupported, setKeyboardSupported] = useState(false);
+  const [keyboardError, setKeyboardError] = useState<string | null>(null);
+  const keyboardOptionsRef = useRef(keyboardOptions);
+  keyboardOptionsRef.current = keyboardOptions;
+  const keyboardRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
+  const keyboardReceiverRef = useRef(new KeyboardSnapshotReceiver());
+  const keyboardLedgerRef = useRef(new KeyboardSubmissionLedger());
+  const keyboardTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const keyboardDeviceIdRef = useRef<string | null>(null);
   const deviceRef = useRef<BluetoothDevice | null>(null);
   const textRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
   const statusRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
@@ -46,12 +64,34 @@ export function useEarLinkBluetooth() {
     deviceRef.current = null;
     textRef.current = null;
     statusRef.current = null;
+    keyboardRef.current = null;
+    keyboardReceiverRef.current.reset();
+    if (keyboardTimerRef.current) clearInterval(keyboardTimerRef.current);
+    keyboardTimerRef.current = null;
     queueRef.current = Promise.resolve();
     setConnected(false);
     setConnecting(false);
     setDeviceName(null);
     setStatus(null);
+    setKeyboardSupported(false);
+    // Retain the last visible draft during a disconnection; ESP is authoritative.
     setError(null);
+  }, []);
+
+  // Keyboard writes use the same GATT queue as display writes. Bound heartbeat
+  // work to one queued operation even while a long output message is in flight.
+  const writeKeyboard = useCallback((packets: Uint8Array<ArrayBuffer>[], session: number) => {
+    const task = queueRef.current.then(async () => {
+      if (session !== sessionRef.current || !deviceRef.current?.gatt?.connected) return;
+      const characteristic = keyboardRef.current;
+      if (!characteristic) return;
+      for (const packet of packets) {
+        if (session !== sessionRef.current) return;
+        await characteristic.writeValueWithResponse(packet);
+      }
+    });
+    queueRef.current = task.catch(() => undefined);
+    return task;
   }, []);
 
   useEffect(() => disconnect, [disconnect]);
@@ -84,6 +124,9 @@ export function useEarLinkBluetooth() {
         filters: [{ name: "EarLink" }], optionalServices: [EARLINK_SERVICE_UUID],
       });
       ensureCurrent();
+      if (keyboardDeviceIdRef.current !== selected.id) setKeyboard(null);
+      keyboardDeviceIdRef.current = selected.id;
+      setKeyboardError(null);
       deviceRef.current = selected;
       const server = await selected.gatt?.connect();
       ensureCurrent();
@@ -99,6 +142,13 @@ export function useEarLinkBluetooth() {
         throw new Error("3칸 점자 출력용 EarLink 펌웨어를 먼저 업로드해 주세요.");
       }
       ensureCurrent();
+      let inputCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
+      try { inputCharacteristic = await service.getCharacteristic(EARLINK_KEYBOARD_UUID); }
+      catch (failure) {
+        // Older output-only firmware remains usable; other GATT failures surface.
+        if (!(failure instanceof DOMException) || failure.name !== "NotFoundError") throw failure;
+      }
+      ensureCurrent();
       const onStatus = () => {
         if (session !== sessionRef.current || !stateCharacteristic.value) return;
         try { receiveStatus(stateCharacteristic.value); }
@@ -108,11 +158,34 @@ export function useEarLinkBluetooth() {
         if (session === sessionRef.current) disconnect();
       };
       const device = selected;
+      const onKeyboard = () => {
+        if (session !== sessionRef.current || !inputCharacteristic?.value) return;
+        try {
+          const next = keyboardReceiverRef.current.accept(inputCharacteristic.value);
+          if (!next) return;
+          setKeyboard(next);
+          setKeyboardError(null);
+          if (!next.requestId) return;
+          const options = keyboardOptionsRef.current;
+          let storage: Storage | undefined;
+          try { storage = window.sessionStorage; } catch { /* Browser policy. */ }
+          const outcome = keyboardLedgerRef.current.handle(next, device.id,
+            Boolean(options?.ready), (text) => options?.onSend(text) ?? false, storage);
+          if (outcome.error) setKeyboardError(outcome.error);
+          void writeKeyboard([encodeKeyboardAck(next.requestId, outcome.accepted)], session)
+            .catch(() => { if (session === sessionRef.current) setKeyboardError("전송 확인을 기기에 전달하지 못했습니다. 다시 연결해 주세요."); });
+        } catch (failure) {
+          setKeyboardError(failure instanceof Error ? failure.message : "키보드 입력을 읽지 못했습니다.");
+          // The periodic sync also recovers a dropped BEGIN/DATA/END notification.
+        }
+      };
       device.addEventListener("gattserverdisconnected", onDisconnect);
       stateCharacteristic.addEventListener("characteristicvaluechanged", onStatus);
+      inputCharacteristic?.addEventListener("characteristicvaluechanged", onKeyboard);
       removeListenersRef.current = () => {
         device.removeEventListener("gattserverdisconnected", onDisconnect);
         stateCharacteristic.removeEventListener("characteristicvaluechanged", onStatus);
+        inputCharacteristic?.removeEventListener("characteristicvaluechanged", onKeyboard);
       };
       await stateCharacteristic.startNotifications();
       ensureCurrent();
@@ -121,6 +194,23 @@ export function useEarLinkBluetooth() {
       receiveStatus(state);
       textRef.current = textCharacteristic;
       statusRef.current = stateCharacteristic;
+      keyboardRef.current = inputCharacteristic;
+      if (inputCharacteristic) {
+        keyboardReceiverRef.current.reset();
+        await inputCharacteristic.startNotifications();
+        ensureCurrent();
+        await writeKeyboard([encodeKeyboardReady(Boolean(keyboardOptionsRef.current?.ready)), encodeKeyboardSync()], session);
+        ensureCurrent();
+        let syncing = false;
+        keyboardTimerRef.current = setInterval(() => {
+          if (syncing || session !== sessionRef.current) return;
+          syncing = true;
+          void writeKeyboard([encodeKeyboardReady(Boolean(keyboardOptionsRef.current?.ready)), encodeKeyboardSync()], session)
+            .catch(() => { if (session === sessionRef.current) setKeyboardError("키보드 연결을 확인해 주세요."); })
+            .finally(() => { syncing = false; });
+        }, 2000);
+      }
+      setKeyboardSupported(Boolean(inputCharacteristic));
       setDeviceName(device.name ?? "EarLink");
       setConnected(true);
     } catch (failure) {
@@ -139,7 +229,24 @@ export function useEarLinkBluetooth() {
         setConnecting(false);
       }
     }
-  }, [disconnect, receiveStatus]);
+  }, [disconnect, receiveStatus, writeKeyboard]);
+
+  const keyboardReady = Boolean(keyboardOptions?.ready);
+  useEffect(() => {
+    if (!connected || !keyboardSupported) return;
+    const session = sessionRef.current;
+    void writeKeyboard([encodeKeyboardReady(keyboardReady)], session).catch(() => {
+      if (session === sessionRef.current) setKeyboardError("키보드 연결을 확인해 주세요.");
+    });
+  }, [connected, keyboardSupported, keyboardReady, writeKeyboard]);
+
+  const requestKeyboardSend = useCallback(() => {
+    const session = sessionRef.current;
+    return writeKeyboard([new Uint8Array([1, 4])], session).catch((failure: unknown) => {
+      if (session === sessionRef.current) setKeyboardError("전송 요청을 기기에 전달하지 못했습니다. 연결을 확인해 주세요.");
+      throw failure;
+    });
+  }, [writeKeyboard]);
 
   // All GATT writes share one queue, including UI controls during a long message.
   const enqueue = useCallback((operation: () => Promise<void>) => {
@@ -202,5 +309,6 @@ export function useEarLinkBluetooth() {
   const control = useCallback((command: EarLinkCommand) => sendControl(encodeCommand(command)), [sendControl]);
   const setIntervalMs = useCallback((milliseconds: number) => sendControl(encodeInterval(milliseconds)), [sendControl]);
 
-  return { connected, connecting, deviceName, error, status, connect, disconnect, send, control, setIntervalMs };
+  return { connected, connecting, deviceName, error, status, connect, disconnect, send, control, setIntervalMs,
+    keyboard, keyboardSupported, keyboardError, requestKeyboardSend };
 }

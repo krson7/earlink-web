@@ -12,6 +12,7 @@ import CameraComposer from "@/components/chat/CameraComposer";
 import ChatComposer from "@/components/chat/ChatComposer";
 import ChatHeader from "@/components/chat/ChatHeader";
 import EarLinkConnector from "@/components/chat/EarLinkConnector";
+import BrailleKeyboardComposer from "@/components/chat/BrailleKeyboardComposer";
 import MessageList from "@/components/chat/MessageList";
 
 import { useEarLinkBluetooth } from "@/hooks/useEarLinkBluetooth";
@@ -80,7 +81,14 @@ export default function ChatScreen({
     status: earLinkStatus,
     control: controlEarLink,
     setIntervalMs: setEarLinkInterval,
-  } = useEarLinkBluetooth();
+    keyboard,
+    keyboardSupported,
+    keyboardError,
+    requestKeyboardSend,
+  } = useEarLinkBluetooth({
+    ready: accessibilityMode === "VISUAL" && chatConnected,
+    onSend: onSendMessage,
+  });
 
   /*
    * 이미 확인한 채팅 메시지 ID
@@ -360,7 +368,11 @@ export default function ChatScreen({
           onDisconnect={
             disconnectEarLink
           }
-        />
+        >
+          <BrailleKeyboardComposer connected={earLinkConnected} supported={keyboardSupported}
+            chatConnected={chatConnected} snapshot={keyboard} error={keyboardError}
+            chatError={chatErrorMessage} onSend={requestKeyboardSend} />
+        </EarLinkConnector>
       ) : (
         <ChatComposer
           message={message}

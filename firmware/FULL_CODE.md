@@ -2,7 +2,7 @@
 
 실제 프로젝트 파일을 그대로 읽어 생성한 문서입니다. 파일별 전체 내용을 생략 없이 수록합니다.
 현재 펌웨어는 2024 점역·BLE·연결 파도를 사용합니다. 문자 돌출점은 LOW, 배경은 HIGH이며 대기·종료는 전체 LOW입니다.
-`earlink`의 헤더 11개와 `earlink.ino`를 같은 스케치 폴더에 둡니다. `backups`는 이전 동작의 보관본이며 현재 출력 정책으로 사용하지 않습니다.
+`earlink`의 모든 헤더와 `earlink.ino`를 같은 스케치 폴더에 둡니다. 키보드 입력은 별도 BLE 특성으로 웹에 전달하며 점자 출력에 표시하지 않습니다. `backups`는 이전 동작의 보관본입니다.
 지원 범위와 미구현 사항은 [RULES_2024.md](RULES_2024.md), 검증은 [결과 표](validation/BRAILLE_RESULTS.md)를 참조하세요.
 
 코드 수정 후 `python firmware/tools/export_full_code.py`로 다시 생성합니다.
@@ -19,6 +19,8 @@ namespace config {
 constexpr int DATA_PIN = 16;   
 constexpr int LATCH_PIN = 17;  
 constexpr int CLOCK_PIN = 18;
+// Dot 1..6 followed by space, backspace, send. Switches connect GPIO to GND.
+constexpr int KEY_PINS[9] = {26, 27, 21, 33, 12, 32, 13, 25, 14};
 constexpr uint8_t CELL_COUNT = 3;
 // All 18 logical/physical assignments now live in BrailleMapping.h.
 // GPIO output enabled. Mapping uses the user-confirmed solenoid layout.
@@ -942,6 +944,189 @@ class DisplayController {
 }
 ```
 
+## firmware/earlink/Keyboard.h
+
+```cpp
+#pragma once
+#include <stdint.h>
+#include <stddef.h>
+#include <vector>
+
+namespace earlink {
+namespace keyboard {
+constexpr size_t MAX_CELLS = 512;
+constexpr uint32_t DEBOUNCE_MS = 20;
+constexpr uint32_t CLEAR_MS = 800;
+constexpr uint32_t REQUEST_TIMEOUT_MS = 30000;
+constexpr uint32_t READY_TIMEOUT_MS = 6000;
+constexpr uint16_t SPACE = 1u << 6, BACKSPACE = 1u << 7, SEND = 1u << 8;
+enum class Action : uint8_t { None, Cell, Space, Backspace, Clear, Send, Invalid };
+struct Input { Action action = Action::None; uint8_t cell = 0; };
+
+// One independent debounce timer per switch. No GPIO, BLE or display dependencies.
+class Scanner {
+ public:
+  Input tick(uint16_t pressed, uint32_t now) {
+    pressed &= 0x1ff;
+    for (unsigned i = 0; i < 9; ++i) {
+      const uint16_t bit = uint16_t(1u << i);
+      if ((pressed & bit) != (raw & bit)) { raw ^= bit; changed[i] = now; }
+      if ((raw & bit) != (stable & bit) && uint32_t(now - changed[i]) >= DEBOUNCE_MS)
+        stable ^= bit;
+    }
+    // A key held through boot must be released before accepting input.
+    if (!armed) { if (!pressed && !stable) armed = true; return {}; }
+    if (stable) {
+      if (!active) { active = true; started = now; }
+      chord |= stable;
+      return {};
+    }
+    if (!active) return {};
+    active = false;
+    const uint16_t keys = chord; chord = 0;
+    const uint16_t functions = keys & 0x1c0;
+    if ((functions && (keys & 63)) || (functions && (functions & (functions - 1))))
+      return {Action::Invalid, 0};
+    if (!functions) return {Action::Cell, uint8_t(keys & 63)};
+    if (functions == SPACE) return {Action::Space, 0};
+    if (functions == SEND) return {Action::Send, 0};
+    return {uint32_t(now - started) >= CLEAR_MS ? Action::Clear : Action::Backspace, 0};
+  }
+ private:
+  uint16_t raw = 0, stable = 0, chord = 0;
+  uint32_t changed[9] = {}, started = 0;
+  bool active = false, armed = false;
+};
+
+enum class Feedback : uint8_t { None, Full, Unavailable, Timeout, Rejected, Empty };
+class State {
+ public:
+  std::vector<uint8_t> cells, pending;
+  uint32_t revision = 1, requestId = 0;
+  Feedback feedback = Feedback::None;
+
+  void ready(bool value, uint32_t now) { webReady = value; readyAt = now; }
+  void disconnected() { webReady = false; }
+  bool available(uint32_t now) const {
+    return webReady && uint32_t(now - readyAt) < READY_TIMEOUT_MS;
+  }
+  void apply(Input input, bool connected, uint32_t now) {
+    if (input.action == Action::None || input.action == Action::Invalid) return;
+    feedback = Feedback::None;
+    switch (input.action) {
+      case Action::Cell:
+      case Action::Space:
+        if (cells.size() >= MAX_CELLS) feedback = Feedback::Full;
+        else cells.push_back(input.action == Action::Space ? 0 : input.cell);
+        break;
+      case Action::Backspace:
+        if (!cells.empty()) {
+          if (cells.size() <= pending.size()) prefixIntact = false;
+          cells.pop_back();
+        }
+        break;
+      case Action::Clear:
+        cells.clear(); prefixIntact = false; break;
+      case Action::Send:
+        // Repeated send presses cannot enqueue the same pending message twice.
+        if (requestId) { requestedAt = now; timedOut = false; ++revision; return; }
+        if (!connected || !available(now)) feedback = Feedback::Unavailable;
+        else if (cells.empty()) feedback = Feedback::Empty;
+        else {
+          pending = cells; prefixIntact = true; requestedAt = now; timedOut = false;
+          if (++nextRequest == 0) ++nextRequest;
+          requestId = nextRequest;
+        }
+        break;
+      default: return;
+    }
+    ++revision;
+  }
+  void acknowledge(uint32_t id, bool accepted) {
+    if (!id || id != requestId) return;
+    // Only erase the original prefix; later typing and edits survive the ACK.
+    if (accepted && prefixIntact)
+      cells.erase(cells.begin(), cells.begin() + pending.size());
+    feedback = accepted ? Feedback::None : Feedback::Rejected;
+    pending.clear(); requestId = 0; ++revision;
+  }
+  void tick(uint32_t now) {
+    if (requestId && !timedOut && uint32_t(now - requestedAt) >= REQUEST_TIMEOUT_MS) {
+      // Keep the same request ID until an outcome arrives. An ACK lost on the
+      // radio must not create a fresh ID and duplicate an already-sent message.
+      timedOut = true; feedback = Feedback::Timeout; ++revision;
+    }
+  }
+ private:
+  bool webReady = false, prefixIntact = false, timedOut = false;
+  uint32_t readyAt = 0, requestedAt = 0, nextRequest = 0;
+};
+}
+}
+```
+
+## firmware/earlink/KeyboardProtocol.h
+
+```cpp
+#pragma once
+#include <array>
+#include <vector>
+#include "Keyboard.h"
+
+namespace earlink {
+namespace keyboard {
+inline void put16(uint8_t* p, uint16_t n) { p[0] = uint8_t(n); p[1] = uint8_t(n >> 8); }
+inline void put32(uint8_t* p, uint32_t n) {
+  for (unsigned i = 0; i < 4; ++i) p[i] = uint8_t(n >> (8 * i));
+}
+inline uint32_t get32(const uint8_t* p) {
+  uint32_t n = 0;
+  for (unsigned i = 0; i < 4; ++i) n |= uint32_t(p[i]) << (8 * i);
+  return n;
+}
+struct Packet { std::array<uint8_t, 20> bytes{}; uint8_t size = 0; };
+// Stable snapshot: BEGIN(19), DATA(8+up to 12), END(6). Safe at ATT MTU 23.
+// Never restart mid-snapshot when a key changes: finish it, then send the latest.
+class Snapshot {
+ public:
+  void begin(const State& state, uint32_t boot) {
+    revision = state.revision; request = state.requestId; bootId = boot;
+    count = uint16_t(state.cells.size()); pendingCount = uint16_t(state.pending.size());
+    feedback = uint8_t(state.feedback);
+    data = state.cells; data.insert(data.end(), state.pending.begin(), state.pending.end());
+    offset = 0; stage = 1;
+  }
+  bool active() const { return stage != 0; }
+  uint32_t capturedRevision() const { return revision; }
+  Packet next() {
+    Packet packet;
+    if (!stage) return packet;
+    auto* p = packet.bytes.data(); p[0] = 1; p[1] = stage;
+    if (stage == 1) {
+      put32(p + 2, bootId); put32(p + 6, revision); put32(p + 10, request);
+      put16(p + 14, count); put16(p + 16, pendingCount); p[18] = feedback;
+      packet.size = 19; stage = data.empty() ? 3 : 2;
+    } else if (stage == 2) {
+      put32(p + 2, revision); put16(p + 6, uint16_t(offset));
+      const size_t n = data.size() - offset < 12 ? data.size() - offset : 12;
+      for (size_t i = 0; i < n; ++i) p[8 + i] = data[offset + i];
+      packet.size = uint8_t(8 + n); offset += n;
+      if (offset == data.size()) stage = 3;
+    } else { put32(p + 2, revision); packet.size = 6; stage = 0; }
+    return packet;
+  }
+  void reset() { stage = 0; }
+ private:
+  std::vector<uint8_t> data;
+  size_t offset = 0;
+  uint32_t revision = 0, request = 0, bootId = 0;
+  uint16_t count = 0, pendingCount = 0;
+  uint8_t stage = 0, feedback = 0;
+};
+}
+}
+```
+
 ## firmware/earlink/earlink.ino
 
 ```cpp
@@ -952,19 +1137,28 @@ class DisplayController {
 #include <BLE2902.h>
 #include <esp_heap_caps.h>
 #include <esp_system.h>
+#include <esp_random.h>
 #include <atomic>
 #include "Config.h"
 #include "Protocol.h"
 #include "DisplayController.h"
 #include "BrailleOutput.h"
+#include "KeyboardProtocol.h"
 
 // Existing UUIDs and v1 wire format are unchanged.
 static const char* SERVICE_UUID = "8f3a0001-7c3b-4b8a-9f52-123456789abc";
 static const char* TEXT_UUID = "8f3a0002-7c3b-4b8a-9f52-123456789abc";
 static const char* STATUS_UUID = "8f3a0003-7c3b-4b8a-9f52-123456789abc";
+static const char* KEYBOARD_UUID = "8f3a0004-7c3b-4b8a-9f52-123456789abc";
 struct Event { uint8_t kind, size, data[20]; };
 QueueHandle_t events = nullptr;
 BLECharacteristic* statusCharacteristic = nullptr;
+BLECharacteristic* keyboardCharacteristic = nullptr;
+earlink::keyboard::Scanner keyboardScanner;
+earlink::keyboard::State keyboardState;
+earlink::keyboard::Snapshot keyboardSnapshot;
+uint32_t keyboardBootId = 0, keyboardPublishedRevision = 0, keyboardSentAt = 0;
+bool keyboardSyncRequested = false;
 std::atomic<bool> connected(false), disconnected(false), overflow(false);
 std::atomic<bool> connectionPending(false);
 earlink::Receiver receiver;
@@ -1097,6 +1291,8 @@ void acceptText(uint32_t now) {
 }
 void setup() {
   Serial.begin(115200);
+  for (const int pin : config::KEY_PINS) pinMode(pin, INPUT_PULLUP);
+  keyboardBootId = esp_random();
   brailleOutput.begin(); // Active-high; startup releases every channel.
   const auto reason = esp_reset_reason();
   Serial.printf("[boot] reset=%s code=%u startup_bytes=00,00,00 output=%s\n",
@@ -1119,6 +1315,10 @@ void setup() {
     BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY);
   statusCharacteristic->addDescriptor(new BLE2902());
   statusCharacteristic->setCallbacks(new WriteCallbacks(2));
+  keyboardCharacteristic = service->createCharacteristic(KEYBOARD_UUID,
+    BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY);
+  keyboardCharacteristic->addDescriptor(new BLE2902());
+  keyboardCharacteristic->setCallbacks(new WriteCallbacks(3));
   publishStatus(); service->start();
   auto* advertising = server->getAdvertising();
   advertising->addServiceUUID(SERVICE_UUID); advertising->setScanResponse(true); advertising->start();
@@ -1128,6 +1328,7 @@ void loop() {
   logHealth(millis());
   if (!events) { delay(100); return; }
   if (disconnected.exchange(false)) {
+    keyboardState.disconnected(); keyboardSnapshot.reset(); keyboardPublishedRevision = 0;
     xQueueReset(events); receiver.reset(); display.clear();
     acknowledgedId = 0; acknowledgedResult = earlink::NONE;
     writeOutput(); publishStatus();
@@ -1148,6 +1349,17 @@ void loop() {
   Event event{};
   while (xQueueReceive(events, &event, 0) == pdTRUE) {
     if (!connected.load()) continue;
+    if (event.kind == 3) {
+      if (event.size < 2 || event.data[0] != 1) continue;
+      if (event.data[1] == 1 && event.size == 2) keyboardSyncRequested = true;
+      else if (event.data[1] == 2 && event.size == 7 && event.data[6] <= 1)
+        keyboardState.acknowledge(earlink::keyboard::get32(event.data + 2), event.data[6] == 1);
+      else if (event.data[1] == 3 && event.size == 3 && event.data[2] <= 1)
+        keyboardState.ready(event.data[2] == 1, now);
+      else if (event.data[1] == 4 && event.size == 2)
+        keyboardState.apply({earlink::keyboard::Action::Send, 0}, connected.load(), now);
+      continue;
+    }
     if (event.kind == 2) { handleCommand(event, now); continue; }
     const auto result = receiver.accept(event.data, event.size, now);
     if (result == earlink::NONE) continue;
@@ -1162,6 +1374,31 @@ void loop() {
     receiver.reset(); Serial.println("[BLE] Receive timeout"); publishStatus();
   }
   if (display.tick(millis())) { writeOutput(); publishStatus(); }
+  uint16_t pressed = 0;
+  for (unsigned i = 0; i < 9; ++i)
+    if (digitalRead(config::KEY_PINS[i]) == LOW) pressed |= uint16_t(1u << i);
+  const auto input = keyboardScanner.tick(pressed, millis());
+  if (input.action == earlink::keyboard::Action::Invalid)
+    Serial.println("[keyboard] Ignored mixed dot/function or multiple function keys");
+  else if (input.action != earlink::keyboard::Action::None) {
+    keyboardState.apply(input, connected.load(), millis());
+    Serial.printf("[keyboard] action=%u dots=%02X cells=%u request=%lu feedback=%u\n",
+      unsigned(input.action), input.cell, unsigned(keyboardState.cells.size()),
+      static_cast<unsigned long>(keyboardState.requestId), unsigned(keyboardState.feedback));
+  }
+  keyboardState.tick(millis());
+  if (connected.load() && keyboardCharacteristic && uint32_t(millis() - keyboardSentAt) >= 12) {
+    if (!keyboardSnapshot.active() &&
+        (keyboardSyncRequested || keyboardPublishedRevision != keyboardState.revision)) {
+      keyboardSnapshot.begin(keyboardState, keyboardBootId); keyboardSyncRequested = false;
+    }
+    if (keyboardSnapshot.active()) {
+      auto packet = keyboardSnapshot.next();
+      keyboardCharacteristic->setValue(packet.bytes.data(), packet.size);
+      keyboardCharacteristic->notify(); keyboardSentAt = millis();
+      if (!keyboardSnapshot.active()) keyboardPublishedRevision = keyboardSnapshot.capturedRevision();
+    }
+  }
   delay(2);
 }
 ```
@@ -1783,6 +2020,131 @@ int main(int argc, char** argv) {
 }
 ```
 
+## firmware/tests/keyboard_test.cpp
+
+```cpp
+#include <cassert>
+#include <fstream>
+#include <iostream>
+#include "../earlink/KeyboardProtocol.h"
+#include "../earlink/Config.h"
+using namespace earlink::keyboard;
+
+struct Keys {
+  Scanner scanner;
+  uint32_t now = 0;
+  Keys() { scanner.tick(0, now); }
+  Input set(uint16_t mask, uint32_t held = 20) {
+    scanner.tick(mask, now); now += held;
+    return scanner.tick(mask, now);
+  }
+  Input release(uint32_t held = 20) { return set(0, held); }
+};
+
+static void scanTests() {
+  // Exhaustive 63 nonblank chords and the user's actual GPIO-dot assignment.
+  const int pins[] = {26, 27, 21, 33, 12, 32, 13, 25, 14};
+  for (unsigned i = 0; i < 9; ++i) assert(config::KEY_PINS[i] == pins[i]);
+  for (uint16_t dots = 1; dots < 64; ++dots) {
+    Keys keys; assert(keys.set(dots).action == Action::None);
+    const auto input = keys.release(); assert(input.action == Action::Cell && input.cell == dots);
+    assert(keys.scanner.tick(0, keys.now + 100).action == Action::None);
+  }
+  Keys sequential;
+  sequential.set(1); sequential.set(3); sequential.set(2);
+  const auto chord = sequential.release(); assert(chord.action == Action::Cell && chord.cell == 3);
+  Keys separate; separate.set(1); assert(separate.release().cell == 1);
+  separate.set(2); assert(separate.release().cell == 2);
+  // Every dot+function combination is ignored, including later function presses.
+  for (const auto fn : {SPACE, BACKSPACE, SEND}) for (uint16_t dots = 1; dots < 64; ++dots) {
+    Keys keys; keys.set(dots); keys.set(uint16_t(dots | fn));
+    assert(keys.release().action == Action::Invalid);
+  }
+  for (const auto combination : {uint16_t(SPACE | BACKSPACE), uint16_t(SPACE | SEND), uint16_t(BACKSPACE | SEND), uint16_t(SPACE | BACKSPACE | SEND)}) {
+    Keys keys; keys.set(combination); assert(keys.release().action == Action::Invalid);
+  }
+  Keys space; space.set(SPACE); assert(space.release().action == Action::Space);
+  Keys send; send.set(SEND); assert(send.release().action == Action::Send);
+  for (uint32_t held : {20u, 799u, 800u, 1200u}) {
+    Keys keys; keys.set(BACKSPACE); keys.now += held - 20;
+    assert(keys.release().action == (held >= 800 ? Action::Clear : Action::Backspace));
+  }
+  // Bounce never becomes a chord; held boot keys do not submit or type.
+  Keys bounce; bounce.set(1, 5); bounce.set(0, 5); bounce.set(1, 5); bounce.set(0, 30);
+  assert(bounce.scanner.tick(0, 100).action == Action::None);
+  Scanner boot; boot.tick(SEND, 0); boot.tick(SEND, 1000); boot.tick(0, 1001);
+  assert(boot.tick(0, 1021).action == Action::None);
+  Keys wrap; wrap.now = 0xfffffff0; wrap.set(1); assert(wrap.release().cell == 1);
+  Keys longMixed; longMixed.set(BACKSPACE); longMixed.now += 1000; longMixed.set(BACKSPACE | 1);
+  assert(longMixed.release().action == Action::Invalid);
+}
+
+static void stateTests() {
+  State state; state.apply({Action::Cell, 8}, true, 0);
+  state.apply({Action::Send, 0}, true, 0);
+  assert(state.feedback == Feedback::Unavailable && state.cells.size() == 1 && !state.requestId);
+  state.ready(true, 0); state.apply({Action::Send, 0}, false, 1); assert(!state.requestId);
+  state.apply({Action::Send, 0}, true, 2); const auto request = state.requestId;
+  assert(request && state.pending == state.cells);
+  state.apply({Action::Send, 0}, true, 3); assert(state.requestId == request);
+  state.apply({Action::Cell, 35}, true, 4);
+  state.acknowledge(request + 1, true); assert(state.cells.size() == 2);
+  state.acknowledge(request, true); assert(state.cells == std::vector<uint8_t>({35}));
+  state.acknowledge(request, true); assert(state.cells.size() == 1);
+  state.apply({Action::Send, 0}, true, 5); state.acknowledge(state.requestId, false);
+  assert(state.cells.size() == 1 && state.feedback == Feedback::Rejected);
+  // Appending, deleting or clearing during flight must not erase later input.
+  state.apply({Action::Send, 0}, true, 6);
+  state.apply({Action::Backspace, 0}, true, 7); state.apply({Action::Cell, 8}, true, 8);
+  state.acknowledge(state.requestId, true); assert(state.cells == std::vector<uint8_t>({8}));
+  state.apply({Action::Send, 0}, true, 9); state.apply({Action::Clear, 0}, true, 10);
+  state.apply({Action::Space, 0}, true, 11); state.acknowledge(state.requestId, true);
+  assert(state.cells == std::vector<uint8_t>({0}));
+  state.apply({Action::Send, 0}, true, 12); const auto pending = state.requestId;
+  state.disconnected(); state.tick(12 + REQUEST_TIMEOUT_MS);
+  assert(state.requestId == pending && state.feedback == Feedback::Timeout && state.cells.size() == 1);
+  state.ready(true, 40000); state.apply({Action::Send, 0}, true, 40001);
+  assert(state.requestId == pending); state.acknowledge(pending, true); assert(state.cells.empty());
+  state.apply({Action::Send, 0}, true, 40002); assert(state.feedback == Feedback::Empty);
+  state.apply({Action::Cell, 1}, true, 40003); state.apply({Action::Send, 0}, true, 46000);
+  assert(!state.requestId && state.feedback == Feedback::Unavailable);
+  for (size_t i = 0; i < MAX_CELLS + 10; ++i) state.apply({Action::Cell, 1}, false, 47000);
+  assert(state.cells.size() == MAX_CELLS && state.feedback == Feedback::Full);
+  state.apply({Action::Clear, 0}, false, 47001); assert(state.cells.empty());
+  state.ready(true, 0xfffffff0); assert(state.available(20));
+}
+
+static void snapshotTests(const char* fixturePath) {
+  State state;
+  state.cells = {26, 35, 18, 8, 46}; // Independent fixed dots: 245 126 25 4 2346 = 한글.
+  state.ready(true, 0); state.apply({Action::Send, 0}, true, 1);
+  Snapshot snapshot; snapshot.begin(state, 0x12345678);
+  std::ofstream fixture(fixturePath, std::ios::binary); assert(fixture.good());
+  unsigned frames = 0;
+  while (snapshot.active()) {
+    const auto p = snapshot.next(); assert(p.size > 0 && p.size <= 20);
+    fixture.put(char(p.size)); fixture.write(reinterpret_cast<const char*>(p.bytes.data()), p.size); ++frames;
+  }
+  assert(frames == 3);
+  state.cells.assign(MAX_CELLS, 63); state.pending = state.cells;
+  snapshot.begin(state, 0xffffffff); auto begin = snapshot.next();
+  assert(begin.size == 19 && get32(begin.bytes.data() + 2) == 0xffffffff);
+  // In-flight changes cannot mutate an already captured frame sequence.
+  state.cells.clear(); size_t received = 0;
+  while (snapshot.active()) {
+    const auto p = snapshot.next();
+    if (p.bytes[1] == 2) { received += p.size - 8; for (unsigned i = 8; i < p.size; ++i) assert(p.bytes[i] == 63); }
+  }
+  assert(received == MAX_CELLS * 2);
+}
+
+int main(int argc, char** argv) {
+  assert(argc == 2);
+  scanTests(); stateTests(); snapshotTests(argv[1]);
+  std::cout << "PASS: keyboard chords/debounce/mixed keys/800ms/wrap, draft retention/ACK/edit/capacity, MTU snapshots and native browser fixture.\n";
+}
+```
+
 ## firmware/tests/cases_2024.py
 
 ```python
@@ -2034,7 +2396,7 @@ def run(args, **kwargs):
 def compile_tests():
     compiler = shutil.which('g++') or shutil.which('clang++')
     extension = '.exe' if os.name == 'nt' else ''
-    programs = ['core_test', 'braille_cli', 'context_test']
+    programs = ['core_test', 'braille_cli', 'context_test', 'keyboard_test']
     if compiler:
         for program in programs:
             run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror',
@@ -2083,7 +2445,9 @@ def main():
     run([node, '--experimental-strip-types', '--test', 'tests/earlink-protocol.test.mjs'])
     oracle = BUILD / 'hangul-oracle.bin'
     write_oracle(oracle)
-    core, cli, context = compile_tests()
+    core, cli, context, keyboard = compile_tests()
+    run([str(keyboard), str(BUILD / 'keyboard-fixture.bin')])
+    run([node, '--experimental-strip-types', '--test', 'tests/earlink-keyboard.test.mjs'])
     run([str(core), str(BUILD / 'protocol-fixture.bin'), str(BUILD / 'protocol-text.txt')])
     run([str(context), str(oracle), str(REPORT / 'context-coverage.json')])
     inputs = BUILD / 'braille-inputs.hex'
@@ -8236,10 +8600,13 @@ FILES = [
     'firmware/earlink/Pager.h',
     'firmware/earlink/ConnectionWave.h',
     'firmware/earlink/DisplayController.h',
+    'firmware/earlink/Keyboard.h',
+    'firmware/earlink/KeyboardProtocol.h',
     'firmware/earlink/earlink.ino',
     'firmware/backups/earlink-full.ino.txt',
     'firmware/backups/solenoid-all-high-hold.ino.txt',
     'firmware/tests/core_test.cpp',
+    'firmware/tests/keyboard_test.cpp',
     'firmware/tests/cases_2024.py',
     'firmware/tests/braille_cli.cpp',
     'firmware/tests/run_tests.py',
@@ -8259,7 +8626,7 @@ def main():
     lines = ['# EARLINK 파일별 전체 코드', '',
         '실제 프로젝트 파일을 그대로 읽어 생성한 문서입니다. 파일별 전체 내용을 생략 없이 수록합니다.',
         '현재 펌웨어는 2024 점역·BLE·연결 파도를 사용합니다. 문자 돌출점은 LOW, 배경은 HIGH이며 대기·종료는 전체 LOW입니다.',
-        '`earlink`의 헤더 11개와 `earlink.ino`를 같은 스케치 폴더에 둡니다. `backups`는 이전 동작의 보관본이며 현재 출력 정책으로 사용하지 않습니다.',
+        '`earlink`의 모든 헤더와 `earlink.ino`를 같은 스케치 폴더에 둡니다. 키보드 입력은 별도 BLE 특성으로 웹에 전달하며 점자 출력에 표시하지 않습니다. `backups`는 이전 동작의 보관본입니다.',
         '지원 범위와 미구현 사항은 [RULES_2024.md](RULES_2024.md), 검증은 [결과 표](validation/BRAILLE_RESULTS.md)를 참조하세요.', '',
         '코드 수정 후 `python firmware/tools/export_full_code.py`로 다시 생성합니다.', '']
     manifest = []
@@ -8448,7 +8815,7 @@ if __name__ == '__main__':
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:earlink": "node --experimental-strip-types --test tests/earlink-protocol.test.mjs",
+    "test:earlink": "node --experimental-strip-types --test tests/earlink-protocol.test.mjs tests/earlink-keyboard.test.mjs",
     "test:firmware": "python firmware/tests/run_tests.py",
     "test:firmware:deep": "python firmware/tests/run_deep_tests.py --seconds 600",
     "test:firmware:asan": "python firmware/tests/run_deep_tests.py --seconds 600 --asan"

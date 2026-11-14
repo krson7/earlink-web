@@ -1,7 +1,7 @@
 [
   {
     "path": "firmware/earlink/Config.h",
-    "sha256": "17d49bb17b9b097ec76ebafefc0c81b7d6c7c3e75272b2ad5e6e93511b8dc89d"
+    "sha256": "95c6e16e8e39873de5964ca4e0cd06a82f6c8c59bedc62e80003562b682ed45e"
   },
   {
     "path": "firmware/earlink/EarlinkLimits.h",
@@ -44,8 +44,16 @@
     "sha256": "f16a559e83cdc445ad94dc8ed42d806e997a72da7017d3e716c39bb70ee62928"
   },
   {
+    "path": "firmware/earlink/Keyboard.h",
+    "sha256": "248ebfb3134b9878d947facc10a9ceec48dc1f885c5359ef5bb7c89ae930baac"
+  },
+  {
+    "path": "firmware/earlink/KeyboardProtocol.h",
+    "sha256": "cb45f718d957e29aba7e86d01dba6c04b16b580e841bbc111398086321db5486"
+  },
+  {
     "path": "firmware/earlink/earlink.ino",
-    "sha256": "c62e7298c30cdd78c6063320eeef71c1ead0d95deae89254aeb51407bae0a946"
+    "sha256": "d98044b70eaf78ea7ca641ac6eac3671bf401a024ada99049b84f38d2b8cbd86"
   },
   {
     "path": "firmware/backups/earlink-full.ino.txt",
@@ -60,6 +68,10 @@
     "sha256": "cae3de7cc5478f3090acb50987e2127fc09152c570fb388ab6b5afafc3725f37"
   },
   {
+    "path": "firmware/tests/keyboard_test.cpp",
+    "sha256": "e4a080809d20f6125f374a83995789b99a846893368b85b1c237dcbd3ece57a9"
+  },
+  {
     "path": "firmware/tests/cases_2024.py",
     "sha256": "dc12bdadb350d669c3b3851e6a157125b0e013323c937f9b95665bbe0e4d1b83"
   },
@@ -69,7 +81,7 @@
   },
   {
     "path": "firmware/tests/run_tests.py",
-    "sha256": "9dd1392cbb67cf5a5404456eaa3cefa3ec3eafb1c1f9fc3e06dfa3901f696295"
+    "sha256": "deb19ecdd27ce96d01957ad299903e68690062321ab0618e34d0a20e23d98ac9"
   },
   {
     "path": "firmware/tests/official_words_2024.json",
@@ -93,7 +105,7 @@
   },
   {
     "path": "firmware/tools/export_full_code.py",
-    "sha256": "930e522e963e68bd0f3826dfbb5144fe21589474d4cac85e3dba4af49a7236ce"
+    "sha256": "80ce009030347cc96b29388513f485e384a62bea7816b8701bc5d9a0da3b8897"
   },
   {
     "path": "firmware/tools/check_official_source.py",
@@ -105,7 +117,7 @@
   },
   {
     "path": "package.json",
-    "sha256": "7988fa579c49a365876246a51d44ce9b553a5c294374907392d417ad2845d0e1"
+    "sha256": "3c917c9f55bf01b5d8637c6f6aaed521db3f2e934d0afdb42b28b7ac909a6a7e"
   },
   {
     "path": ".gitignore",

@@ -5,19 +5,28 @@
 #include <BLE2902.h>
 #include <esp_heap_caps.h>
 #include <esp_system.h>
+#include <esp_random.h>
 #include <atomic>
 #include "Config.h"
 #include "Protocol.h"
 #include "DisplayController.h"
 #include "BrailleOutput.h"
+#include "KeyboardProtocol.h"
 
 // Existing UUIDs and v1 wire format are unchanged.
 static const char* SERVICE_UUID = "8f3a0001-7c3b-4b8a-9f52-123456789abc";
 static const char* TEXT_UUID = "8f3a0002-7c3b-4b8a-9f52-123456789abc";
 static const char* STATUS_UUID = "8f3a0003-7c3b-4b8a-9f52-123456789abc";
+static const char* KEYBOARD_UUID = "8f3a0004-7c3b-4b8a-9f52-123456789abc";
 struct Event { uint8_t kind, size, data[20]; };
 QueueHandle_t events = nullptr;
 BLECharacteristic* statusCharacteristic = nullptr;
+BLECharacteristic* keyboardCharacteristic = nullptr;
+earlink::keyboard::Scanner keyboardScanner;
+earlink::keyboard::State keyboardState;
+earlink::keyboard::Snapshot keyboardSnapshot;
+uint32_t keyboardBootId = 0, keyboardPublishedRevision = 0, keyboardSentAt = 0;
+bool keyboardSyncRequested = false;
 std::atomic<bool> connected(false), disconnected(false), overflow(false);
 std::atomic<bool> connectionPending(false);
 earlink::Receiver receiver;
@@ -150,6 +159,8 @@ void acceptText(uint32_t now) {
 }
 void setup() {
   Serial.begin(115200);
+  for (const int pin : config::KEY_PINS) pinMode(pin, INPUT_PULLUP);
+  keyboardBootId = esp_random();
   brailleOutput.begin(); // Active-high; startup releases every channel.
   const auto reason = esp_reset_reason();
   Serial.printf("[boot] reset=%s code=%u startup_bytes=00,00,00 output=%s\n",
@@ -172,6 +183,10 @@ void setup() {
     BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY);
   statusCharacteristic->addDescriptor(new BLE2902());
   statusCharacteristic->setCallbacks(new WriteCallbacks(2));
+  keyboardCharacteristic = service->createCharacteristic(KEYBOARD_UUID,
+    BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY);
+  keyboardCharacteristic->addDescriptor(new BLE2902());
+  keyboardCharacteristic->setCallbacks(new WriteCallbacks(3));
   publishStatus(); service->start();
   auto* advertising = server->getAdvertising();
   advertising->addServiceUUID(SERVICE_UUID); advertising->setScanResponse(true); advertising->start();
@@ -181,6 +196,7 @@ void loop() {
   logHealth(millis());
   if (!events) { delay(100); return; }
   if (disconnected.exchange(false)) {
+    keyboardState.disconnected(); keyboardSnapshot.reset(); keyboardPublishedRevision = 0;
     xQueueReset(events); receiver.reset(); display.clear();
     acknowledgedId = 0; acknowledgedResult = earlink::NONE;
     writeOutput(); publishStatus();
@@ -201,6 +217,17 @@ void loop() {
   Event event{};
   while (xQueueReceive(events, &event, 0) == pdTRUE) {
     if (!connected.load()) continue;
+    if (event.kind == 3) {
+      if (event.size < 2 || event.data[0] != 1) continue;
+      if (event.data[1] == 1 && event.size == 2) keyboardSyncRequested = true;
+      else if (event.data[1] == 2 && event.size == 7 && event.data[6] <= 1)
+        keyboardState.acknowledge(earlink::keyboard::get32(event.data + 2), event.data[6] == 1);
+      else if (event.data[1] == 3 && event.size == 3 && event.data[2] <= 1)
+        keyboardState.ready(event.data[2] == 1, now);
+      else if (event.data[1] == 4 && event.size == 2)
+        keyboardState.apply({earlink::keyboard::Action::Send, 0}, connected.load(), now);
+      continue;
+    }
     if (event.kind == 2) { handleCommand(event, now); continue; }
     const auto result = receiver.accept(event.data, event.size, now);
     if (result == earlink::NONE) continue;
@@ -215,5 +242,30 @@ void loop() {
     receiver.reset(); Serial.println("[BLE] Receive timeout"); publishStatus();
   }
   if (display.tick(millis())) { writeOutput(); publishStatus(); }
+  uint16_t pressed = 0;
+  for (unsigned i = 0; i < 9; ++i)
+    if (digitalRead(config::KEY_PINS[i]) == LOW) pressed |= uint16_t(1u << i);
+  const auto input = keyboardScanner.tick(pressed, millis());
+  if (input.action == earlink::keyboard::Action::Invalid)
+    Serial.println("[keyboard] Ignored mixed dot/function or multiple function keys");
+  else if (input.action != earlink::keyboard::Action::None) {
+    keyboardState.apply(input, connected.load(), millis());
+    Serial.printf("[keyboard] action=%u dots=%02X cells=%u request=%lu feedback=%u\n",
+      unsigned(input.action), input.cell, unsigned(keyboardState.cells.size()),
+      static_cast<unsigned long>(keyboardState.requestId), unsigned(keyboardState.feedback));
+  }
+  keyboardState.tick(millis());
+  if (connected.load() && keyboardCharacteristic && uint32_t(millis() - keyboardSentAt) >= 12) {
+    if (!keyboardSnapshot.active() &&
+        (keyboardSyncRequested || keyboardPublishedRevision != keyboardState.revision)) {
+      keyboardSnapshot.begin(keyboardState, keyboardBootId); keyboardSyncRequested = false;
+    }
+    if (keyboardSnapshot.active()) {
+      auto packet = keyboardSnapshot.next();
+      keyboardCharacteristic->setValue(packet.bytes.data(), packet.size);
+      keyboardCharacteristic->notify(); keyboardSentAt = millis();
+      if (!keyboardSnapshot.active()) keyboardPublishedRevision = keyboardSnapshot.capturedRevision();
+    }
+  }
   delay(2);
 }

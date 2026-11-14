@@ -100,6 +100,9 @@ button:focus-visible, a:focus-visible, select:focus-visible { outline: 3px solid
 .earlink-connect-button { display: flex; width: 100%; height: 54px; align-items: center; justify-content: center; border: 0; border-radius: 22px; background: linear-gradient(125deg, #2c4383, #15264f); color: #fff; font-size: 15px; font-weight: 700; box-shadow: 5px 6px 12px #c0cadb, -4px -4px 10px #fff; }
 .earlink-connector button:not(.earlink-connect-button), .earlink-connector select { border-color: #dce3ed; border-radius: 12px; background: var(--surface); box-shadow: 2px 2px 5px #ccd4e1, -2px -2px 5px #fff; }
 .earlink-connected { display: flex; min-height: 56px; align-items: center; gap: 12px; padding: 15px; border-radius: 20px; box-shadow: var(--inset); }
+.braille-keyboard-composer { margin-top: 14px; padding-top: 14px; border-top: 1px solid #d5deeb; }
+.braille-keyboard-composer textarea { display: block; width: 100%; max-height: 100px; resize: none; border: 0; background: transparent; color: #263453; font-size: 16px; line-height: 1.5; outline: none; }
+.braille-keyboard-composer .composer-input:focus-within { outline: 2px solid #8c9fc5; outline-offset: 2px; }
 
 @keyframes earlink-loading { from { transform: scaleX(.05); } to { transform: scaleX(1); } }
 @media (min-width: 600px) and (min-height: 640px) {
