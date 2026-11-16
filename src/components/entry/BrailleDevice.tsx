@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef } from "react";
 
 import type { EarLinkBluetooth } from "@/hooks/useEarLinkBluetooth";
 
@@ -14,7 +13,6 @@ type BrailleDeviceProps = {
   device: DeviceSummary;
   showGuide: boolean;
   onPress: () => void;
-  onDismissGuide: () => void;
 };
 
 function getDeviceState({ connected, connecting, remoteConnected }: DeviceSummary): string {
@@ -23,26 +21,12 @@ function getDeviceState({ connected, connecting, remoteConnected }: DeviceSummar
   return "idle";
 }
 
-export default function BrailleDevice({ device, showGuide, onPress, onDismissGuide }: BrailleDeviceProps) {
-  const anchorRef = useRef<HTMLDivElement | null>(null);
+function BluetoothSymbol() {
+  return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 7 10 10-5 5V2l5 5L7 17" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+
+export default function BrailleDevice({ device, showGuide, onPress }: BrailleDeviceProps) {
   const name = device.deviceName ?? "EarLink";
-
-  // 작은 화면에서는 기기가 화면 아래에 가려질 수 있어 안내가 뜰 때 보이게 한다.
-  useEffect(() => {
-    if (showGuide) {
-      anchorRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    }
-  }, [showGuide]);
-
-  const chipText = device.connected
-    ? `${name} 연결됨`
-    : device.connecting
-      ? "기기 연결 중…"
-      : device.remoteConnected
-        ? "다른 휴대폰에 연결됨"
-        : device.supported
-          ? "눌러서 기기 연결"
-          : "이 브라우저는 기기 연결 미지원";
 
   const label = device.connected
     ? `${name} 연결됨. 눌러서 연결 관리`
@@ -56,33 +40,31 @@ export default function BrailleDevice({ device, showGuide, onPress, onDismissGui
     <div className="device-scene" data-state={getDeviceState(device)} data-guide={showGuide || undefined}>
       <div className="device-light" aria-hidden="true" />
 
-      <div ref={anchorRef} className="device-anchor">
+      <div className="device-anchor">
         {showGuide && (
           <div className="connect-guide-bubble" role="status">
-            <strong>기기를 눌러 연결하세요</strong>
-            <span>어떤 방식으로 대화해도 점자가 기기로 전달돼요</span>
-            <button type="button" onClick={onDismissGuide} className="connect-guide-skip">
-              나중에 연결하기
+            <button type="button" onClick={onPress} className="connect-guide-action">
+              <span className="connect-guide-symbol"><BluetoothSymbol /></span>
+              <span className="connect-guide-label">
+                <strong>기기를 눌러 연결하세요</strong>
+                <span>every way connect</span>
+              </span>
             </button>
           </div>
         )}
 
-        <button type="button" onClick={onPress} aria-label={label} className="device-button">
+        <button type="button" onClick={onPress} aria-label={label} aria-busy={device.connecting} className="device-button">
           <span className="device-spot" aria-hidden="true" />
           <Image
             className="device-product"
-            src="/earlink-device.webp"
+            src="/earlink-device-pearl-glow.webp"
             alt=""
-            width={1100}
-            height={535}
+            width={1798}
+            height={875}
             sizes="(max-width: 430px) 80vw, 340px"
             loading="eager"
             draggable={false}
           />
-          <span className="device-chip" aria-hidden="true">
-            <span className="device-chip-dot" />
-            {chipText}
-          </span>
         </button>
       </div>
     </div>

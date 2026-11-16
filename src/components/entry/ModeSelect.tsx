@@ -10,7 +10,6 @@ type ModeSelectProps = {
   device: DeviceSummary;
   showGuide: boolean;
   onDevicePress: () => void;
-  onDismissGuide: () => void;
 };
 
 // 서버의 VISUAL 값은 그대로 두고 화면에서는 "음성" 모드로 쓴다.
@@ -20,7 +19,7 @@ const modes = [
   { mode: "STANDARD", title: "텍스트", english: "Text", description: "키보드나 점자 키보드로 입력해 대화하기" },
 ] as const;
 
-export default function ModeSelect({ onSelectMode, device, showGuide, onDevicePress, onDismissGuide }: ModeSelectProps) {
+export default function ModeSelect({ onSelectMode, device, showGuide, onDevicePress }: ModeSelectProps) {
   return (
     <main className="mode-select">
       <header className="entry-header"><BrandMark /><span className="brand-name">EarLink</span></header>
@@ -37,7 +36,7 @@ export default function ModeSelect({ onSelectMode, device, showGuide, onDevicePr
           ))}
         </div>
       </section>
-      <BrailleDevice device={device} showGuide={showGuide} onPress={onDevicePress} onDismissGuide={onDismissGuide} />
+      <BrailleDevice device={device} showGuide={showGuide} onPress={onDevicePress} />
     </main>
   );
 }

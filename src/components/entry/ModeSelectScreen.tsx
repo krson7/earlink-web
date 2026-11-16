@@ -50,7 +50,6 @@ export default function ModeSelectScreen({
         device={device}
         showGuide={showGuide}
         onDevicePress={onDevicePress}
-        onDismissGuide={onDismissGuide}
       />
 
       {/* 기기 연결 안내: 화면을 어둡게 덮고 기기만 위로 띄운다. */}

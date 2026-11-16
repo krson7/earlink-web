@@ -6,6 +6,13 @@ Next.js 기반 접근성 채팅 MVP입니다.
 - [ESP32 3칸 점자 펌웨어, 업로드와 전송 규격](firmware/README.md)
 - [9버튼 한글 점자 키보드: 핀 배치·웹 입력·채팅 전송](firmware/KEYBOARD.md)
 - 기기 전송 테스트: `npm run test:earlink`
+- [실제 Bluetooth 연결 및 배포 설정](docs/PRODUCTION_BLUETOOTH.md)
+
+## 실제 EarLink 연결
+
+기기 이미지나 연결 안내를 누르면 브라우저의 Bluetooth 선택창이 열린다. `EarLink`를 선택하고 GATT 연결·상태 읽기가 완료되어야 연결됨으로 표시된다. 기기 선택 취소·연결 실패 시 연결 완료로 처리하지 않는다. UI 테스트 타이머와 가상 전송 분기는 배포 코드에서 제거했다.
+
+실서비스에서는 Web Bluetooth를 지원하는 브라우저와 HTTPS 주소가 필요하다. 배포 전에 `.env.example`의 API·WebSocket 주소를 실제 서버의 HTTPS·WSS 주소로 설정한 뒤 `npm run build`를 실행한다. `.env.local`의 localhost 주소를 외부 서비스에 그대로 배포하지 않는다.
 
 아래는 프론트엔드 실행 안내입니다.
 

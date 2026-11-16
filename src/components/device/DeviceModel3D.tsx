@@ -15,7 +15,7 @@ import type { CSSProperties } from "react";
 
 export type DeviceMotion = "idle" | "spin" | "front";
 
-const IDLE_POSE = "rotateX(12deg) rotateY(-16deg) translateY(0px)";
+const IDLE_POSE = "rotateX(0deg) rotateY(0deg) translateY(0px)";
 const FRONT_POSE = "rotateX(0deg) rotateY(0deg) translateY(0px)";
 
 const SPIN_KEYFRAMES: Keyframe[] = [

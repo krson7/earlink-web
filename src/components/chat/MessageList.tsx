@@ -32,21 +32,23 @@ export default function MessageList({
   messages,
   participantId,
 }: MessageListProps) {
-  const endRef =
+  const scrollRef =
     useRef<HTMLDivElement | null>(
       null,
     );
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "end",
+    const container = scrollRef.current;
+    container?.scrollTo({
+      top: container.scrollHeight,
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
     });
   }, [messages]);
 
   return (
     <section className="message-list">
       <div
+        ref={scrollRef}
         role="log"
         aria-live="polite"
         aria-relevant="additions"
@@ -119,7 +121,6 @@ export default function MessageList({
           )
         )}
 
-        <div ref={endRef} />
       </div>
     </section>
   );
