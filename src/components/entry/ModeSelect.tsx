@@ -1,6 +1,7 @@
 "use client";
 
 import { BrandMark, ModeIcon } from "@/components/Brand";
+import BrailleDevice from "@/components/entry/BrailleDevice";
 import type { AccessibilityMode } from "@/types/chat";
 
 const modes = [
@@ -8,25 +9,6 @@ const modes = [
   { mode: "HEARING", title: "수어", english: "Sign Language", description: "카메라로 지문자를 인식해 대화하기" },
   { mode: "STANDARD", title: "텍스트", english: "Text", description: "키보드로 입력해 대화하기" },
 ] as const;
-
-function BrailleDevice() {
-  return (
-    <div className="device-scene" aria-hidden="true">
-      <div className="device-light" />
-      <div className="braille-device">
-        <div className="device-keys">
-          {[0, 1, 2].map((key) => <i key={key} />)}
-          <i className="device-space" />
-          {[3, 4, 5].map((key) => <i key={key} />)}
-        </div>
-        <div className="device-cells">
-          {[0, 1, 2, 3].map((cell) => <span key={cell}>{[0, 1, 2, 3, 4, 5].map((dot) => <i key={dot} />)}</span>)}
-        </div>
-        <div className="device-port" />
-      </div>
-    </div>
-  );
-}
 
 export default function ModeSelect({ onSelectMode }: { onSelectMode: (mode: AccessibilityMode) => void }) {
   return (

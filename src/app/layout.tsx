@@ -20,6 +20,9 @@ const notoSansKr = Noto_Sans_KR({
 
 export const metadata: Metadata = {
   title: "EarLink",
+  icons: {
+    icon: [{ url: "/earlink-mark.svg", type: "image/svg+xml", sizes: "any" }],
+  },
   description:
     "서로 다른 대화 방식을 연결하는 실시간 접근성 채팅 서비스",
 };

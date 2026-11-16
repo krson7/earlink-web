@@ -1,12 +1,11 @@
+import Image from "next/image";
+
 import type { AccessibilityMode } from "@/types/chat";
 
 export function BrandMark({ className = "" }: { className?: string }) {
   return (
     <span aria-hidden="true" className={`brand-mark ${className}`}>
-      <svg viewBox="0 0 48 48" fill="none">
-        <path d="M23 12a12 12 0 0 0-12 12c0 3 1 5.5 3 7.7L11 40l10-5a12 12 0 1 0 2-23Z" stroke="currentColor" strokeWidth="3.4" strokeLinejoin="round" />
-        <circle cx="30" cy="23" r="11" stroke="currentColor" strokeWidth="3.4" />
-      </svg>
+      <Image src="/earlink-mark.svg" alt="" width={60} height={60} />
     </span>
   );
 }
