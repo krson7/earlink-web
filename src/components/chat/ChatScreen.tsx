@@ -8,14 +8,16 @@ import {
 
 import type { FormEvent } from "react";
 
+import { MicIcon } from "@/components/Brand";
+import BrailleKeyboardComposer from "@/components/chat/BrailleKeyboardComposer";
 import CameraComposer from "@/components/chat/CameraComposer";
 import ChatComposer from "@/components/chat/ChatComposer";
 import ChatHeader from "@/components/chat/ChatHeader";
-import EarLinkConnector from "@/components/chat/EarLinkConnector";
-import BrailleKeyboardComposer from "@/components/chat/BrailleKeyboardComposer";
 import MessageList from "@/components/chat/MessageList";
 
-import { useEarLinkBluetooth } from "@/hooks/useEarLinkBluetooth";
+import type { EarLinkBluetooth } from "@/hooks/useEarLinkBluetooth";
+import { useSpeechInput } from "@/hooks/useSpeechInput";
+import { useSpeechOutput } from "@/hooks/useSpeechOutput";
 
 import { MAX_CHAT_MESSAGE_LENGTH } from "@/lib/chat";
 
@@ -30,6 +32,12 @@ type ChatScreenProps = {
   chatConnected: boolean;
   chatStatus: string;
   chatErrorMessage: string;
+  earLink: EarLinkBluetooth;
+  // 상단에 보여 줄 기기 상태 (내 휴대폰 또는 다른 휴대폰의 연결)
+  device: { connected: boolean; serialNumber: string | null };
+  // 점자 키보드로 보낸 내 메시지인지 확인 (한 번만 true)
+  isKeyboardEcho: (content: string) => boolean;
+  onDevicePress: () => void;
   onLeave: () => void;
   onSendMessage: (text: string) => boolean;
   onClearError: () => void;
@@ -37,9 +45,15 @@ type ChatScreenProps = {
 
 function getChatPlaceholder(
   chatConnected: boolean,
+  voiceMode: boolean,
+  listening: boolean,
 ): string {
   if (!chatConnected) {
     return "채팅 서버 연결 중...";
+  }
+
+  if (voiceMode) {
+    return listening ? "듣고 있어요…" : "마이크를 누르거나 입력하세요";
   }
 
   return "메시지를 입력하세요";
@@ -51,6 +65,10 @@ export default function ChatScreen({
   chatConnected,
   chatStatus,
   chatErrorMessage,
+  earLink,
+  device,
+  isKeyboardEcho,
+  onDevicePress,
   onLeave,
   onSendMessage,
   onClearError,
@@ -67,28 +85,59 @@ export default function ChatScreen({
   const accessibilityMode =
     participant.accessibility_mode;
 
+  // 서버 값 VISUAL은 화면에서 "음성" 모드다.
+  const voiceMode = accessibilityMode === "VISUAL";
+
   /*
    * EarLink Bluetooth
+   *
+   * 연결은 메인 화면에서도 할 수 있도록 page.tsx가 관리한다.
+   * 대화방을 나갔다 들어와도 연결이 유지된다.
    */
   const {
     connected: earLinkConnected,
     connecting: earLinkConnecting,
-    deviceName: earLinkDeviceName,
-    error: earLinkError,
-    connect: connectEarLink,
-    disconnect: disconnectEarLink,
     send: sendToEarLink,
-    status: earLinkStatus,
-    control: controlEarLink,
-    setIntervalMs: setEarLinkInterval,
     keyboard,
     keyboardSupported,
     keyboardError,
     requestKeyboardSend,
-  } = useEarLinkBluetooth({
-    ready: accessibilityMode === "VISUAL" && chatConnected,
-    onSend: onSendMessage,
+  } = earLink;
+
+  /*
+   * 음성 모드: 받은 메시지는 소리로 읽고, 입력은 마이크로 받는다.
+   */
+  const { speak, hold: holdSpeech } = useSpeechOutput();
+  const speechInput = useSpeechInput((text) => {
+    setMessage(text);
+    onClearError();
   });
+  const { listening, cancel: cancelListening } = speechInput;
+
+  // 입장 시점에 이미 있던 메시지는 읽지 않는다.
+  const [spokenIds] = useState(
+    () => new Set(messages.map((chatMessage) => chatMessage.localId)),
+  );
+
+  useEffect(() => {
+    for (const chatMessage of messages) {
+      if (spokenIds.has(chatMessage.localId)) continue;
+      spokenIds.add(chatMessage.localId);
+
+      if (
+        voiceMode &&
+        chatMessage.sender_id !== participant.participant_id &&
+        chatMessage.content.trim()
+      ) {
+        speak(chatMessage.content);
+      }
+    }
+  }, [messages, voiceMode, participant.participant_id, speak, spokenIds]);
+
+  // 마이크로 듣는 동안에는 읽기를 멈춘다.
+  useEffect(() => {
+    holdSpeech(listening);
+  }, [listening, holdSpeech]);
 
   /*
    * 이미 확인한 채팅 메시지 ID
@@ -156,6 +205,8 @@ export default function ChatScreen({
     event.preventDefault();
 
     if (onSendMessage(message)) {
+      // 늦게 도착한 인식 결과가 비운 입력칸을 다시 채우지 않게 한다.
+      cancelListening();
       setMessage("");
     }
   }
@@ -165,18 +216,15 @@ export default function ChatScreen({
    *
    * 정책:
    *
-   * 1. VISUAL 모드에서만 동작
+   * 1. 모든 대화 방식에서 동작 (기기가 연결되어 있을 때)
    * 2. EarLink 연결 전 메시지는 전달하지 않음
    * 3. 연결 완료 시점에 존재하는 메시지는 모두 과거 메시지로 처리
-   * 4. 연결 이후 새로 들어온 메시지만 전달
-   * 5. 내가 보낸 메시지는 전달하지 않음
+   * 4. 연결 이후 새로 들어온 메시지만 전달 (내 메시지 + 상대 메시지)
+   * 5. 점자 키보드로 보낸 내 메시지는 전달하지 않음
+   *    (기기에서 친 글이 다시 점자로 돌아오지 않게)
    * 6. 같은 메시지는 두 번 전달하지 않음
    */
   useEffect(() => {
-    if (accessibilityMode !== "VISUAL") {
-      return;
-    }
-
     /*
      * EarLink가 연결되어 있지 않은 상태
      *
@@ -253,17 +301,14 @@ export default function ChatScreen({
     const currentSession =
       earLinkSessionRef.current;
 
-    /*
-     * 새 메시지 중 상대방 메시지만
-     * EarLink로 전달한다.
-     */
     for (const chatMessage of newMessages) {
       /*
-       * 내가 보낸 메시지는 제외
+       * 점자 키보드로 보낸 내 메시지는 제외
        */
       if (
         chatMessage.sender_id ===
-        participant.participant_id
+          participant.participant_id &&
+        isKeyboardEcho(chatMessage.content)
       ) {
         continue;
       }
@@ -311,12 +356,29 @@ export default function ChatScreen({
         );
     }
   }, [
-    accessibilityMode,
     earLinkConnected,
     messages,
     participant.participant_id,
     sendToEarLink,
+    isKeyboardEcho,
   ]);
+
+  const micButton = voiceMode ? (
+    <button
+      type="button"
+      aria-pressed={listening}
+      aria-label={listening ? "음성 입력 멈추기" : "음성으로 입력"}
+      disabled={!speechInput.supported || !chatConnected}
+      onClick={() => (listening ? speechInput.stop() : speechInput.start())}
+      className={listening ? "soft-circle mic-button is-listening" : "soft-circle mic-button"}
+    >
+      <MicIcon />
+    </button>
+  ) : undefined;
+
+  const composerError =
+    chatErrorMessage ||
+    (voiceMode ? speechInput.error ?? "" : "");
 
   return (
     <div className="chat-screen">
@@ -326,6 +388,10 @@ export default function ChatScreen({
         accessibilityMode={
           accessibilityMode
         }
+        deviceConnected={device.connected}
+        deviceConnecting={earLinkConnecting}
+        serialNumber={device.serialNumber}
+        onDevicePress={onDevicePress}
         onLeave={onLeave}
       />
 
@@ -335,6 +401,19 @@ export default function ChatScreen({
           participant.participant_id
         }
       />
+
+      {failedMessages.length > 0 && (
+        <div role="alert" className="device-delivery-notice">
+          <span>점자 기기로 {failedMessages.length}개를 보내지 못했어요</span>
+          <button
+            type="button"
+            disabled={!earLinkConnected || retrying}
+            onClick={() => void retryFailedMessages()}
+          >
+            {retrying ? "다시 보내는 중…" : "다시 보내기"}
+          </button>
+        </div>
+      )}
 
       {accessibilityMode ===
       "HEARING" ? (
@@ -349,49 +428,40 @@ export default function ChatScreen({
           }
           onSendText={onSendMessage}
         />
-      ) : accessibilityMode ===
-        "VISUAL" ? (
-        <EarLinkConnector
-          connected={earLinkConnected}
-          connecting={earLinkConnecting}
-          status={earLinkStatus}
-          onControl={controlEarLink}
-          onIntervalChange={setEarLinkInterval}
-          failedCount={failedMessages.length}
-          retrying={retrying}
-          onRetry={retryFailedMessages}
-          deviceName={
-            earLinkDeviceName
-          }
-          error={earLinkError}
-          onConnect={connectEarLink}
-          onDisconnect={
-            disconnectEarLink
-          }
-        >
-          <BrailleKeyboardComposer connected={earLinkConnected} supported={keyboardSupported}
-            chatConnected={chatConnected} snapshot={keyboard} error={keyboardError}
-            chatError={chatErrorMessage} onSend={requestKeyboardSend} />
-        </EarLinkConnector>
       ) : (
-        <ChatComposer
-          message={message}
-          chatConnected={chatConnected}
-          chatErrorMessage={
-            chatErrorMessage
-          }
-          placeholder={getChatPlaceholder(
-            chatConnected,
+        <div className="composer-stack">
+          {/* 텍스트 모드: 기기의 점자 키보드로 친 글 */}
+          {accessibilityMode === "STANDARD" &&
+            earLinkConnected &&
+            keyboardSupported && (
+            <BrailleKeyboardComposer
+              chatConnected={chatConnected}
+              snapshot={keyboard}
+              error={keyboardError}
+              onSend={requestKeyboardSend}
+            />
           )}
-          maxLength={
-            MAX_CHAT_MESSAGE_LENGTH
-          }
-          inputRef={inputRef}
-          onMessageChange={
-            handleMessageChange
-          }
-          onSubmit={handleSubmit}
-        />
+
+          <ChatComposer
+            message={message}
+            chatConnected={chatConnected}
+            chatErrorMessage={composerError}
+            placeholder={getChatPlaceholder(
+              chatConnected,
+              voiceMode,
+              listening,
+            )}
+            maxLength={
+              MAX_CHAT_MESSAGE_LENGTH
+            }
+            inputRef={inputRef}
+            leadingAction={micButton}
+            onMessageChange={
+              handleMessageChange
+            }
+            onSubmit={handleSubmit}
+          />
+        </div>
       )}
     </div>
   );

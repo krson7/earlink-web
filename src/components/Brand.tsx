@@ -10,11 +10,25 @@ export function BrandMark({ className = "" }: { className?: string }) {
   );
 }
 
+function MicPaths() {
+  return (
+    <>
+      <rect x="9" y="3" width="6" height="11.5" rx="3" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M8.8 21h6.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </>
+  );
+}
+
+export function MicIcon() {
+  return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-[22px] w-[22px]"><MicPaths /></svg>;
+}
+
+// VISUAL은 서버 값 그대로 두고 화면에서는 "음성" 모드로 쓴다.
 export function ModeIcon({ mode }: { mode: AccessibilityMode }) {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="mode-icon">
       {mode === "VISUAL" ? (
-        <>{[6, 12, 18].flatMap((y) => [9, 15].map((x) => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.9" fill="currentColor" />))}</>
+        <MicPaths />
       ) : mode === "HEARING" ? (
         <path d="M8 12V6a1.5 1.5 0 0 1 3 0v5-7a1.5 1.5 0 0 1 3 0v7-5a1.5 1.5 0 0 1 3 0v6-3a1.5 1.5 0 0 1 3 0v5c0 4-2.7 7-6.7 7h-1c-2 0-4-1-5.3-3l-3-4a1.6 1.6 0 0 1 2.5-2L9 15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
       ) : (

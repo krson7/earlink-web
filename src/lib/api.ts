@@ -5,6 +5,14 @@ type ErrorResponse = {
   detail?: unknown;
 };
 
+/** Keeps the HTTP status so callers can tell "API not deployed" (404) apart. */
+export class ApiError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 function getApiErrorMessage(body: ErrorResponse | null): string {
   return typeof body?.detail === "string"
     ? body.detail
@@ -23,7 +31,7 @@ export async function requestJson<T>(path: string, options: RequestInit): Promis
   const body = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error(getApiErrorMessage(body as ErrorResponse | null));
+    throw new ApiError(getApiErrorMessage(body as ErrorResponse | null), response.status);
   }
 
   return body as T;

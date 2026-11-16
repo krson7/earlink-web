@@ -2,6 +2,9 @@
 export const EARLINK_SERVICE_UUID = "8f3a0001-7c3b-4b8a-9f52-123456789abc";
 export const EARLINK_TEXT_UUID = "8f3a0002-7c3b-4b8a-9f52-123456789abc";
 export const EARLINK_STATUS_UUID = "8f3a0003-7c3b-4b8a-9f52-123456789abc";
+/** Optional read-only characteristic: UTF-8 serial number such as "EL-0001". */
+export const EARLINK_SERIAL_UUID = "8f3a0005-7c3b-4b8a-9f52-123456789abc";
+const MAX_SERIAL_LENGTH = 32;
 export const MAX_TEXT_BYTES = 4096;
 export const ACK_TIMEOUT_MS = 10000;
 
@@ -83,6 +86,13 @@ export function decodeStatus(value: DataView): EarLinkStatus {
     page: value.getUint16(8, true), pages: value.getUint16(10, true),
     unsupported: value.getUint16(12, true), intervalMs: value.getUint16(14, true),
   };
+}
+
+/** Returns null for an empty or unreadable serial so the UI shows only "연결됨". */
+export function decodeSerial(value: DataView): string | null {
+  const bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  const text = new TextDecoder().decode(bytes).replace(/[^\x20-\x7e]/g, "").trim();
+  return text ? text.slice(0, MAX_SERIAL_LENGTH) : null;
 }
 
 export function deviceError(result: number): string {

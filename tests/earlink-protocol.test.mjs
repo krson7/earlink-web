@@ -2,8 +2,22 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import {
-  encodeTextPackets, decodeStatus, encodeCommand, encodeInterval,
+  encodeTextPackets, decodeStatus, encodeCommand, encodeInterval, decodeSerial,
 } from "../src/lib/earlink-protocol.ts";
+
+test("serial number is printable ASCII, trimmed, bounded, and null when blank", () => {
+  const view = (text, offset = 0) => {
+    const bytes = new TextEncoder().encode(text);
+    const buffer = new Uint8Array(offset + bytes.length);
+    buffer.set(bytes, offset);
+    return new DataView(buffer.buffer, offset, bytes.length);
+  };
+  assert.equal(decodeSerial(view("EL-0001")), "EL-0001");
+  assert.equal(decodeSerial(view("  EL-0002\0\n", 3)), "EL-0002");
+  assert.equal(decodeSerial(view("X".repeat(40))), "X".repeat(32));
+  assert.equal(decodeSerial(view("\0\0 ")), null);
+  assert.equal(decodeSerial(view("")), null);
+});
 
 test("long Korean text survives 20-byte fragmentation and NFC normalization", () => {
   const text = "한글과 숫자 123 😀 ".repeat(50);

@@ -7,6 +7,7 @@ import type {
   ChangeEvent,
   FormEvent,
   KeyboardEvent,
+  ReactNode,
   RefObject,
 } from "react";
 
@@ -21,6 +22,8 @@ type ChatComposerProps = {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   withSafeArea?: boolean;
   showTopBorder?: boolean;
+  // 입력칸 왼쪽에 둘 버튼 (음성 모드의 마이크)
+  leadingAction?: ReactNode;
 };
 
 export default function ChatComposer({
@@ -34,6 +37,7 @@ export default function ChatComposer({
   onSubmit,
   withSafeArea = true,
   showTopBorder = true,
+  leadingAction,
 }: ChatComposerProps) {
   useEffect(() => {
     const textarea = inputRef.current;
@@ -100,6 +104,8 @@ export default function ChatComposer({
       )}
 
       <div className="flex items-center gap-2">
+        {leadingAction}
+
         <label
           htmlFor="chat-message"
           className="sr-only"

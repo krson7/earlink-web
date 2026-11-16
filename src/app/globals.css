@@ -51,9 +51,105 @@ button:focus-visible, a:focus-visible, select:focus-visible { outline: 3px solid
 .mode-card-label strong { font-size: 20px; font-weight: 800; letter-spacing: -.06em; }
 .mode-card-label > span { color: #4b576e; font-size: 12px; font-weight: 600; }
 .mode-chevron { width: 18px; height: 18px; color: #66738a; }
-.device-scene { position: relative; display: flex; flex: 1 0 245px; min-height: 245px; align-items: center; justify-content: center; overflow: hidden; margin-top: 12px; isolation: isolate; }
-.device-light { position: absolute; z-index: -1; inset: 0; background: radial-gradient(ellipse at 68% 32%, #fff 0%, #f8fafc99 33%, transparent 70%), linear-gradient(165deg, transparent 35%, #dbe2eb66); }
-.device-product { display: block; flex: none; width: 117%; max-width: 560px; height: auto; margin-left: 3%; user-select: none; pointer-events: none; }
+/* 메인 화면 기기: 누르면 연결 팝업이 열린다. */
+.device-scene { position: relative; display: flex; flex: 1 0 245px; min-height: 245px; align-items: center; justify-content: center; margin-top: 12px; padding: 6px 0 max(18px, env(safe-area-inset-bottom)); }
+.device-light { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 42%, #fff 0%, #f8fafc99 33%, transparent 70%), linear-gradient(165deg, transparent 35%, #dbe2eb66); }
+.device-anchor { position: relative; display: flex; width: 100%; justify-content: center; scroll-margin-bottom: 16px; }
+.device-scene[data-guide] .device-anchor { z-index: 40; }
+.device-button { position: relative; display: flex; width: min(82%, 340px); flex-direction: column; align-items: center; gap: 12px; padding: 8px 4px 4px; border: 0; border-radius: 30px; background: transparent; transition: transform .25s; }
+.device-button:hover { transform: translateY(-2px); }
+.device-button:active { transform: scale(.98); }
+.device-product { position: relative; display: block; width: 100%; height: auto; user-select: none; pointer-events: none; filter: drop-shadow(0 14px 16px #1e2c502e); animation: device-float 5s ease-in-out infinite; }
+.device-scene[data-state="connected"] .device-product { animation: none; }
+.device-spot { position: absolute; top: 40%; left: 50%; width: 118%; aspect-ratio: 2.1; transform: translate(-50%, -50%); border-radius: 50%; pointer-events: none; opacity: 0; transition: opacity .3s; }
+.device-scene[data-guide] .device-spot { opacity: 1; background: radial-gradient(closest-side, #fffffff2, #ecf0f6c0 58%, transparent); }
+.device-scene[data-guide] .device-spot::after { content: ""; position: absolute; inset: 10%; border: 2px solid #ffffffe6; border-radius: 50%; animation: spot-pulse 1.8s ease-out infinite; }
+.device-chip { position: relative; display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 999px; background: var(--surface); color: #2f426d; box-shadow: var(--raised); font-size: 12.5px; font-weight: 700; letter-spacing: -.03em; }
+.device-chip-dot { width: 7px; height: 7px; flex-shrink: 0; border-radius: 50%; background: #9aa5b8; }
+.device-scene[data-state="connected"] .device-chip-dot { background: #22866a; }
+.device-scene[data-state="connecting"] .device-chip-dot { background: #c08a2e; animation: dot-blink 1s ease-in-out infinite; }
+
+/* 첫 진입 안내: 화면을 어둡게 하고 기기만 밝게 남긴다. */
+.connect-guide-backdrop { position: absolute; inset: 0; z-index: 30; background: #111b3b9e; backdrop-filter: blur(1.5px); animation: fade-in .35s ease-out both; }
+.connect-guide-bubble { position: absolute; bottom: calc(100% + 2px); left: 50%; z-index: 1; width: min(calc(100% - 44px), 300px); padding: 14px 16px 8px; border-radius: 20px; background: #fff; text-align: center; box-shadow: 0 12px 30px #0a12284a; transform: translateX(-50%); animation: guide-in .5s cubic-bezier(.2, 1.2, .3, 1) .15s both; }
+.connect-guide-bubble::after { content: ""; position: absolute; top: 100%; left: 50%; width: 14px; height: 14px; border-radius: 3px; background: #fff; transform: translate(-50%, -50%) rotate(45deg); }
+.connect-guide-bubble strong { display: block; color: #111b3b; font-size: 16px; font-weight: 800; letter-spacing: -.05em; }
+.connect-guide-bubble span { display: block; margin-top: 4px; color: #5d677d; font-size: 12px; letter-spacing: -.03em; }
+.connect-guide-skip { position: relative; z-index: 1; margin-top: 6px; padding: 6px 10px; border: 0; background: transparent; color: #3e5c99; font-size: 12px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+
+/* 기기 연결 팝업 */
+.connect-sheet { position: absolute; inset: 0; z-index: 60; display: flex; align-items: flex-end; }
+.connect-sheet-backdrop { position: absolute; inset: 0; background: #111b3b61; backdrop-filter: blur(3px); animation: fade-in .3s ease-out both; }
+.connect-sheet.is-closing .connect-sheet-backdrop { animation: fade-out .32s ease-in both; }
+.connect-sheet-card { position: relative; width: 100%; margin: 0 10px max(10px, env(safe-area-inset-bottom)); padding: 12px 22px 18px; border-radius: 34px; outline: none; background: linear-gradient(160deg, #f7f9fc, #e9eef5); text-align: center; box-shadow: 0 -8px 40px #111b3b2e, inset 1px 1px 0 #fff; animation: sheet-up .6s cubic-bezier(.2, 1.15, .3, 1) both; }
+.connect-sheet.is-closing .connect-sheet-card { animation: sheet-down .36s cubic-bezier(.55, 0, .75, .2) both; }
+.connect-sheet-grabber { display: block; width: 38px; height: 5px; margin: 0 auto; border-radius: 3px; background: #c9d1de; }
+.soft-circle.connect-sheet-close { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; }
+.connect-sheet-visual { position: relative; margin: 4px -10px 0; }
+/* 연결 완료: 기기가 사라지고 원 → 체크 순서로 선이 그려진다. */
+.connect-sheet-visual .device-stage { transition: opacity .35s ease, transform .45s cubic-bezier(.22, 1, .36, 1); }
+.connect-sheet[data-phase="success"] .device-stage { opacity: 0; transform: scale(.9); }
+.connect-success { position: absolute; top: 50%; left: 50%; width: 92px; height: 92px; transform: translate(-50%, -50%); fill: none; stroke: var(--navy); stroke-linecap: round; stroke-linejoin: round; overflow: visible; }
+/* 간격(2)을 선 길이보다 길게 두어 그리기 전 둥근 끝점이 점으로 보이지 않게 한다. */
+.connect-success-ring, .connect-success-check { stroke-dasharray: 1 2; stroke-dashoffset: 1.05; }
+.connect-success-ring { stroke-width: 3; animation: line-draw .65s cubic-bezier(.65, 0, .35, 1) .3s forwards; }
+.connect-success-check { stroke-width: 4; animation: line-draw .4s cubic-bezier(.65, 0, .35, 1) .95s forwards; }
+.connect-sheet-copy h2 { margin: 2px 0 6px; color: #111b3b; font-size: 22px; font-weight: 900; letter-spacing: -.06em; }
+.connect-sheet-copy p { max-width: 290px; margin: 0 auto; color: #5d677d; font-size: 13.5px; line-height: 1.55; letter-spacing: -.03em; }
+.connect-sheet-error { margin: 12px 0 0; padding: 9px 12px; border-radius: 14px; background: #fdecee; color: #a3243a; font-size: 12.5px; font-weight: 600; }
+.connect-sheet-actions { display: flex; flex-direction: column; gap: 4px; margin-top: 20px; }
+.connect-sheet-primary { display: flex; height: 54px; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 20px; background: linear-gradient(125deg, #2c4383, #15264f); color: #fff; font-size: 16px; font-weight: 800; letter-spacing: -.03em; box-shadow: 5px 6px 12px #c0cadb, -4px -4px 10px #fff; transition: transform .15s; }
+.connect-sheet-primary:active { transform: scale(.98); }
+.connect-sheet-primary:disabled { opacity: .8; }
+.connect-sheet-secondary { height: 42px; border: 0; background: transparent; color: #5d677d; font-size: 13.5px; font-weight: 700; }
+
+/* 기기 3D: 사진 한 장 + 실루엣을 겹쳐 만든 두께 */
+.device-stage { position: relative; display: flex; height: 190px; align-items: center; justify-content: center; perspective: 900px; }
+.device-body { position: relative; width: min(74%, 290px); aspect-ratio: 1100 / 535; transform-style: preserve-3d; will-change: transform; }
+.device-face, .device-edge, .device-glint { position: absolute; inset: 0; }
+.device-face { background: url("/earlink-device.webp") center / 100% 100% no-repeat; transform: translateZ(0); }
+.device-edge, .device-glint { -webkit-mask: url("/earlink-device.webp") center / 100% 100% no-repeat; mask: url("/earlink-device.webp") center / 100% 100% no-repeat; }
+.device-edge { background: linear-gradient(180deg, #ececef, #b4b7bf); transform: translateZ(var(--depth)); }
+.device-glint { background: linear-gradient(105deg, transparent 38%, #ffffff8c 50%, transparent 62%) 130% 0 / 250% 100% no-repeat; opacity: 0; transform: translateZ(.5px); }
+.device-stage[data-motion="spin"] .device-glint { opacity: 1; animation: device-glint 2.4s ease-in-out infinite; }
+.device-floor { position: absolute; bottom: 14px; left: 50%; width: 62%; height: 18px; border-radius: 50%; background: radial-gradient(closest-side, #111b3b47, transparent); transform: translateX(-50%); }
+.device-stage[data-motion="spin"] .device-floor { animation: device-floor 3.2s ease-in-out infinite; }
+
+/* 대화방 상단 기기 상태: 원래 Online 자리의 담백한 한 줄 */
+.device-status { display: flex; align-items: center; gap: 5px; margin: 0; padding: 0; border: 0; background: transparent; color: #515d71; font-size: 11px; text-align: left; }
+/* 테두리 대신 뉴모피즘 방식으로 포커스를 표시한다. */
+.device-status:focus-visible { outline: none; text-decoration: underline; text-underline-offset: 3px; }
+.device-button:focus-visible { outline: none; }
+.device-button:focus-visible .device-chip { box-shadow: var(--inset); }
+
+/* 음성 모드 마이크: 듣는 중에는 눌린 모양 */
+.mic-button { width: 46px; height: 46px; color: #213b75; }
+.mic-button.is-listening { box-shadow: var(--inset); color: #1d3269; }
+.mic-button:disabled { color: #99a3b6; opacity: .65; }
+
+/* 텍스트 모드: 점자 키보드 작성 줄 + 채팅 입력칸 */
+.composer-stack { flex-shrink: 0; background: var(--surface); }
+.braille-draft { padding: 12px 17px 0; }
+.braille-draft-label { margin: 0 0 6px 6px; color: #515d71; font-size: 11px; font-weight: 600; }
+.braille-draft textarea { display: block; width: 100%; min-height: 22px; max-height: 66px; resize: none; border: 0; background: transparent; color: #263453; font-size: 14px; line-height: 22px; outline: none; }
+.braille-draft textarea::placeholder { color: #778296; }
+.braille-draft .send-button:not(:disabled) { color: #213b75; }
+.braille-draft-notice { margin: 6px 0 0 6px; color: #8a5a1c; font-size: 11.5px; }
+
+/* 연결 팝업 안의 점자 출력 조작 */
+.output-controls { margin-top: 16px; text-align: left; }
+.output-controls-status { margin: 0 0 4px; color: #3b4760; font-size: 12.5px; font-weight: 600; text-align: center; }
+.output-controls-note { margin: 0; color: #6b7487; font-size: 11.5px; text-align: center; }
+.output-controls-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+.output-controls-row button { height: 38px; border: 0; border-radius: 14px; background: var(--surface); color: #2f426d; font-size: 12px; font-weight: 700; box-shadow: 3px 3px 7px #cbd2df, -3px -3px 7px #fff; }
+.output-controls-row button:active { box-shadow: var(--inset); }
+.output-controls-row button:disabled { opacity: .45; }
+.output-controls-interval { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; color: #515d71; font-size: 12px; }
+.output-controls-interval select { padding: 6px 10px; border: 0; border-radius: 12px; background: var(--surface); color: #2f426d; box-shadow: var(--inset); }
+
+.device-delivery-notice { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; gap: 10px; margin: 0 17px 6px; padding: 9px 12px; border-radius: 16px; background: #fff7e8; color: #7a4f12; font-size: 12px; font-weight: 600; }
+.device-delivery-notice button { flex-shrink: 0; padding: 6px 10px; border: 1px solid #e8c98f; border-radius: 10px; background: #fff; color: #7a4f12; font-size: 12px; font-weight: 700; }
+.device-delivery-notice button:disabled { opacity: .5; }
 
 .chat-screen { display: flex; height: 100%; min-height: 0; flex-direction: column; overflow: hidden; background: var(--surface); }
 .chat-header { z-index: 2; display: flex; flex-shrink: 0; align-items: center; gap: 14px; padding: max(18px, env(safe-area-inset-top)) 18px 17px; }
@@ -64,6 +160,7 @@ button:focus-visible, a:focus-visible, select:focus-visible { outline: 3px solid
 .chat-brand p { display: flex; align-items: center; gap: 5px; margin: 0; color: #515d71; font-size: 11px; }
 .connection-dot { width: 7px; height: 7px; border-radius: 50%; background: #aa864a; }
 .connection-dot.online { background: #22866a; }
+.connection-dot.offline { background: #9aa5b8; }
 .mode-badge { display: flex; align-items: center; gap: 6px; padding: 11px 13px; border-radius: 30px; color: #2f426d; background: linear-gradient(135deg, #e2e8f1, #f9fbfe); box-shadow: inset 3px 3px 6px #c6cfdd, inset -3px -3px 6px #fff; font-size: 12px; font-weight: 700; }
 .mode-badge .mode-icon { width: 17px; height: 17px; }
 .message-list { position: relative; flex: 1; min-height: 0; overflow: hidden; }
@@ -75,7 +172,8 @@ button:focus-visible, a:focus-visible, select:focus-visible { outline: 3px solid
 .participant-avatar svg { width: 22px; height: 22px; }
 .composer { flex-shrink: 0; padding: 12px 17px; background: var(--surface); }
 .composer-input { flex: 1; min-width: 0; padding: 12px 18px 9px; border-radius: 28px; background: var(--surface); box-shadow: var(--inset); }
-.composer-input:focus-within { outline: 2px solid #8c9fc5; outline-offset: 2px; }
+/* 입력 중에는 테두리 대신 조금 더 깊게 눌린 그림자로 표시한다. */
+.composer-input:focus-within { box-shadow: inset 5px 5px 11px #c3cbd9, inset -5px -5px 11px #ffffff; }
 .composer textarea { display: block; width: 100%; min-height: 22px; max-height: 96px; resize: none; border: 0; background: transparent; color: #263453; font-size: 14px; line-height: 22px; outline: none; }
 .composer textarea::placeholder { color: #778296; }
 .send-button { width: 46px; height: 46px; }
@@ -87,15 +185,19 @@ button:focus-visible, a:focus-visible, select:focus-visible { outline: 3px solid
 .camera-title .eyebrow { margin: 0; font-size: 10px; letter-spacing: .1em; }
 .camera-preview { position: relative; height: clamp(175px, 27dvh, 230px); overflow: hidden; border-radius: 28px; background: #101c3e; box-shadow: 6px 8px 16px #c0cadb, -5px -5px 12px #fff; }
 .sign-camera .composer { padding: 14px 0 0; }
-.earlink-connector { flex-shrink: 0; max-height: 48%; overflow-y: auto; background: var(--surface); padding: 15px 18px; }
-.earlink-connect-button { display: flex; width: 100%; height: 54px; align-items: center; justify-content: center; border: 0; border-radius: 22px; background: linear-gradient(125deg, #2c4383, #15264f); color: #fff; font-size: 15px; font-weight: 700; box-shadow: 5px 6px 12px #c0cadb, -4px -4px 10px #fff; }
-.earlink-connector button:not(.earlink-connect-button), .earlink-connector select { border-color: #dce3ed; border-radius: 12px; background: var(--surface); box-shadow: 2px 2px 5px #ccd4e1, -2px -2px 5px #fff; }
-.earlink-connected { display: flex; min-height: 56px; align-items: center; gap: 12px; padding: 15px; border-radius: 20px; box-shadow: var(--inset); }
-.braille-keyboard-composer { margin-top: 14px; padding-top: 14px; border-top: 1px solid #d5deeb; }
-.braille-keyboard-composer textarea { display: block; width: 100%; max-height: 100px; resize: none; border: 0; background: transparent; color: #263453; font-size: 16px; line-height: 1.5; outline: none; }
-.braille-keyboard-composer .composer-input:focus-within { outline: 2px solid #8c9fc5; outline-offset: 2px; }
 
 @keyframes earlink-loading { from { transform: scaleX(.05); } to { transform: scaleX(1); } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes sheet-up { from { transform: translateY(110%); } to { transform: translateY(0); } }
+@keyframes sheet-down { from { transform: translateY(0); } to { transform: translateY(115%); } }
+@keyframes guide-in { from { opacity: 0; transform: translate(-50%, 8px) scale(.96); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+@keyframes spot-pulse { from { opacity: .9; transform: scale(.85); } to { opacity: 0; transform: scale(1.2); } }
+@keyframes device-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes line-draw { to { stroke-dashoffset: 0; } }
+@keyframes device-glint { from { background-position: 130% 0; } to { background-position: -30% 0; } }
+@keyframes device-floor { 0%, 100% { opacity: 1; transform: translateX(-50%) scaleX(1); } 30% { opacity: .7; transform: translateX(-50%) scaleX(.86); } 72% { opacity: .8; transform: translateX(-50%) scaleX(.9); } }
+@keyframes dot-blink { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 @media (min-width: 600px) and (min-height: 640px) {
   .app-shell { height: min(850px, calc(100dvh - 64px)); border: 9px solid #111b3b; border-radius: 52px; box-shadow: 18px 24px 48px #202c4a33, -12px -12px 35px #fff; }
 }
@@ -104,7 +206,10 @@ button:focus-visible, a:focus-visible, select:focus-visible { outline: 3px solid
   .mode-options { gap: 17px; margin-top: 24px; }
   .mode-card { min-height: 80px; padding-block: 11px; }
   .device-scene { flex-basis: 200px; min-height: 200px; }
+  .device-button { width: min(70%, 300px); }
+  .device-stage { height: 160px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  .connect-success-ring, .connect-success-check { animation-delay: 0s; }
 }

@@ -1,20 +1,62 @@
+"use client";
+
+import { useEffect } from "react";
+
 import ModeSelect from "@/components/entry/ModeSelect";
+import type { DeviceSummary } from "@/components/entry/BrailleDevice";
 import type { AccessibilityMode } from "@/types/chat";
 
 type ModeSelectScreenProps = {
   loading: boolean;
   errorMessage: string;
   onSelectMode: (mode: AccessibilityMode) => void;
+  device: DeviceSummary;
+  showGuide: boolean;
+  onDevicePress: () => void;
+  onDismissGuide: () => void;
 };
 
 export default function ModeSelectScreen({
   loading,
   errorMessage,
   onSelectMode,
+  device,
+  showGuide,
+  onDevicePress,
+  onDismissGuide,
 }: ModeSelectScreenProps) {
+  useEffect(() => {
+    if (!showGuide) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent): void {
+      if (event.key === "Escape") {
+        onDismissGuide();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showGuide, onDismissGuide]);
+
   return (
     <div className="relative h-full">
-      <ModeSelect onSelectMode={onSelectMode} />
+      <ModeSelect
+        onSelectMode={onSelectMode}
+        device={device}
+        showGuide={showGuide}
+        onDevicePress={onDevicePress}
+        onDismissGuide={onDismissGuide}
+      />
+
+      {/* 기기 연결 안내: 화면을 어둡게 덮고 기기만 위로 띄운다. */}
+      {showGuide && (
+        <div className="connect-guide-backdrop" aria-hidden="true" onClick={onDismissGuide} />
+      )}
 
       {errorMessage && (
         <div

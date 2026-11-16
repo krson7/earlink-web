@@ -1,11 +1,12 @@
 /// <reference types="web-bluetooth" />
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
-  ACK_TIMEOUT_MS, EARLINK_SERVICE_UUID, EARLINK_STATUS_UUID, EARLINK_TEXT_UUID,
-  decodeStatus, deviceError, encodeCommand, encodeInterval, encodeTextPackets,
+  ACK_TIMEOUT_MS, EARLINK_SERIAL_UUID, EARLINK_SERVICE_UUID, EARLINK_STATUS_UUID, EARLINK_TEXT_UUID,
+  decodeSerial, decodeStatus, deviceError, encodeCommand, encodeInterval, encodeTextPackets,
 } from "@/lib/earlink-protocol";
+import { DEVICE_UI_TEST, UI_TEST_CONNECT_MS, UI_TEST_SERIAL } from "@/lib/device-ui-test";
 import type { EarLinkCommand, EarLinkStatus } from "@/lib/earlink-protocol";
 import {
   EARLINK_KEYBOARD_UUID, KeyboardSnapshotReceiver,
@@ -16,6 +17,14 @@ import { KeyboardSubmissionLedger } from "@/lib/earlink-keyboard-submission";
 
 type KeyboardOptions = { ready: boolean; onSend: (text: string) => boolean };
 
+// Web Bluetooth availability never changes during a page's lifetime. The server
+// snapshot is false so the first client render matches the server HTML.
+const subscribeToNothing = () => () => undefined;
+const readBluetoothSupport = () => typeof navigator !== "undefined" && "bluetooth" in navigator;
+const readServerBluetoothSupport = () => false;
+
+const EMPTY_KEYBOARD: KeyboardSnapshot = { bootId: 0, revision: 0, requestId: 0, cells: [], pending: [], feedback: 0 };
+
 type Acknowledgement = {
   id: number;
   resolve: () => void;
@@ -23,10 +32,17 @@ type Acknowledgement = {
   timer: ReturnType<typeof setTimeout> | null;
 };
 
+export type EarLinkBluetooth = ReturnType<typeof useEarLinkBluetooth>;
+
 export function useEarLinkBluetooth(keyboardOptions?: KeyboardOptions) {
+  const bluetoothAvailable = useSyncExternalStore(subscribeToNothing, readBluetoothSupport, readServerBluetoothSupport);
+  // UI 테스트 모드는 블루투스가 없는 환경에서도 연결 화면을 보여 준다.
+  const supported = DEVICE_UI_TEST || bluetoothAvailable;
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [deviceName, setDeviceName] = useState<string | null>(null);
+  const [serialNumber, setSerialNumber] = useState<string | null>(null);
+  const fakeConnectedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<EarLinkStatus | null>(null);
   const [keyboard, setKeyboard] = useState<KeyboardSnapshot | null>(null);
@@ -52,6 +68,7 @@ export function useEarLinkBluetooth(keyboardOptions?: KeyboardOptions) {
   const disconnect = useCallback(() => {
     sessionRef.current += 1;
     attemptRef.current = false;
+    fakeConnectedRef.current = false;
     removeListenersRef.current?.();
     removeListenersRef.current = null;
     const ack = ackRef.current;
@@ -72,6 +89,7 @@ export function useEarLinkBluetooth(keyboardOptions?: KeyboardOptions) {
     setConnected(false);
     setConnecting(false);
     setDeviceName(null);
+    setSerialNumber(null);
     setStatus(null);
     setKeyboardSupported(false);
     // Retain the last visible draft during a disconnection; ESP is authoritative.
@@ -109,7 +127,7 @@ export function useEarLinkBluetooth(keyboardOptions?: KeyboardOptions) {
   }, []);
 
   const connect = useCallback(async () => {
-    if (attemptRef.current || deviceRef.current?.gatt?.connected) return;
+    if (attemptRef.current || deviceRef.current?.gatt?.connected || fakeConnectedRef.current) return;
     attemptRef.current = true;
     setConnecting(true);
     setError(null);
@@ -117,6 +135,20 @@ export function useEarLinkBluetooth(keyboardOptions?: KeyboardOptions) {
     let selected: BluetoothDevice | null = null;
     function ensureCurrent() {
       if (session !== sessionRef.current) throw new Error("연결 요청이 취소되었습니다.");
+    }
+    if (DEVICE_UI_TEST) {
+      // 기기 선택 창 없이 잠시 "연결 중"을 보여 준 뒤 연결된 것으로 처리한다.
+      await new Promise((resolve) => setTimeout(resolve, UI_TEST_CONNECT_MS));
+      if (session !== sessionRef.current) return;
+      fakeConnectedRef.current = true;
+      attemptRef.current = false;
+      setKeyboard(EMPTY_KEYBOARD);
+      setKeyboardSupported(true);
+      setDeviceName("EarLink");
+      setSerialNumber(UI_TEST_SERIAL);
+      setConnected(true);
+      setConnecting(false);
+      return;
     }
     try {
       if (!navigator.bluetooth) throw new Error("이 브라우저에서는 Bluetooth 연결을 지원하지 않습니다.");
@@ -148,6 +180,11 @@ export function useEarLinkBluetooth(keyboardOptions?: KeyboardOptions) {
         // Older output-only firmware remains usable; other GATT failures surface.
         if (!(failure instanceof DOMException) || failure.name !== "NotFoundError") throw failure;
       }
+      ensureCurrent();
+      // 시리얼은 선택 사항이다. 지금 펌웨어에는 없으므로 실패해도 연결은 계속한다.
+      let serial: string | null = null;
+      try { serial = decodeSerial(await (await service.getCharacteristic(EARLINK_SERIAL_UUID)).readValue()); }
+      catch { serial = null; }
       ensureCurrent();
       const onStatus = () => {
         if (session !== sessionRef.current || !stateCharacteristic.value) return;
@@ -212,6 +249,7 @@ export function useEarLinkBluetooth(keyboardOptions?: KeyboardOptions) {
       }
       setKeyboardSupported(Boolean(inputCharacteristic));
       setDeviceName(device.name ?? "EarLink");
+      setSerialNumber(serial);
       setConnected(true);
     } catch (failure) {
       if (session !== sessionRef.current) {
@@ -266,7 +304,7 @@ export function useEarLinkBluetooth(keyboardOptions?: KeyboardOptions) {
     });
   }, []);
 
-  const send = useCallback((text: string): Promise<void> => enqueue(async () => {
+  const sendToDevice = useCallback((text: string): Promise<void> => enqueue(async () => {
     const characteristic = textRef.current;
     if (!characteristic) throw new Error("EarLink가 연결되어 있지 않습니다.");
     const session = sessionRef.current;
@@ -306,9 +344,15 @@ export function useEarLinkBluetooth(keyboardOptions?: KeyboardOptions) {
     await characteristic.writeValueWithResponse(packet);
   }), [enqueue]);
 
+  // UI 테스트 모드에서는 기기 전송을 성공한 것으로 처리한다.
+  const send = useCallback((text: string): Promise<void> => {
+    if (!DEVICE_UI_TEST) return sendToDevice(text);
+    return fakeConnectedRef.current ? Promise.resolve() : Promise.reject(new Error("EarLink가 연결되어 있지 않습니다."));
+  }, [sendToDevice]);
+
   const control = useCallback((command: EarLinkCommand) => sendControl(encodeCommand(command)), [sendControl]);
   const setIntervalMs = useCallback((milliseconds: number) => sendControl(encodeInterval(milliseconds)), [sendControl]);
 
-  return { connected, connecting, deviceName, error, status, connect, disconnect, send, control, setIntervalMs,
+  return { supported, connected, connecting, deviceName, serialNumber, error, status, connect, disconnect, send, control, setIntervalMs,
     keyboard, keyboardSupported, keyboardError, requestKeyboardSend };
 }

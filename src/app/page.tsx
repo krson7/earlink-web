@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import ChatScreen from "@/components/chat/ChatScreen";
+import DeviceConnectSheet from "@/components/device/DeviceConnectSheet";
 import IntroSplash from "@/components/entry/IntroSplash";
 import ModeSelectScreen from "@/components/entry/ModeSelectScreen";
 import MobileAppShell from "@/components/layout/MobileAppShell";
 import { useChatSocket } from "@/hooks/useChatSocket";
+import { useDevicePresence } from "@/hooks/useDevicePresence";
+import { useEarLinkBluetooth } from "@/hooks/useEarLinkBluetooth";
 import { useRoomSession } from "@/hooks/useRoomSession";
 import type { AccessibilityMode } from "@/types/chat";
 
@@ -14,9 +17,49 @@ const SPLASH_DURATION_MS = 1800;
 
 export default function Home() {
   const [showSplash, setShowSplash] = useState(true);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [guideDismissed, setGuideDismissed] = useState(false);
 
   const room = useRoomSession();
   const chat = useChatSocket(room.participant);
+  const { sendMessage } = chat;
+
+  /*
+   * 점자 키보드로 보낸 글.
+   * 서버에서 되돌아온 같은 내 메시지를 다시 기기로 보내지 않기 위해 기록한다.
+   */
+  const keyboardEchoesRef = useRef<string[]>([]);
+
+  const sendFromKeyboard = useCallback((text: string): boolean => {
+    const sent = sendMessage(text);
+    if (sent) keyboardEchoesRef.current.push(text.trim());
+    return sent;
+  }, [sendMessage]);
+
+  const isKeyboardEcho = useCallback((content: string): boolean => {
+    const index = keyboardEchoesRef.current.indexOf(content.trim());
+    if (index === -1) return false;
+    keyboardEchoesRef.current.splice(index, 1);
+    return true;
+  }, []);
+
+  /*
+   * 점자 기기 연결은 화면 전환과 무관하게 여기서 유지한다.
+   * 메인 화면에서 먼저 연결하고, 어떤 대화 방식으로 들어가도
+   * 같은 연결로 점자를 전달한다. 점자 키보드는 텍스트 모드에서 쓴다.
+   */
+  const earLink = useEarLinkBluetooth({
+    ready: room.participant?.accessibility_mode === "STANDARD" && chat.connected,
+    onSend: sendFromKeyboard,
+  });
+  const { supported, connected, connecting, connect } = earLink;
+
+  // 다른 휴대폰이 이미 기기에 연결했는지 서버로 공유한다.
+  const presence = useDevicePresence({
+    localConnected: connected,
+    serialNumber: earLink.serialNumber,
+    poll: true,
+  });
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -28,8 +71,34 @@ export default function Home() {
     };
   }, []);
 
+  /*
+   * 기기 선택 창(requestDevice)은 사용자의 클릭 안에서만 열 수 있으므로
+   * 팝업을 여는 같은 클릭에서 바로 연결을 시작한다.
+   */
+  const handleDevicePress = useCallback((): void => {
+    setGuideDismissed(true);
+    setSheetOpen(true);
+
+    if (supported && !connected && !connecting && !presence.remoteConnected) {
+      void connect();
+    }
+  }, [supported, connected, connecting, connect, presence.remoteConnected]);
+
+  const handleConnect = useCallback((): void => {
+    void connect();
+  }, [connect]);
+
+  const closeSheet = useCallback((): void => {
+    setSheetOpen(false);
+  }, []);
+
+  const dismissGuide = useCallback((): void => {
+    setGuideDismissed(true);
+  }, []);
+
   function handleSelectMode(selectedMode: AccessibilityMode): void {
     chat.clearError();
+    setGuideDismissed(true);
 
     void room.enterRoom(
       selectedMode,
@@ -42,6 +111,23 @@ export default function Home() {
     room.leaveRoom();
   }
 
+  const showGuide =
+    !showSplash &&
+    !room.participant &&
+    !room.joining &&
+    supported &&
+    !connected &&
+    !connecting &&
+    presence.checked &&
+    !presence.remoteConnected &&
+    !sheetOpen &&
+    !guideDismissed;
+
+  // 상단에 보여 줄 기기 상태: 내 연결이 우선, 없으면 다른 휴대폰의 연결
+  const deviceForHeader = connected
+    ? { connected: true, serialNumber: earLink.serialNumber }
+    : { connected: presence.remoteConnected, serialNumber: presence.remoteSerialNumber };
+
   return (
     <MobileAppShell>
       {showSplash ? (
@@ -53,6 +139,10 @@ export default function Home() {
           chatConnected={chat.connected}
           chatStatus={chat.status}
           chatErrorMessage={chat.errorMessage}
+          earLink={earLink}
+          device={deviceForHeader}
+          isKeyboardEcho={isKeyboardEcho}
+          onDevicePress={handleDevicePress}
           onLeave={handleLeaveRoom}
           onSendMessage={chat.sendMessage}
           onClearError={chat.clearError}
@@ -62,8 +152,30 @@ export default function Home() {
           loading={room.joining}
           errorMessage={room.joinError}
           onSelectMode={handleSelectMode}
+          device={{ ...earLink, remoteConnected: presence.remoteConnected }}
+          showGuide={showGuide}
+          onDevicePress={handleDevicePress}
+          onDismissGuide={dismissGuide}
         />
       )}
+
+      <DeviceConnectSheet
+        open={sheetOpen}
+        supported={supported}
+        connected={connected}
+        connecting={connecting}
+        deviceName={earLink.deviceName}
+        serialNumber={earLink.serialNumber}
+        remoteConnected={presence.remoteConnected}
+        remoteSerialNumber={presence.remoteSerialNumber}
+        error={earLink.error}
+        status={earLink.status}
+        onControl={earLink.control}
+        onIntervalChange={earLink.setIntervalMs}
+        onConnect={handleConnect}
+        onDisconnect={earLink.disconnect}
+        onClose={closeSheet}
+      />
     </MobileAppShell>
   );
 }
