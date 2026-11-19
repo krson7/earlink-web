@@ -1,17 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { keyboardFeedback } from "@/lib/earlink-keyboard-protocol";
-import type { KeyboardSnapshot } from "@/lib/earlink-keyboard-protocol";
-import { decodeKoreanBraille } from "@/lib/korean-braille-input";
 import type { BrailleTypingItem, ChatMessageItem } from "@/types/chat";
 
 type MessageListProps = {
   messages: ChatMessageItem[];
   participantId: number;
   brailleTyping: BrailleTypingItem[];
-  keyboard: KeyboardSnapshot | null;
-  keyboardError: string | null;
 };
 
 function ParticipantAvatar() {
@@ -25,14 +20,9 @@ function ParticipantAvatar() {
   );
 }
 
-export default function MessageList({ messages, participantId, brailleTyping, keyboard, keyboardError }: MessageListProps) {
+export default function MessageList({ messages, participantId, brailleTyping }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const decoded = decodeKoreanBraille(keyboard?.cells ?? []);
-  const localDraft = keyboard?.cells.length && !keyboard.requestId
-    ? { senderId: participantId, content: decoded.text } : null;
-  const drafts = [...brailleTyping.filter((item) => item.senderId !== participantId), ...(localDraft ? [localDraft] : [])];
-  const notice = keyboard ? keyboardError || keyboardFeedback(keyboard.feedback) || decoded.issues[0] : "";
-  const draftSignature = JSON.stringify(drafts);
+  const draftSignature = JSON.stringify(brailleTyping);
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -40,13 +30,13 @@ export default function MessageList({ messages, participantId, brailleTyping, ke
       top: container.scrollHeight,
       behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
     });
-  }, [messages, draftSignature, notice]);
+  }, [messages, draftSignature]);
 
   return (
     <section className="message-list">
       <div ref={scrollRef} role="log" aria-live="polite" aria-relevant="additions text"
         aria-label="실시간 채팅 메시지" className="message-scroll">
-        {messages.length === 0 && drafts.length === 0 && (
+        {messages.length === 0 && brailleTyping.length === 0 && (
           <div className="flex min-h-[65%] flex-col items-center justify-center px-8 text-center">
             <p className="mt-2 text-xs leading-6 text-slate-500">
               같은 방에 입장한 사용자에게<br />메시지가 실시간으로 전달됩니다.
@@ -72,7 +62,7 @@ export default function MessageList({ messages, participantId, brailleTyping, ke
           );
         })}
 
-        {drafts.map((draft) => (
+        {brailleTyping.map((draft) => (
           <div key={`braille-${draft.senderId}`} data-sender="other" data-participant-id={draft.senderId}
             className="flex items-end gap-2.5 pr-7 braille-typing">
             <ParticipantAvatar />
@@ -85,11 +75,9 @@ export default function MessageList({ messages, participantId, brailleTyping, ke
                   <span>점자로 입력 중이에요</span>
                 </div>
               </div>
-              {draft.senderId === participantId && notice && <p role="alert" className="braille-input-notice">{notice}</p>}
             </div>
           </div>
         ))}
-        {!localDraft && notice && <p role="alert" className="braille-input-notice">{notice}</p>}
       </div>
     </section>
   );

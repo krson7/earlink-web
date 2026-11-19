@@ -74,7 +74,9 @@ try {
   for (const page of pages) {
     await page.until(`document.querySelector('.braille-live-text')?.innerText==='ㄱ'`);
     assert.equal(await page.js(`document.querySelectorAll('.braille-typing').length`),1);
-    assert.equal(await page.js(`!!document.querySelector('.braille-draft')`),false);
+    assert.equal(await page.js(`document.querySelectorAll('.chat-screen textarea').length`),1,'only the selected mode composer is present');
+    assert.equal(await page.js(`document.querySelectorAll('.message-scroll textarea, .message-scroll input, .message-scroll button, .message-scroll [contenteditable="true"]').length`),0,'received braille has no input controls');
+    assert.equal(await page.js(`document.querySelector('.braille-typing')?.dataset.sender`),'other');
   }
   assert.equal(await voice.js(`window.__ble.spoken.length`),0);
   assert.equal(await relay.js(`window.__ble.completed.length`),0);

@@ -97,9 +97,6 @@ export default function ChatScreen({
     connected: earLinkConnected,
     connecting: earLinkConnecting,
     send: sendToEarLink,
-    keyboard,
-    keyboardSupported,
-    keyboardError,
   } = earLink;
 
   /*
@@ -395,8 +392,6 @@ export default function ChatScreen({
       <MessageList
         messages={messages}
         brailleTyping={brailleTyping}
-        keyboard={earLinkConnected && keyboardSupported ? keyboard : null}
-        keyboardError={keyboardError}
         participantId={
           participant.participant_id
         }

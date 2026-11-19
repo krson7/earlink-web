@@ -35,9 +35,9 @@ export default function Home() {
   });
   const { supported, connected, connecting, connect } = earLink;
 
-  useBrailleTyping({
+  const brailleDraft = useBrailleTyping({
     enabled: connected && earLink.keyboardSupported && chat.connected,
-    snapshot: earLink.keyboard,
+    snapshot: connected && earLink.keyboardSupported ? earLink.keyboard : null,
     publish: chat.sendBrailleTyping,
   });
 
@@ -123,7 +123,14 @@ export default function Home() {
         <ChatScreen
           participant={room.participant}
           messages={chat.messages}
-          brailleTyping={chat.brailleTyping}
+          brailleTyping={[
+            ...chat.brailleTyping,
+            // 이 휴대폰이 중계하는 점자 사용자도 화면 사용자의 상대방이다.
+            ...(brailleDraft !== null ? [{
+              senderId: room.participant.participant_id,
+              content: brailleDraft,
+            }] : []),
+          ]}
           chatConnected={chat.connected}
           chatStatus={chat.status}
           chatErrorMessage={chat.errorMessage}

@@ -90,19 +90,32 @@ try {
     await click(`.mode-card:nth-child(${card})`);
     await until(`!!document.querySelector('.chat-screen') && window.__ble.socket?.readyState === 1`);
     await until(`window.__ble.writes.some(w=>w.uuid.includes('0004-')&&JSON.stringify(w.bytes)==='[1,3,1]')`);
-    assert.equal(await js(`!!document.querySelector('.braille-draft')`), false, label);
+    assert.equal(await js(`document.querySelectorAll('.chat-screen textarea').length`), 1, `${label}: only the selected mode's composer is present`);
+    assert.equal(await js(`document.querySelectorAll('.chat-screen textarea:not([readonly]), .chat-screen input, .chat-screen [contenteditable="true"]').length`), card === 2 ? 0 : 1, `${label}: no braille keyboard input field`);
+    if (card !== 2) {
+      await js(`document.querySelector('#chat-message').focus()`);
+      await cdp('Input.insertText', {text:'내가 작성 중인 문장'});
+    }
     await js(`window.__ble.emitKeyboard([8])`); // Unfinished ㄱ still counts as typing.
     await until(`window.__ble.sent.some(s=>{try{const e=JSON.parse(s);return e.type==='typing'&&e.active===true;}catch{return false;}})`);
     await until(`document.querySelector('.braille-typing .braille-live-text')?.innerText==='ㄱ'`);
     assert.equal(await js(`document.querySelectorAll('.braille-typing').length`), 1, 'keyboard user is another person on the relay phone too');
     await js(`window.__ble.emitKeyboard(${JSON.stringify(koreanCells)})`);
     await until(`document.querySelector('.braille-typing .braille-live-text')?.innerText==='한글'`);
+    assert.equal(await js(`document.querySelectorAll('.message-scroll textarea, .message-scroll input, .message-scroll button, .message-scroll [contenteditable="true"]').length`), 0, 'braille content is a received bubble without input controls');
+    assert.equal(await js(`document.querySelector('.braille-typing')?.dataset.sender`), 'other');
+    assert.equal(await js(`document.querySelector('.composer textarea').value`), card === 2 ? '' : '내가 작성 중인 문장', 'braille typing never replaces the screen user draft');
     await js(`window.__ble.emitKeyboard(${JSON.stringify(koreanCells)}, ${requestId}, ${JSON.stringify(koreanCells)})`);
     await until(`document.querySelector('[data-sender="other"] .message-bubble:not(.typing-bubble)')?.innerText==='한글'`);
     assert.equal(await js(`document.querySelectorAll('.message-bubble.mine').length`),0);
     await until(`window.__ble.writes.some(w=>w.uuid.includes('0004-')&&JSON.stringify(w.bytes)==='[1,2,${requestId},0,0,0,1]')`);
     assert.equal(await js(`window.__ble.sent.filter(s=>{try{return JSON.parse(s).type==='message';}catch{return false;}}).length`), 1);
     assert.equal(await js(`window.__ble.completed.includes('한글')`), false, 'keyboard echo never goes back to the display');
+    assert.equal(await js(`document.querySelector('.composer textarea').value`), card === 2 ? '' : '내가 작성 중인 문장', 'braille submission never clears the screen user draft');
+    if (card !== 2) {
+      await js(`(()=>{const input=document.querySelector('#chat-message');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(input,'');input.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+      await until(`document.querySelector('#chat-message').value===''`);
+    }
     await js(`window.__ble.emitKeyboard(${JSON.stringify(koreanCells)}, ${requestId}, ${JSON.stringify(koreanCells)})`);
     await new Promise(r=>setTimeout(r,100));
     assert.equal(await js(`window.__ble.sent.filter(s=>{try{return JSON.parse(s).type==='message';}catch{return false;}}).length`), 1, 'duplicate notification');

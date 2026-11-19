@@ -175,7 +175,6 @@ button:focus-visible, a:focus-visible, select:focus-visible { outline: 3px solid
 .typing-bubble { min-width: 150px; }
 .typing-status { display: flex; align-items: center; gap: 8px; color: #515d71; font-size: 12px; }
 .braille-live-text + .typing-status { margin-top: 7px; }
-.braille-input-notice { margin: 6px 0 0 4px; color: #8a5a1c; font-size: 12px; }
 .typing-dots { display: inline-flex; gap: 4px; align-items: center; }
 .typing-dots i { width: 5px; height: 5px; border-radius: 50%; background: #627599; animation: dot-blink 1.2s ease-in-out infinite; }
 .typing-dots i:nth-child(2) { animation-delay: .2s; }

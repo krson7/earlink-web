@@ -13,6 +13,8 @@ export function useBrailleTyping({ enabled, snapshot, publish }: {
   publish: (active: boolean, content?: string) => boolean;
 }) {
   const activity = useRef({ signature: "", active: false, content: "", publishedAt: 0 });
+  const draft = snapshot?.cells.length && !snapshot.requestId
+    ? decodeKoreanBraille(snapshot.cells).text : null;
 
   useEffect(() => {
     if (!enabled) return;
@@ -21,18 +23,18 @@ export function useBrailleTyping({ enabled, snapshot, publish }: {
     const changed = signature !== state.signature;
     state.signature = signature;
 
-    if (!snapshot?.cells.length || snapshot.requestId) {
+    if (draft === null) {
       if (state.active) publish(false);
       state.active = false;
       state.content = "";
       return;
     }
     if (!changed) return;
-    state.content = decodeKoreanBraille(snapshot.cells).text;
+    state.content = draft;
     publish(true, state.content);
     state.publishedAt = Date.now();
     state.active = true;
-  }, [enabled, snapshot, publish]);
+  }, [enabled, snapshot, draft, publish]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -50,4 +52,6 @@ export function useBrailleTyping({ enabled, snapshot, publish }: {
       activity.current = { signature: "", active: false, content: "", publishedAt: 0 };
     };
   }, [enabled, publish]);
+
+  return draft;
 }
