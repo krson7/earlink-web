@@ -23,7 +23,6 @@ type Phase = "connecting" | "success" | "connected" | "remote" | "unsupported" |
 type DeviceConnectSheetProps = {
   open: boolean;
   required: boolean;
-  presenceError: string | null;
   supported: boolean;
   connected: boolean;
   connecting: boolean;
@@ -70,7 +69,7 @@ function SuccessMark() {
 
 export default function DeviceConnectSheet(props: DeviceConnectSheetProps) {
   const {
-    open, required, presenceError, connected, deviceName, serialNumber, remoteSerialNumber, error, status,
+    open, required, connected, deviceName, serialNumber, remoteSerialNumber, error, status,
     onControl, onIntervalChange, onConnect, onDisconnect, onClose,
   } = props;
 
@@ -199,9 +198,7 @@ export default function DeviceConnectSheet(props: DeviceConnectSheetProps) {
     },
     idle: {
       title: "EarLink 연결",
-      description: required
-        ? "먼저 한 휴대폰에서 EarLink를 연결해 주세요. 연결이 완료되면 모두 입장할 수 있어요."
-        : "기기 전원을 켜고 휴대폰 가까이에 두세요.",
+      description: "기기 전원을 켜고 휴대폰 가까이에 두세요.",
     },
   };
 
@@ -239,10 +236,6 @@ export default function DeviceConnectSheet(props: DeviceConnectSheetProps) {
 
         {phase === "error" && error && (
           <p role="alert" className="connect-sheet-error">{error}</p>
-        )}
-
-        {required && presenceError && (
-          <p role="alert" className="connect-sheet-error">{presenceError}</p>
         )}
 
         {phase === "connected" && status && (

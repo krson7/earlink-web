@@ -62,7 +62,8 @@ try {
 
   await load('presence-missing');
   assert.equal(await js(`document.querySelectorAll('.mode-card:disabled').length`),3);
-  assert.ok(await js(`document.querySelector('[role="alert"]').innerText.includes('서버')`));
+  assert.equal(await js(`document.querySelector('.connect-sheet-copy p').innerText`), '기기 전원을 켜고 휴대폰 가까이에 두세요.');
+  assert.equal(await js(`!!document.querySelector('.connect-sheet [role="alert"]')`), false);
   await js(`window.__ble.presenceRestored=true;window.__ble.remoteConnected=true`);
   await until(`!document.querySelector('.connect-sheet') && !document.querySelector('.mode-card').disabled`);
   assert.ok(await js(`window.__ble.presenceChecks>=2`));

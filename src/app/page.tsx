@@ -172,7 +172,6 @@ export default function Home() {
       <DeviceConnectSheet
         open={sheetOpen}
         required={pairingRequired}
-        presenceError={presence.error}
         supported={supported}
         connected={connected}
         connecting={connecting}
