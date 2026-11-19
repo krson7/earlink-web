@@ -4,6 +4,7 @@ The application entrypoint and production database/model are never loaded.
 Test-only control endpoints are served exclusively on loopback by this script.
 """
 import argparse
+import importlib.util
 import os
 from pathlib import Path
 import sys
@@ -12,6 +13,7 @@ from uuid import uuid4
 parser = argparse.ArgumentParser()
 parser.add_argument("--backend-root", type=Path, required=True)
 parser.add_argument("--port", type=int, default=3180)
+parser.add_argument("--router-path", type=Path)
 options = parser.parse_args()
 cache = Path(__file__).resolve().parents[2] / "node_modules/.cache/earlink-live-tests"
 cache.mkdir(parents=True, exist_ok=True)
@@ -30,6 +32,12 @@ from server.routers.chat_router import router as chat_router
 from server.routers.room_router import router as room_router
 from server.services.chat_service import chat_manager
 from server.services.room_service import ensure_default_room
+
+if options.router_path:
+    spec = importlib.util.spec_from_file_location("chat_router_under_test", options.router_path.resolve())
+    prepared_chat = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(prepared_chat)
+    chat_router = prepared_chat.router
 
 Base.metadata.create_all(bind=engine)
 with Session(bind=engine) as db:

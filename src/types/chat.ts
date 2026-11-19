@@ -20,11 +20,15 @@ export type BrailleTypingMessage = {
   source: "braille";
   sender_id: number;
   active: boolean;
+  content?: string;
 };
+
+export type BrailleTypingItem = { senderId: number; content?: string };
 
 export type ChatCapabilitiesMessage = {
   type: "capabilities";
   braille_events: boolean;
+  braille_drafts?: boolean;
 };
 
 export type ChatErrorMessage = {

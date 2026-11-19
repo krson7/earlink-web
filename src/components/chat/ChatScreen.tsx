@@ -9,7 +9,6 @@ import {
 import type { FormEvent } from "react";
 
 import { MicIcon } from "@/components/Brand";
-import BrailleKeyboardComposer from "@/components/chat/BrailleKeyboardComposer";
 import CameraComposer from "@/components/chat/CameraComposer";
 import ChatComposer from "@/components/chat/ChatComposer";
 import ChatHeader from "@/components/chat/ChatHeader";
@@ -22,6 +21,7 @@ import { useSpeechOutput } from "@/hooks/useSpeechOutput";
 import { MAX_CHAT_MESSAGE_LENGTH } from "@/lib/chat";
 
 import type {
+  BrailleTypingItem,
   ChatMessageItem,
   JoinRoomResponse,
 } from "@/types/chat";
@@ -29,15 +29,13 @@ import type {
 type ChatScreenProps = {
   participant: JoinRoomResponse;
   messages: ChatMessageItem[];
-  brailleTypingParticipantIds: number[];
+  brailleTyping: BrailleTypingItem[];
   chatConnected: boolean;
   chatStatus: string;
   chatErrorMessage: string;
   earLink: EarLinkBluetooth;
   // 상단에 보여 줄 기기 상태 (내 휴대폰 또는 다른 휴대폰의 연결)
   device: { connected: boolean; serialNumber: string | null };
-  // 점자 키보드로 보낸 내 메시지인지 확인 (한 번만 true)
-  isKeyboardEcho: (content: string) => boolean;
   onDevicePress: () => void;
   onLeave: () => void;
   onSendMessage: (text: string) => boolean;
@@ -63,13 +61,12 @@ function getChatPlaceholder(
 export default function ChatScreen({
   participant,
   messages,
-  brailleTypingParticipantIds,
+  brailleTyping,
   chatConnected,
   chatStatus,
   chatErrorMessage,
   earLink,
   device,
-  isKeyboardEcho,
   onDevicePress,
   onLeave,
   onSendMessage,
@@ -103,7 +100,6 @@ export default function ChatScreen({
     keyboard,
     keyboardSupported,
     keyboardError,
-    requestKeyboardSend,
   } = earLink;
 
   /*
@@ -128,7 +124,7 @@ export default function ChatScreen({
 
       if (
         voiceMode &&
-        chatMessage.sender_id !== participant.participant_id &&
+        (chatMessage.source === "braille" || chatMessage.sender_id !== participant.participant_id) &&
         chatMessage.content.trim()
       ) {
         speak(chatMessage.content);
@@ -222,7 +218,7 @@ export default function ChatScreen({
    * 2. EarLink 연결 전 메시지는 전달하지 않음
    * 3. 연결 완료 시점에 존재하는 메시지는 모두 과거 메시지로 처리
    * 4. 연결 이후 새로 들어온 메시지만 전달 (내 메시지 + 상대 메시지)
-   * 5. 점자 키보드로 보낸 내 메시지는 전달하지 않음
+   * 5. 이 휴대폰이 중계한 점자 사용자의 메시지는 전달하지 않음
    *    (기기에서 친 글이 다시 점자로 돌아오지 않게)
    * 6. 같은 메시지는 두 번 전달하지 않음
    */
@@ -305,12 +301,12 @@ export default function ChatScreen({
 
     for (const chatMessage of newMessages) {
       /*
-       * 점자 키보드로 보낸 내 메시지는 제외
+       * 같은 연결로 중계한 점자 사용자의 메시지는 기기에 되돌려 보내지 않는다.
        */
       if (
         chatMessage.sender_id ===
           participant.participant_id &&
-        isKeyboardEcho(chatMessage.content)
+        chatMessage.source === "braille"
       ) {
         continue;
       }
@@ -362,7 +358,6 @@ export default function ChatScreen({
     messages,
     participant.participant_id,
     sendToEarLink,
-    isKeyboardEcho,
   ]);
 
   const micButton = voiceMode ? (
@@ -399,7 +394,9 @@ export default function ChatScreen({
 
       <MessageList
         messages={messages}
-        brailleTypingParticipantIds={brailleTypingParticipantIds}
+        brailleTyping={brailleTyping}
+        keyboard={earLinkConnected && keyboardSupported ? keyboard : null}
+        keyboardError={keyboardError}
         participantId={
           participant.participant_id
         }
@@ -419,15 +416,6 @@ export default function ChatScreen({
       )}
 
       <div className="composer-stack">
-        {earLinkConnected && keyboardSupported && (
-          <BrailleKeyboardComposer
-            chatConnected={chatConnected}
-            snapshot={keyboard}
-            error={keyboardError}
-            onSend={requestKeyboardSend}
-          />
-        )}
-
         {accessibilityMode === "HEARING" ? (
           <CameraComposer
             roomCode={participant.room_code}

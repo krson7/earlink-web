@@ -50,7 +50,7 @@ class BrailleChatTests(unittest.TestCase):
 
     def connect(self, participant=1, room="QA"):
         socket = self.stack.enter_context(self.client.websocket_connect(f"/ws/rooms/{room}/{participant}"))
-        self.assertEqual(socket.receive_json(), {"type": "capabilities", "braille_events": True})
+        self.assertEqual(socket.receive_json(), {"type": "capabilities", "braille_events": True, "braille_drafts": True})
         return socket
 
     def typing(self, active=True, **overrides):
@@ -73,6 +73,17 @@ class BrailleChatTests(unittest.TestCase):
             expected = {"type": "message", "sender_id": 1, "content": text}
             self.assertEqual(sender.receive_json(), expected)
             self.assertEqual(peer.receive_json(), expected)
+
+    def test_live_draft_updates_deletes_and_clears_without_becoming_messages(self):
+        sender, peer = self.connect(), self.connect(2)
+        for active, content in [(True, "ㅎ"), (True, "한글"), (True, "한"), (False, "")]:
+            sender.send_json(self.typing(active, content=content, sender_id=999))
+            expected = {**self.typing(active, content=content), "sender_id": 1}
+            self.assertEqual(sender.receive_json(), expected)
+            self.assertEqual(peer.receive_json(), expected)
+        for content in [123, "가" * 1001]:
+            sender.send_json(self.typing(content=content))
+            self.assertEqual(sender.receive_json()["code"], "INVALID_TYPING_EVENT")
 
     def test_only_braille_send_clears_active_typing(self):
         sender, peer = self.connect(), self.connect(2)

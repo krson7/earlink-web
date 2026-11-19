@@ -29,7 +29,7 @@
         q.socket = socket;
         setTimeout(() => {
           socket.readyState = 1; socket.onopen?.();
-          if (mode !== 'keyboard-legacy') socket.onmessage?.({ data: JSON.stringify({ type: 'capabilities', braille_events: true }) });
+          if (mode !== 'keyboard-legacy') socket.onmessage?.({ data: JSON.stringify({ type: 'capabilities', braille_events: true, braille_drafts: true }) });
         }, 20);
         return socket;
       }

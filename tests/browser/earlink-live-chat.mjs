@@ -63,7 +63,7 @@ try {
     await page.until(`[...document.querySelectorAll('.message-bubble:not(.typing-bubble)')].some(e=>e.innerText===${JSON.stringify(text)})`);
   }
   async function allTyping(active) {
-    for (const peer of peers) await peer.until(`${active ? '!!' : '!'}document.querySelector('.braille-typing')`);
+    for (const peer of pages) await peer.until(`${active ? '!!' : '!'}document.querySelector('.braille-typing')`);
   }
   async function sendBraille(requestId, draft = cells) {
     await relay.js(`window.__ble.emitKeyboard(${JSON.stringify(draft)},${requestId},${JSON.stringify(draft)})`);
@@ -71,15 +71,26 @@ try {
   }
   await relay.js(`window.__ble.emitKeyboard([8])`);
   await allTyping(true);
-  assert.equal(await relay.js(`!!document.querySelector('.braille-typing')`),false);
+  for (const page of pages) {
+    await page.until(`document.querySelector('.braille-live-text')?.innerText==='ㄱ'`);
+    assert.equal(await page.js(`document.querySelectorAll('.braille-typing').length`),1);
+    assert.equal(await page.js(`!!document.querySelector('.braille-draft')`),false);
+  }
   assert.equal(await voice.js(`window.__ble.spoken.length`),0);
   assert.equal(await relay.js(`window.__ble.completed.length`),0);
-  pass('unfinished braille shows only peer typing bubbles, without chat messages, speech or display output');
+  pass('unfinished braille appears once as live left text on every phone, without a braille composer, speech or display output');
 
   await relay.js(`window.__ble.emitKeyboard([])`);await allTyping(false);
   await relay.js(`window.__ble.emitKeyboard(${JSON.stringify(cells)})`);await allTyping(true);
+  for (const page of pages) await page.until(`document.querySelector('.braille-live-text')?.innerText==='한글'`);
+  await relay.js(`window.__ble.emitKeyboard(${JSON.stringify(cells.slice(0,3))})`);
+  for (const page of pages) await page.until(`document.querySelector('.braille-live-text')?.innerText==='한'`);
+  await relay.js(`window.__ble.emitKeyboard(${JSON.stringify(cells)})`);
   await sendBraille(31);
-  for (const page of pages) { await waitMessage(page,'한글'); assert.equal(await bubbleCount(page,'한글'),1); }
+  for (const page of pages) {
+    await waitMessage(page,'한글'); assert.equal(await bubbleCount(page,'한글'),1);
+    assert.equal(await page.js(`!![...document.querySelectorAll('.message-bubble:not(.typing-bubble)')].find(e=>e.innerText==='한글')?.classList.contains('mine')`),false);
+  }
   await allTyping(false);
   await voice.until(`window.__ble.spoken.includes('한글')`);
   assert.equal(await relay.js(`window.__ble.completed.includes('한글')`),false);
@@ -88,9 +99,9 @@ try {
   pass('clear stops typing; one BLE send becomes one real room broadcast, one voice reading and no display echo');
 
   await relay.js(`window.__ble.emitKeyboard(${JSON.stringify(cells)})`);
-  await relay.click('.braille-draft .send-button');
+  await sendBraille(36);
   for (const page of pages) await page.until(`[...document.querySelectorAll('.message-bubble:not(.typing-bubble)')].filter(e=>e.innerText==='한글').length===2`);
-  pass('web braille send button also reaches hardware request, ACK and every participant');
+  pass('another physical keyboard send appends a second left bubble on every participant');
 
   await relay.js(`window.__ble.emitKeyboard([8])`);await allTyping(true);
   for (let index=1;index<=7;index++) {
@@ -98,17 +109,28 @@ try {
     await relay.js(`window.__ble.emitKeyboard(${JSON.stringify(Array(index+1).fill(8))})`);
     for (const peer of peers) assert.equal(await peer.js(`!!document.querySelector('.braille-typing')`),true);
   }
-  await allTyping(false);
-  pass('typing heartbeat survives more than 7 seconds of editing, then expires after inactivity despite BLE sync');
+  await pause(5500);await allTyping(true);
+  await relay.js(`window.__ble.emitKeyboard([])`);await allTyping(false);
+  pass('live drafts survive editing and pauses; erasing clears them on every participant');
 
   await relay.click('.composer textarea');
   await relay.cdp('Input.insertText',{text:'일반 텍스트 회귀 확인'});
   await relay.click('.composer .send-button');
+  await waitMessage(relay,'일반 텍스트 회귀 확인');
+  assert.equal(await relay.js(`[...document.querySelectorAll('.message-bubble.mine')].some(e=>e.innerText==='일반 텍스트 회귀 확인')`),true);
   for (const peer of peers) await waitMessage(peer,'일반 텍스트 회귀 확인');
   assert.equal(await sign.js(`!!document.querySelector('.braille-typing')`),false);
   await relay.until(`window.__ble.completed.includes('일반 텍스트 회귀 확인')`);
   await voice.until(`window.__ble.spoken.includes('일반 텍스트 회귀 확인')`);
   pass('ordinary text still broadcasts, plays speech and reaches the braille display without a typing bubble');
+
+  // Identical text from the two people must preserve ownership and output.
+  await relay.click('.composer textarea');
+  await relay.cdp('Input.insertText',{text:'한글'});
+  await relay.click('.composer .send-button');
+  await relay.until(`[...document.querySelectorAll('.message-bubble.mine')].some(e=>e.innerText==='한글')`);
+  await relay.until(`window.__ble.completed.filter(text=>text==='한글').length===1`);
+  pass('identical content from the screen user remains right aligned and reaches the braille display');
 
   await voice.click('.mic-button');
   await voice.until(`!!window.__ble.recognition && document.querySelector('.mic-button')?.getAttribute('aria-pressed')==='true'`);
@@ -116,7 +138,7 @@ try {
   await voice.until(`document.querySelector('.composer textarea')?.value==='음성 입력 회귀 확인'`);
   const speechBefore = await voice.js(`window.__ble.spoken.length`);
   await sendBraille(32);
-  await voice.until(`[...document.querySelectorAll('.message-bubble:not(.typing-bubble)')].filter(e=>e.innerText==='한글').length===3`);
+  await voice.until(`[...document.querySelectorAll('.message-bubble:not(.typing-bubble)')].filter(e=>e.innerText==='한글').length===4`);
   assert.equal(await voice.js(`window.__ble.spoken.length`),speechBefore,'microphone holds speech');
   await voice.click('.composer .send-button');
   for (const page of pages) await waitMessage(page,'음성 입력 회귀 확인');
@@ -125,6 +147,13 @@ try {
   assert.equal(await voice.js(`window.__ble.recognition.onresult`),null);
   await relay.until(`window.__ble.completed.includes('음성 입력 회귀 확인')`);
   pass('voice recognition callback, send, stale-result cancellation and microphone speech hold are preserved');
+
+  await relay.js(`window.__ble.emitKeyboard(${JSON.stringify(cells)})`);await allTyping(true);
+  await voice.until(`document.querySelector('.braille-live-text')?.innerText==='한글'`);
+  await voice.js(`new Promise(resolve=>setTimeout(()=>{document.querySelector('.message-scroll').scrollTo({top:999999,behavior:'instant'});resolve(true)},350))`);
+  const screenshot = await voice.cdp('Page.captureScreenshot',{format:'png'});
+  await writeFile(resolve(root,'chat-braille-preview.png'),Buffer.from(screenshot.data,'base64'));
+  await relay.js(`window.__ble.emitKeyboard([])`);await allTyping(false);
 
   await voice.js(`window.__ble.oldRecognition=window.__ble.recognition`);
   await voice.click('.mic-button');
@@ -140,14 +169,16 @@ try {
   await relay.js(`window.__ble.emitKeyboard([8])`);await allTyping(true);
   const oldSocket = await relay.js(`window.__ble.oldSocket=window.__ble.socket;true`);
   assert.equal(oldSocket,true);
+  for (const peer of peers) await peer.js(`window.__ble.stopsBeforeDisconnect=window.__ble.received.filter(e=>e.type==='typing'&&!e.active).length`);
   assert.equal((await (await fetch(`${apiURL}/__test__/close/${id}`,{method:'POST'})).json()).closed,true);
-  await allTyping(false);
+  for (const peer of peers) await peer.until(`window.__ble.received.filter(e=>e.type==='typing'&&!e.active).length>window.__ble.stopsBeforeDisconnect`);
+  assert.equal(await relay.js(`document.querySelector('.braille-live-text')?.innerText`),'ㄱ','hardware draft survives a temporary chat disconnect');
   await relay.until(`window.__ble.socket!==window.__ble.oldSocket && window.__ble.socket.readyState===1`);
   await relay.until(`window.__ble.received.filter(e=>e.type==='capabilities').length>=2`);
   await pause(100);
   await relay.js(`window.__ble.emitKeyboard([8,35])`);await allTyping(true);
   await sendBraille(33);await allTyping(false);
-  for (const page of pages) await page.until(`[...document.querySelectorAll('.message-bubble:not(.typing-bubble)')].filter(e=>e.innerText==='한글').length===4`);
+  for (const page of pages) await page.until(`[...document.querySelectorAll('.message-bubble:not(.typing-bubble)')].filter(e=>e.innerText==='한글').length===5`);
   pass('real server disconnect clears typing, reconnects, negotiates support and resumes exactly-once braille submission');
 
   await relay.js(`window.__ble.emitKeyboard([8]);window.__ble.savedDevice=window.__ble.device`);await allTyping(true);
@@ -157,7 +188,7 @@ try {
   await relay.until(`window.__ble.socket.readyState===1 && !!document.querySelector('.sign-camera')`);
   await relay.until(`window.__ble.received.filter(e=>e.type==='capabilities').length>=3`);
   assert.equal(await relay.js(`window.__ble.device===window.__ble.savedDevice && window.__ble.device.gatt.connected && window.__ble.requests.length===1`),true);
-  await sendBraille(34);for (const peer of peers) await peer.until(`[...document.querySelectorAll('.message-bubble:not(.typing-bubble)')].filter(e=>e.innerText==='한글').length===5`);
+  await sendBraille(34);for (const peer of peers) await peer.until(`[...document.querySelectorAll('.message-bubble:not(.typing-bubble)')].filter(e=>e.innerText==='한글').length===6`);
   pass('switching the connection owner to sign mode keeps BLE connected and sends to existing voice/sign peers');
 
   await relay.js(`window.__ble.emitKeyboard([8])`);await allTyping(true);
@@ -165,7 +196,7 @@ try {
   await relay.click('.device-status');await relay.until(`document.querySelector('.connect-sheet')?.dataset.phase==='connecting'`);
   await relay.js(`window.__ble.choose()`);await relay.until(`document.querySelector('.connect-sheet')?.dataset.phase==='success'`);
   await relay.until(`!document.querySelector('.connect-sheet')`);
-  await sendBraille(35);for (const peer of peers) await peer.until(`[...document.querySelectorAll('.message-bubble:not(.typing-bubble)')].filter(e=>e.innerText==='한글').length===6`);
+  await sendBraille(35);for (const peer of peers) await peer.until(`[...document.querySelectorAll('.message-bubble:not(.typing-bubble)')].filter(e=>e.innerText==='한글').length===7`);
   pass('BLE disconnect removes peer status and reconnect restores keyboard relay in sign mode');
 
   // A small viewport must still leave the conversation and send controls usable.
@@ -173,14 +204,14 @@ try {
   for (const height of [844,667,568]) {
     await relay.cdp('Emulation.setDeviceMetricsOverride',{width:360,height,deviceScaleFactor:1,mobile:true});
     await pause(100);
-    layouts.push(await relay.js(`(()=>{const chat=document.querySelector('.message-list').getBoundingClientRect(),button=document.querySelector('.braille-draft .send-button').getBoundingClientRect();return {height:innerHeight,chatHeight:chat.height,buttonBottom:button.bottom,bodyWidth:document.body.scrollWidth,width:innerWidth}})()`));
+    layouts.push(await relay.js(`(()=>{const chat=document.querySelector('.message-list').getBoundingClientRect(),composer=document.querySelector('.composer-stack').getBoundingClientRect();return {height:innerHeight,chatHeight:chat.height,buttonBottom:composer.bottom,bodyWidth:document.body.scrollWidth,width:innerWidth}})()`));
   }
   for (const layout of layouts) {
     assert.ok(layout.chatHeight>=80,JSON.stringify(layout));
     assert.ok(layout.buttonBottom<=layout.height,JSON.stringify(layout));
     assert.ok(layout.bodyWidth<=layout.width,JSON.stringify(layout));
   }
-  pass('sign-mode layouts at 360px width and 844/667/568px height keep chat and braille controls visible');
+  pass('sign-mode layouts at 360px width and 844/667/568px height keep chat and the selected mode composer visible');
 
   for (const page of pages) assert.deepEqual(page.errors,[]);
   const report = {result:'PASS',cases,layouts,runtimeExceptions:[],transport:'Real HTTP join, SQLite participant validation and real FastAPI room WebSockets across 3 browser pages',fixtures:'BLE GATT and browser speech callbacks; camera deliberately unavailable',physicalHardware:'NOT TESTED',cameraModelAccuracy:'NOT TESTED'};

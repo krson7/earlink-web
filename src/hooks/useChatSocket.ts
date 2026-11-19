@@ -8,6 +8,7 @@ import {
   MAX_CHAT_RECONNECT_ATTEMPTS,
 } from "@/lib/chat";
 import type {
+  BrailleTypingItem,
   ChatMessageItem,
   ChatServerMessage,
   JoinRoomResponse,
@@ -22,18 +23,22 @@ export function useChatSocket(participant: JoinRoomResponse | null) {
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
   const brailleEventsRef = useRef(false);
+  const brailleDraftsRef = useRef(false);
+  // Older servers omit source. Match echoes in send order, including identical
+  // text sent by the screen user and the separate keyboard user.
+  const pendingSendsRef = useRef<{ content: string; braille: boolean }[]>([]);
   const typingTimersRef = useRef(new Map<number, number>());
 
   const [messages, setMessages] = useState<ChatMessageItem[]>([]);
   const [connected, setConnected] = useState(false);
   const [status, setStatus] = useState("채팅 연결 전");
   const [errorMessage, setErrorMessage] = useState("");
-  const [brailleTypingParticipantIds, setBrailleTypingParticipantIds] = useState<number[]>([]);
+  const [brailleTyping, setBrailleTyping] = useState<BrailleTypingItem[]>([]);
 
   const clearTyping = useCallback(() => {
     for (const timer of typingTimersRef.current.values()) window.clearTimeout(timer);
     typingTimersRef.current.clear();
-    setBrailleTypingParticipantIds([]);
+    setBrailleTyping([]);
   }, []);
 
   useEffect(() => {
@@ -76,6 +81,8 @@ export function useChatSocket(participant: JoinRoomResponse | null) {
 
       socket.onopen = () => {
         brailleEventsRef.current = false;
+        brailleDraftsRef.current = false;
+        pendingSendsRef.current = [];
         reconnectDelay = 500;
         reconnectAttempts = 0;
 
@@ -102,25 +109,33 @@ export function useChatSocket(participant: JoinRoomResponse | null) {
 
         if (serverMessage.type === "capabilities") {
           brailleEventsRef.current = serverMessage.braille_events === true;
+          brailleDraftsRef.current = serverMessage.braille_drafts === true;
           return;
         }
 
         function stopTyping(senderId: number): void {
           window.clearTimeout(typingTimersRef.current.get(senderId));
           typingTimersRef.current.delete(senderId);
-          setBrailleTypingParticipantIds((previous) => previous.filter((id) => id !== senderId));
+          setBrailleTyping((previous) => previous.filter((item) => item.senderId !== senderId));
         }
 
         if (serverMessage.type === "typing") {
           if (serverMessage.source !== "braille" ||
               !Number.isSafeInteger(serverMessage.sender_id) || serverMessage.sender_id <= 0 ||
-              serverMessage.sender_id === participantId || typeof serverMessage.active !== "boolean") return;
+              serverMessage.sender_id === participantId || typeof serverMessage.active !== "boolean" ||
+              (serverMessage.content !== undefined && (typeof serverMessage.content !== "string" ||
+                serverMessage.content.length > MAX_CHAT_MESSAGE_LENGTH))) return;
           const senderId = serverMessage.sender_id;
           window.clearTimeout(typingTimersRef.current.get(senderId));
           if (!serverMessage.active) {
             stopTyping(senderId);
           } else {
-            setBrailleTypingParticipantIds((previous) => previous.includes(senderId) ? previous : [...previous, senderId]);
+            const content = serverMessage.content;
+            setBrailleTyping((previous) => {
+              const existing = previous.find((item) => item.senderId === senderId);
+              if (existing && existing.content === content) return previous;
+              return [...previous.filter((item) => item.senderId !== senderId), { senderId, content }];
+            });
             typingTimersRef.current.set(senderId, window.setTimeout(() => stopTyping(senderId), BRAILLE_TYPING_TTL_MS));
           }
           return;
@@ -134,12 +149,21 @@ export function useChatSocket(participant: JoinRoomResponse | null) {
             return;
           }
 
-          if (serverMessage.source === "braille") stopTyping(serverMessage.sender_id);
+          let source = serverMessage.source;
+          if (serverMessage.sender_id === participantId) {
+            const index = pendingSendsRef.current.findIndex((item) => item.content === serverMessage.content);
+            if (index !== -1) {
+              const [sent] = pendingSendsRef.current.splice(index, 1);
+              if (sent.braille) source = "braille";
+            }
+          }
+          if (source === "braille") stopTyping(serverMessage.sender_id);
 
           setMessages((previousMessages) => [
             ...previousMessages,
             {
               ...serverMessage,
+              source,
               localId: createLocalMessageId(),
             },
           ]);
@@ -148,6 +172,7 @@ export function useChatSocket(participant: JoinRoomResponse | null) {
         }
 
         if (serverMessage.type === "error") {
+          if (serverMessage.code !== "INVALID_TYPING_EVENT") pendingSendsRef.current.shift();
           setErrorMessage(
             typeof serverMessage.detail === "string"
               ? serverMessage.detail
@@ -221,6 +246,8 @@ export function useChatSocket(participant: JoinRoomResponse | null) {
     return () => {
       disposed = true;
       brailleEventsRef.current = false;
+      brailleDraftsRef.current = false;
+      pendingSendsRef.current = [];
       clearTyping();
 
       if (reconnectTimerRef.current !== null) {
@@ -283,6 +310,7 @@ export function useChatSocket(participant: JoinRoomResponse | null) {
       socket.send(braille && brailleEventsRef.current
         ? JSON.stringify({ type: "message", source: "braille", content: trimmedMessage })
         : trimmedMessage);
+      pendingSendsRef.current.push({ content: trimmedMessage, braille });
     } catch {
       setErrorMessage("메시지를 전송하지 못했습니다. 연결을 확인해 주세요.");
       return false;
@@ -295,11 +323,13 @@ export function useChatSocket(participant: JoinRoomResponse | null) {
   const sendMessage = useCallback((text: string) => sendText(text), [sendText]);
   const sendBrailleMessage = useCallback((text: string) => sendText(text, true), [sendText]);
 
-  const sendBrailleTyping = useCallback((active: boolean): boolean => {
+  const sendBrailleTyping = useCallback((active: boolean, content = ""): boolean => {
     const socket = socketRef.current;
     if (!brailleEventsRef.current || !socket || socket.readyState !== WebSocket.OPEN) return false;
     try {
-      socket.send(JSON.stringify({ type: "typing", source: "braille", active }));
+      socket.send(JSON.stringify({ type: "typing", source: "braille", active,
+        ...(brailleDraftsRef.current ? { content: active ? content.slice(0, MAX_CHAT_MESSAGE_LENGTH) : "" } : {}),
+      }));
       return true;
     } catch {
       return false;
@@ -322,7 +352,7 @@ export function useChatSocket(participant: JoinRoomResponse | null) {
 
   return {
     messages,
-    brailleTypingParticipantIds,
+    brailleTyping,
     connected,
     status,
     errorMessage,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import ChatScreen from "@/components/chat/ChatScreen";
 import DeviceConnectSheet from "@/components/device/DeviceConnectSheet";
@@ -23,26 +23,6 @@ export default function Home() {
 
   const room = useRoomSession();
   const chat = useChatSocket(room.participant);
-  const { sendBrailleMessage } = chat;
-
-  /*
-   * 점자 키보드로 보낸 글.
-   * 서버에서 되돌아온 같은 내 메시지를 다시 기기로 보내지 않기 위해 기록한다.
-   */
-  const keyboardEchoesRef = useRef<string[]>([]);
-
-  const sendFromKeyboard = useCallback((text: string): boolean => {
-    const sent = sendBrailleMessage(text);
-    if (sent) keyboardEchoesRef.current.push(text.trim());
-    return sent;
-  }, [sendBrailleMessage]);
-
-  const isKeyboardEcho = useCallback((content: string): boolean => {
-    const index = keyboardEchoesRef.current.indexOf(content.trim());
-    if (index === -1) return false;
-    keyboardEchoesRef.current.splice(index, 1);
-    return true;
-  }, []);
 
   /*
    * 점자 기기 연결은 화면 전환과 무관하게 여기서 유지한다.
@@ -51,7 +31,7 @@ export default function Home() {
    */
   const earLink = useEarLinkBluetooth({
     ready: Boolean(room.participant) && chat.connected,
-    onSend: sendFromKeyboard,
+    onSend: chat.sendBrailleMessage,
   });
   const { supported, connected, connecting, connect } = earLink;
 
@@ -115,7 +95,6 @@ export default function Home() {
 
   function handleLeaveRoom(): void {
     chat.reset();
-    keyboardEchoesRef.current = [];
     room.leaveRoom();
   }
 
@@ -144,13 +123,12 @@ export default function Home() {
         <ChatScreen
           participant={room.participant}
           messages={chat.messages}
-          brailleTypingParticipantIds={chat.brailleTypingParticipantIds}
+          brailleTyping={chat.brailleTyping}
           chatConnected={chat.connected}
           chatStatus={chat.status}
           chatErrorMessage={chat.errorMessage}
           earLink={earLink}
           device={deviceForHeader}
-          isKeyboardEcho={isKeyboardEcho}
           onDevicePress={handleDevicePress}
           onLeave={handleLeaveRoom}
           onSendMessage={chat.sendMessage}
