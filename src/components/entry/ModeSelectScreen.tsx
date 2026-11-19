@@ -8,6 +8,8 @@ import type { AccessibilityMode } from "@/types/chat";
 
 type ModeSelectScreenProps = {
   loading: boolean;
+  pairingRequired: boolean;
+  checkingDevice: boolean;
   errorMessage: string;
   onSelectMode: (mode: AccessibilityMode) => void;
   device: DeviceSummary;
@@ -18,6 +20,8 @@ type ModeSelectScreenProps = {
 
 export default function ModeSelectScreen({
   loading,
+  pairingRequired,
+  checkingDevice,
   errorMessage,
   onSelectMode,
   device,
@@ -46,6 +50,7 @@ export default function ModeSelectScreen({
   return (
     <div className="relative h-full">
       <ModeSelect
+        disabled={pairingRequired || loading}
         onSelectMode={onSelectMode}
         device={device}
         showGuide={showGuide}
@@ -61,7 +66,7 @@ export default function ModeSelectScreen({
         </div>
       )}
 
-      {loading && (
+      {(loading || checkingDevice) && (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/65 backdrop-blur-[2px]">
           <div
             role="status"
@@ -74,7 +79,7 @@ export default function ModeSelectScreen({
             />
 
             <p className="mt-3 text-sm font-bold text-slate-700">
-              대화방에 입장하고 있어요
+              {checkingDevice ? "기기 연결 상태를 확인하고 있어요" : "대화방에 입장하고 있어요"}
             </p>
           </div>
         </div>

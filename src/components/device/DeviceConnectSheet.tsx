@@ -22,6 +22,8 @@ type Phase = "connecting" | "success" | "connected" | "remote" | "unsupported" |
 
 type DeviceConnectSheetProps = {
   open: boolean;
+  required: boolean;
+  presenceError: string | null;
   supported: boolean;
   connected: boolean;
   connecting: boolean;
@@ -68,7 +70,7 @@ function SuccessMark() {
 
 export default function DeviceConnectSheet(props: DeviceConnectSheetProps) {
   const {
-    open, connected, deviceName, serialNumber, remoteSerialNumber, error, status,
+    open, required, presenceError, connected, deviceName, serialNumber, remoteSerialNumber, error, status,
     onControl, onIntervalChange, onConnect, onDisconnect, onClose,
   } = props;
 
@@ -131,7 +133,21 @@ export default function DeviceConnectSheet(props: DeviceConnectSheetProps) {
 
     function handleKeyDown(event: KeyboardEvent): void {
       if (event.key === "Escape") {
-        onClose();
+        if (!required) onClose();
+      }
+      if (event.key === "Tab") {
+        const controls = cardRef.current?.querySelectorAll<HTMLElement>("button:not(:disabled), select:not(:disabled), [tabindex='0']");
+        const first = controls?.[0];
+        const last = controls?.[controls.length - 1];
+        if (!first || !last) {
+          event.preventDefault();
+        } else if (event.shiftKey && (document.activeElement === first || document.activeElement === cardRef.current)) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && (document.activeElement === last || document.activeElement === cardRef.current)) {
+          event.preventDefault();
+          first.focus();
+        }
       }
     }
 
@@ -141,7 +157,7 @@ export default function DeviceConnectSheet(props: DeviceConnectSheetProps) {
       document.removeEventListener("keydown", handleKeyDown);
       restoreFocusTo?.focus({ preventScroll: true });
     };
-  }, [open, onClose]);
+  }, [open, required, onClose]);
 
   function handleAnimationEnd(event: AnimationEvent<HTMLElement>): void {
     if (!open && event.target === event.currentTarget) {
@@ -183,13 +199,15 @@ export default function DeviceConnectSheet(props: DeviceConnectSheetProps) {
     },
     idle: {
       title: "EarLink 연결",
-      description: "기기 전원을 켜고 휴대폰 가까이에 두세요.",
+      description: required
+        ? "먼저 한 휴대폰에서 EarLink를 연결해 주세요. 연결이 완료되면 모두 입장할 수 있어요."
+        : "기기 전원을 켜고 휴대폰 가까이에 두세요.",
     },
   };
 
   return (
     <div className={open ? "connect-sheet" : "connect-sheet is-closing"} data-phase={phase}>
-      <div className="connect-sheet-backdrop" aria-hidden="true" onClick={onClose} />
+      <div className="connect-sheet-backdrop" aria-hidden="true" onClick={required ? undefined : onClose} />
 
       <section
         ref={cardRef}
@@ -203,11 +221,11 @@ export default function DeviceConnectSheet(props: DeviceConnectSheetProps) {
       >
         <span className="connect-sheet-grabber" aria-hidden="true" />
 
-        <button type="button" onClick={onClose} aria-label="닫기" className="soft-circle connect-sheet-close">
+        {!required && <button type="button" onClick={onClose} aria-label="닫기" className="soft-circle connect-sheet-close">
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-4 w-4">
             <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
-        </button>
+        </button>}
 
         <div className="connect-sheet-visual">
           <DeviceModel3D motion={getMotion(phase)} />
@@ -223,6 +241,10 @@ export default function DeviceConnectSheet(props: DeviceConnectSheetProps) {
           <p role="alert" className="connect-sheet-error">{error}</p>
         )}
 
+        {required && presenceError && (
+          <p role="alert" className="connect-sheet-error">{presenceError}</p>
+        )}
+
         {phase === "connected" && status && (
           <DeviceOutputControls status={status} onControl={onControl} onIntervalChange={onIntervalChange} />
         )}
@@ -235,10 +257,14 @@ export default function DeviceConnectSheet(props: DeviceConnectSheetProps) {
             </button>
           )}
 
-          {(phase === "success" || phase === "connected" || phase === "remote" || phase === "unsupported") && (
+          {(phase === "success" || phase === "connected" || phase === "remote" || (phase === "unsupported" && !required)) && (
             <button type="button" onClick={onClose} className="connect-sheet-primary">
               {phase === "success" || phase === "connected" ? "완료" : "확인"}
             </button>
+          )}
+
+          {phase === "unsupported" && required && (
+            <p role="status">다른 휴대폰에서 EarLink를 연결하면 입장할 수 있어요.</p>
           )}
 
           {(phase === "idle" || phase === "error") && (

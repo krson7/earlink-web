@@ -6,6 +6,7 @@ import type { DeviceSummary } from "@/components/entry/BrailleDevice";
 import type { AccessibilityMode } from "@/types/chat";
 
 type ModeSelectProps = {
+  disabled: boolean;
   onSelectMode: (mode: AccessibilityMode) => void;
   device: DeviceSummary;
   showGuide: boolean;
@@ -19,7 +20,7 @@ const modes = [
   { mode: "STANDARD", title: "텍스트", english: "Text", description: "키보드로 입력해 대화하기" },
 ] as const;
 
-export default function ModeSelect({ onSelectMode, device, showGuide, onDevicePress }: ModeSelectProps) {
+export default function ModeSelect({ disabled, onSelectMode, device, showGuide, onDevicePress }: ModeSelectProps) {
   return (
     <main className="mode-select">
       <header className="entry-header"><BrandMark /><span className="brand-name">EarLink</span></header>
@@ -28,7 +29,7 @@ export default function ModeSelect({ onSelectMode, device, showGuide, onDevicePr
         <h1 id="mode-heading">소통 방식을 선택하세요</h1>
         <div className="mode-options" aria-label="대화 방식 선택">
           {modes.map(({ mode, title, english, description }) => (
-            <button key={mode} type="button" onClick={() => onSelectMode(mode)} className="mode-card" aria-label={`${title} · ${description}`}>
+            <button key={mode} type="button" disabled={disabled} onClick={() => onSelectMode(mode)} className="mode-card" aria-label={`${title} · ${description}`}>
               <span className="mode-card-icon"><ModeIcon mode={mode} /></span>
               <span className="mode-card-label"><strong>{title}</strong><span>{english}</span></span>
               <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="mode-chevron"><path d="m9 6 6 6-6 6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>

@@ -18,7 +18,7 @@ const SPLASH_DURATION_MS = 1800;
 
 export default function Home() {
   const [showSplash, setShowSplash] = useState(true);
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetIntent, setSheetIntent] = useState<"closed" | "pairing" | "manage">("closed");
   const [guideDismissed, setGuideDismissed] = useState(false);
 
   const room = useRoomSession();
@@ -47,6 +47,17 @@ export default function Home() {
     serialNumber: earLink.serialNumber,
     poll: true,
   });
+  const deviceReady = connected || presence.remoteConnected;
+  const pairingRequired = !room.participant && !deviceReady;
+  const checkingDevice = pairingRequired && !presence.checked && !presence.error;
+
+  // 필수 화면은 서버 상태로 열고 닫는다. 직접 연결한 경우에는 성공
+  // 애니메이션이 끝날 때까지 유지하고, 연결 관리는 별도로 열 수 있다.
+  const sheetOpen = !showSplash && (
+    (pairingRequired && !checkingDevice) ||
+    (sheetIntent === "pairing" && !presence.remoteConnected) ||
+    sheetIntent === "manage"
+  );
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -64,26 +75,29 @@ export default function Home() {
    */
   const handleDevicePress = useCallback((): void => {
     setGuideDismissed(true);
-    setSheetOpen(true);
+    setSheetIntent(pairingRequired ? "pairing" : "manage");
 
     if (supported && !connected && !connecting && !presence.remoteConnected) {
       void connect();
     }
-  }, [supported, connected, connecting, connect, presence.remoteConnected]);
+  }, [supported, connected, connecting, connect, presence.remoteConnected, pairingRequired]);
 
   const handleConnect = useCallback((): void => {
+    setSheetIntent(pairingRequired ? "pairing" : "manage");
     void connect();
-  }, [connect]);
+  }, [connect, pairingRequired]);
 
   const closeSheet = useCallback((): void => {
-    setSheetOpen(false);
-  }, []);
+    if (pairingRequired) return;
+    setSheetIntent("closed");
+  }, [pairingRequired]);
 
   const dismissGuide = useCallback((): void => {
     setGuideDismissed(true);
   }, []);
 
   function handleSelectMode(selectedMode: AccessibilityMode): void {
+    if (!deviceReady) return;
     chat.clearError();
     setGuideDismissed(true);
 
@@ -144,6 +158,8 @@ export default function Home() {
       ) : (
         <ModeSelectScreen
           loading={room.joining}
+          pairingRequired={pairingRequired}
+          checkingDevice={checkingDevice}
           errorMessage={room.joinError}
           onSelectMode={handleSelectMode}
           device={{ ...earLink, remoteConnected: presence.remoteConnected }}
@@ -155,6 +171,8 @@ export default function Home() {
 
       <DeviceConnectSheet
         open={sheetOpen}
+        required={pairingRequired}
+        presenceError={presence.error}
         supported={supported}
         connected={connected}
         connecting={connecting}

@@ -27,29 +27,55 @@ try {
   await cdp('Page.addScriptToEvaluateOnNewDocument',{source:await readFile(new URL('./fixtures/earlink-gatt.js', import.meta.url),'utf8')});
   await cdp('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
   const cases=[];
-  async function load(mode){await cdp('Page.navigate',{url:new URL('/?blecase='+mode,baseURL).href});await until(`!!document.querySelector('.device-button') && window.__ble?.mode==='${mode}'`);}
+  async function load(mode){
+    await cdp('Page.navigate',{url:new URL('/?blecase='+mode,baseURL).href});
+    await until(`!!document.querySelector('.device-button') && window.__ble?.mode==='${mode}'`);
+    if (mode === 'remote' || mode === 'join-offline') await until(`!document.querySelector('.mode-card').disabled`);
+    else if (mode !== 'presence-slow') await until(`!!document.querySelector('.connect-sheet')`);
+  }
   async function click(selector){await js(`Promise.all((document.querySelector('.connect-sheet-card')?.getAnimations()??[]).filter(a=>a.effect?.getTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{}))).then(()=>true)`);const p=await js(`(()=>{const r=document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect();return{x:r.left+r.width/2,y:r.top+r.height/2};})()`);await cdp('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',clickCount:1,...p});await cdp('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',clickCount:1,...p});}
   const phase = p=>`document.querySelector('.connect-sheet')?.dataset.phase==='${p}'`;
   async function noFalseConnection(){assert.notEqual(await js(`document.querySelector('.device-scene').dataset.state`),'connected');assert.equal(await js(`window.__ble.presence.filter(p=>p.connected).length`),0);}
   await load('success');
-  await until(`!!document.querySelector('.connect-guide-action')`);
-  assert.equal(await js(`!!document.querySelector('.connect-guide-backdrop')`),false);
+  await until(phase('idle'));
+  assert.equal(await js(`document.querySelectorAll('.mode-card:disabled').length`),3);
+  assert.equal(await js(`!!document.querySelector('.connect-sheet-close')`),false);
+  await cdp('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape'});
+  await click('.connect-sheet-backdrop');
+  await js(`document.querySelector('.mode-card:nth-child(3)').click()`);
+  assert.ok(await js(phase('idle')));
+  assert.equal(await js(`!!document.querySelector('.chat-screen')`),false);
+  assert.equal(await js(`window.__ble.requests.length`),0);
+  cases.push('no connected phone: pairing is mandatory, modes are blocked, Escape and backdrop cannot dismiss it');console.log('PASS '+cases.at(-1));
+  await cdp('Input.dispatchKeyEvent',{type:'keyDown',key:'Tab',code:'Tab'});
+  assert.equal(await js(`document.activeElement===document.querySelector('.connect-sheet-primary')`),true);
+  await cdp('Input.dispatchKeyEvent',{type:'keyDown',key:'Tab',code:'Tab'});
+  assert.equal(await js(`document.activeElement===document.querySelector('.connect-sheet-primary')`),true);
+  cases.push('keyboard focus stays inside the required pairing dialog');console.log('PASS '+cases.at(-1));
+
+  await js(`window.__ble.remoteConnected=true`);
+  await until(`!document.querySelector('.connect-sheet') && !document.querySelector('.mode-card').disabled`);
   await click('.mode-card:nth-child(3)');
   await until(`!!document.querySelector('.chat-screen')`);
   assert.equal(await js(`window.__ble.requests.length`),0);
-  cases.push('mode selection remains available without pairing even when the optional guide is visible');console.log('PASS '+cases.at(-1));
+  cases.push('another phone completes pairing: waiting visitor enters without a local Bluetooth request');console.log('PASS '+cases.at(-1));
 
-  for (const mode of ['presence-missing', 'presence-slow']) {
-    await load(mode);
-    assert.equal(await js(`!!document.querySelector('.connect-guide-action, .connect-guide-backdrop')`),false);
-    if (mode === 'presence-slow') {
-      await until(`document.querySelector('.device-scene')?.dataset.state==='connected'`);
-      assert.equal(await js(`!!document.querySelector('.connect-guide-action')`),false);
-    }
-    await click('.mode-card:nth-child(3)');await until(`!!document.querySelector('.chat-screen')`);
-    assert.equal(await js(`window.__ble.requests.length`),0);
-    cases.push(mode+': missing or delayed presence never forces pairing');console.log('PASS '+cases.at(-1));
-  }
+  await load('presence-missing');
+  assert.equal(await js(`document.querySelectorAll('.mode-card:disabled').length`),3);
+  assert.ok(await js(`document.querySelector('[role="alert"]').innerText.includes('서버')`));
+  await js(`window.__ble.presenceRestored=true;window.__ble.remoteConnected=true`);
+  await until(`!document.querySelector('.connect-sheet') && !document.querySelector('.mode-card').disabled`);
+  assert.ok(await js(`window.__ble.presenceChecks>=2`));
+  cases.push('missing presence API cannot bypass pairing; polling recovers when the API and peer connection return');console.log('PASS '+cases.at(-1));
+
+  await load('presence-slow');
+  assert.equal(await js(`document.querySelectorAll('.mode-card:disabled').length`),3);
+  assert.equal(await js(`!!document.querySelector('.connect-sheet')`),false);
+  await until(`document.querySelector('.device-scene')?.dataset.state==='connected'`);
+  assert.equal(await js(`!!document.querySelector('.connect-sheet')`),false);
+  await click('.mode-card:nth-child(3)');await until(`!!document.querySelector('.chat-screen')`);
+  assert.equal(await js(`window.__ble.requests.length`),0);
+  cases.push('slow presence response waits with modes blocked, then skips pairing when a connected phone is confirmed');console.log('PASS '+cases.at(-1));
   await load('join-offline');await click('.mode-card:nth-child(3)');
   await until(`!!document.querySelector('[role="alert"]')`);
   assert.ok(!(await js(`document.querySelector('[role="alert"]').innerText`)).includes('Failed to fetch'));
@@ -59,7 +85,7 @@ try {
   await load('success');
   await new Promise(r=>setTimeout(r,1900));
   assert.equal(await js(`window.__ble.requests.length`),0);
-  await click('.device-button');await until(phase('connecting'));
+  await click('.connect-sheet-primary');await until(phase('connecting'));
   assert.equal(await js(`window.__ble.requests.length`),1);
   assert.equal(await js(`window.__ble.requests[0].active`),true);
   assert.deepEqual(await js(`window.__ble.requests[0].options`),{filters:[{name:'EarLink'}],optionalServices:['8f3a0001-7c3b-4b8a-9f52-123456789abc']});
@@ -69,7 +95,7 @@ try {
   await js(`window.__ble.reject('NotAllowedError')`);await until(phase('error'));await noFalseConnection();
   cases.push('trusted first click, no automatic request, picker waits >1.6s, cancellation, retry, denial');console.log('PASS '+cases.at(-1));
 
-  await load('hold-init');await until(`!!document.querySelector('.connect-guide-action')`);await click('.connect-guide-action');await js(`window.__ble.choose()`);
+  await load('hold-init');await click('.connect-sheet-primary');await js(`window.__ble.choose()`);
   await until(`typeof window.__ble.releaseRead==='function'`);await new Promise(r=>setTimeout(r,1900));await noFalseConnection();assert.ok(await js(phase('connecting')));
   await js(`window.__ble.releaseRead()`);await until(phase('success'));await until(`window.__ble.presence.some(p=>p.connected)`);
   assert.equal(await js(`window.__ble.presence.find(p=>p.connected).serial_number`),null);
@@ -83,13 +109,14 @@ try {
   cases.push('no success before status read, optional serial absent, real status controls/interval wire packets, disconnection');console.log('PASS '+cases.at(-1));
 
   for(const mode of ['gatt-fail','status-missing','invalid-status','notifications-fail','init-disconnect','silent-drop']){
-    await load(mode);await click('.device-button');await until(phase('connecting'));await js(`window.__ble.choose()`);await until(phase('error'));await noFalseConnection();
+    await load(mode);await click('.connect-sheet-primary');await until(phase('connecting'));await js(`window.__ble.choose()`);await until(phase('error'));await noFalseConnection();
     assert.equal(await js(`window.__ble.device.gatt.connected`),false);cases.push(mode);console.log('PASS '+mode);
   }
-  await load('unsupported');await click('.device-button');await until(phase('unsupported'));assert.equal(await js(`window.__ble.requests.length`),0);await noFalseConnection();cases.push('unsupported browser');console.log('PASS unsupported browser');
+  await load('unsupported');await until(phase('unsupported'));assert.equal(await js(`window.__ble.requests.length`),0);await noFalseConnection();assert.equal(await js(`document.querySelectorAll('.mode-card:disabled').length`),3);assert.equal(await js(`!!document.querySelector('.connect-sheet-close, .connect-sheet-primary')`),false);
+  await js(`window.__ble.remoteConnected=true`);await until(`!document.querySelector('.connect-sheet') && !document.querySelector('.mode-card').disabled`);cases.push('unsupported browser waits for another phone to pair');console.log('PASS '+cases.at(-1));
   await load('remote');await click('.device-button');await until(phase('remote'));assert.equal(await js(`window.__ble.requests.length`),0);assert.match(await js(`document.querySelector('.connect-sheet-copy').innerText`),/다른 휴대폰/);cases.push('remote connection remains separate');console.log('PASS remote connection remains separate');
 
-  await load('keyboard');await click('.device-button');await until(phase('connecting'));await js(`window.__ble.choose()`);await until(phase('success'));
+  await load('keyboard');await click('.connect-sheet-primary');await until(phase('connecting'));await js(`window.__ble.choose()`);await until(phase('success'));
   await until(`window.__ble.writes.some(w=>w.uuid.includes('0004-')&&JSON.stringify(w.bytes)==='[1,1]')`);
   assert.ok(await js(`window.__ble.writes.some(w=>w.uuid.includes('0004-')&&JSON.stringify(w.bytes)==='[1,3,0]')`));
   await until(`window.__ble.presence.some(p=>p.connected&&p.serial_number==='EL-0427')`);
@@ -110,7 +137,7 @@ try {
   const koreanCells = [26, 35, 18, 8, 46]; // 한글
   for (const [card, label] of [[1, 'voice'], [2, 'sign'], [3, 'text']]) {
     const requestId = 10 + card;
-    await load('keyboard'); await click('.device-button'); await js(`window.__ble.choose()`);
+    await load('keyboard'); await click('.connect-sheet-primary'); await js(`window.__ble.choose()`);
     await until(phase('success')); await until(`!document.querySelector('.connect-sheet')`);
     await click(`.mode-card:nth-child(${card})`);
     await until(`!!document.querySelector('.chat-screen') && window.__ble.socket?.readyState === 1`);
@@ -198,7 +225,7 @@ try {
   await until(`window.__ble.sent.some(s=>JSON.parse(s).active===false)`);
   cases.push('paused draft retained, erase and disconnect clear it, lost remote stop-event expires');console.log('PASS '+cases.at(-1));
 
-  await load('keyboard-legacy');await click('.device-button');await js(`window.__ble.choose()`);
+  await load('keyboard-legacy');await click('.connect-sheet-primary');await js(`window.__ble.choose()`);
   await until(phase('success'));await until(`!document.querySelector('.connect-sheet')`);
   await click('.mode-card:nth-child(1)');await until(`window.__ble.socket?.readyState===1`);
   await until(`window.__ble.writes.some(w=>w.uuid.includes('0004-')&&JSON.stringify(w.bytes)==='[1,3,1]')`);

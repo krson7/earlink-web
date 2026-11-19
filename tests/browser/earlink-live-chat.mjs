@@ -40,7 +40,8 @@ try {
     // Next's development toolbar otherwise covers the bottom-left microphone.
     await page.js(`(()=>{const style=document.createElement('style');style.textContent='nextjs-portal { display: none !important; }';document.head.append(style);})()`);
     if (relay) {
-      await page.click('.device-button'); await page.js(`window.__ble.choose()`);
+      await page.until(`document.querySelector('.connect-sheet')?.dataset.phase==='idle'`);
+      await page.click('.connect-sheet-primary'); await page.js(`window.__ble.choose()`);
       await page.until(`document.querySelector('.connect-sheet')?.dataset.phase==='success'`);
       await page.until(`!document.querySelector('.connect-sheet')`);
     } else {

@@ -11,9 +11,11 @@
     }
     if (!live && String(input).includes('/rooms/device')) {
       if (options.method === 'PUT') q.presence.push(JSON.parse(options.body));
-      if (mode === 'presence-missing') return Promise.resolve(Response.json({detail:'Not Found'}, {status:404}));
+      else q.presenceChecks = (q.presenceChecks || 0) + 1;
+      if (mode === 'presence-missing' && !q.presenceRestored) return Promise.resolve(Response.json({detail:'Not Found'}, {status:404}));
       if (mode === 'presence-slow') return new Promise(resolve => setTimeout(() => resolve(Response.json({connected:true,serial_number:'EL-REMOTE'})), 3500));
-      return Promise.resolve(new Response(JSON.stringify({ connected: mode === 'remote', serial_number: mode === 'remote' ? 'EL-REMOTE' : null }), { status: 200 }));
+      const remote = q.remoteConnected ?? (mode === 'remote' || mode === 'join-offline');
+      return Promise.resolve(Response.json({ connected: remote, serial_number: remote ? 'EL-REMOTE' : null }));
     }
     if (mode === 'join-offline' && String(input).includes('/rooms/join')) return Promise.reject(new TypeError('Failed to fetch'));
     if (!live && String(input).includes('/rooms/join')) return Promise.resolve(new Response(JSON.stringify({ participant_id: 1, room_id: 1, room_code: 'QA', accessibility_mode: JSON.parse(options.body).accessibility_mode, joined_at: new Date().toISOString() }), { status: 200 }));

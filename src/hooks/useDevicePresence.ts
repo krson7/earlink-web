@@ -11,7 +11,7 @@ import type { DevicePresence } from "@/lib/device-presence-api";
  *
  * - 내가 연결하면 서버에 알리고, 주기적으로 갱신한다.
  * - 내가 연결하지 않았으면 서버에 물어본다.
- * - 조회 실패는 미연결로 단정하지 않고, 연결 안내로 입장을 막지 않는다.
+ * - 조회 중이거나 실패한 상태는 연결 완료로 취급하지 않고 재조회한다.
  */
 
 const POLL_INTERVAL_MS = 3_000;
@@ -28,9 +28,9 @@ export function useDevicePresence({ localConnected, serialNumber, poll }: Option
   const reportsRef = useRef<Promise<void>>(Promise.resolve());
   const [remote, setRemote] = useState<DevicePresence | null>(null);
   const [checked, setChecked] = useState(false);
-  const [apiMissing, setApiMissing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const shouldPoll = poll && !localConnected && !apiMissing;
+  const shouldPoll = poll && !localConnected;
 
   useEffect(() => {
     if (!shouldPoll) {
@@ -52,11 +52,13 @@ export function useDevicePresence({ localConnected, serialNumber, poll }: Option
         if (!disposed) {
           setRemote(presence);
           setChecked(true);
+          setError(null);
         }
       } catch (failure) {
         if (disposed) return;
-        // 서버에 아직 API가 없으면 더 묻지 않는다.
-        if (failure instanceof ApiError && failure.status === 404) setApiMissing(true);
+        setError(failure instanceof ApiError && failure.status === 404
+          ? "기기 연결 상태 공유 기능을 사용할 수 없어요. 서버 설정을 확인해 주세요."
+          : "다른 휴대폰의 연결 상태를 확인하지 못했어요. 자동으로 다시 확인하고 있어요.");
       } finally {
         checking = false;
       }
@@ -80,7 +82,7 @@ export function useDevicePresence({ localConnected, serialNumber, poll }: Option
   }, [shouldPoll]);
 
   useEffect(() => {
-    if (!localConnected || apiMissing) {
+    if (!localConnected) {
       return;
     }
 
@@ -108,13 +110,14 @@ export function useDevicePresence({ localConnected, serialNumber, poll }: Option
       window.removeEventListener("pageshow", handlePageShow);
       report(false);
     };
-  }, [localConnected, serialNumber, apiMissing]);
+  }, [localConnected, serialNumber]);
 
   const remoteConnected = !localConnected && remote?.connected === true;
 
   return {
     // 서버 응답을 기다리는 동안 연결 안내를 잠깐 미룬다.
     checked: checked || localConnected,
+    error,
     remoteConnected,
     remoteSerialNumber: remoteConnected ? remote?.serialNumber ?? null : null,
   };
