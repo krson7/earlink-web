@@ -136,12 +136,15 @@ export function useSignLanguageCamera({
   useEffect(() => {
     let disposed = false;
 
-    setCurrentJamo(null);
-    setRecognizedText("");
-    setConfidence(0);
-
     async function initialize():
       Promise<void> {
+      // Let effect cleanup cancel a superseded camera session before resetting
+      // its UI or starting asynchronous model/camera work.
+      await Promise.resolve();
+      if (disposed) return;
+      setCurrentJamo(null);
+      setRecognizedText("");
+      setConfidence(0);
       try {
         const normalizedRoomCode =
           roomCode

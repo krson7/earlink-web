@@ -63,6 +63,7 @@ export function useSpeechInput(onText: (text: string) => void) {
     recognition.interimResults = true;
     recognition.continuous = false;
     recognition.onresult = (event) => {
+      if (recognitionRef.current !== recognition) return;
       let text = "";
       for (let index = 0; index < event.results.length; index += 1) {
         text += event.results[index][0]?.transcript ?? "";
@@ -70,10 +71,12 @@ export function useSpeechInput(onText: (text: string) => void) {
       onTextRef.current(text.trim());
     };
     recognition.onerror = (event) => {
+      if (recognitionRef.current !== recognition) return;
       setError(errorMessage(event.error));
     };
     recognition.onend = () => {
-      if (recognitionRef.current === recognition) recognitionRef.current = null;
+      if (recognitionRef.current !== recognition) return;
+      recognitionRef.current = null;
       setListening(false);
     };
 

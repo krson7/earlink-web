@@ -8,6 +8,7 @@ import IntroSplash from "@/components/entry/IntroSplash";
 import ModeSelectScreen from "@/components/entry/ModeSelectScreen";
 import MobileAppShell from "@/components/layout/MobileAppShell";
 import { useChatSocket } from "@/hooks/useChatSocket";
+import { useBrailleTyping } from "@/hooks/useBrailleTyping";
 import { useDevicePresence } from "@/hooks/useDevicePresence";
 import { useEarLinkBluetooth } from "@/hooks/useEarLinkBluetooth";
 import { useRoomSession } from "@/hooks/useRoomSession";
@@ -22,7 +23,7 @@ export default function Home() {
 
   const room = useRoomSession();
   const chat = useChatSocket(room.participant);
-  const { sendMessage } = chat;
+  const { sendBrailleMessage } = chat;
 
   /*
    * 점자 키보드로 보낸 글.
@@ -31,10 +32,10 @@ export default function Home() {
   const keyboardEchoesRef = useRef<string[]>([]);
 
   const sendFromKeyboard = useCallback((text: string): boolean => {
-    const sent = sendMessage(text);
+    const sent = sendBrailleMessage(text);
     if (sent) keyboardEchoesRef.current.push(text.trim());
     return sent;
-  }, [sendMessage]);
+  }, [sendBrailleMessage]);
 
   const isKeyboardEcho = useCallback((content: string): boolean => {
     const index = keyboardEchoesRef.current.indexOf(content.trim());
@@ -46,13 +47,19 @@ export default function Home() {
   /*
    * 점자 기기 연결은 화면 전환과 무관하게 여기서 유지한다.
    * 메인 화면에서 먼저 연결하고, 어떤 대화 방식으로 들어가도
-   * 같은 연결로 점자를 전달한다. 점자 키보드는 텍스트 모드에서 쓴다.
+   * 같은 연결로 점자를 전달하고 점자 키보드 입력을 받는다.
    */
   const earLink = useEarLinkBluetooth({
-    ready: room.participant?.accessibility_mode === "STANDARD" && chat.connected,
+    ready: Boolean(room.participant) && chat.connected,
     onSend: sendFromKeyboard,
   });
   const { supported, connected, connecting, connect } = earLink;
+
+  useBrailleTyping({
+    enabled: connected && earLink.keyboardSupported && chat.connected,
+    snapshot: earLink.keyboard,
+    publish: chat.sendBrailleTyping,
+  });
 
   // 다른 휴대폰이 이미 기기에 연결했는지 서버로 공유한다.
   const presence = useDevicePresence({
@@ -108,6 +115,7 @@ export default function Home() {
 
   function handleLeaveRoom(): void {
     chat.reset();
+    keyboardEchoesRef.current = [];
     room.leaveRoom();
   }
 
@@ -136,6 +144,7 @@ export default function Home() {
         <ChatScreen
           participant={room.participant}
           messages={chat.messages}
+          brailleTypingParticipantIds={chat.brailleTypingParticipantIds}
           chatConnected={chat.connected}
           chatStatus={chat.status}
           chatErrorMessage={chat.errorMessage}

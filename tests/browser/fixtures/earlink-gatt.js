@@ -1,26 +1,47 @@
 (() => {
   const mode = new URL(location.href).searchParams.get('blecase') || 'success';
+  const live = mode === 'keyboard-live';
   const uuid = n => `8f3a000${n}-7c3b-4b8a-9f52-123456789abc`;
-  const q = window.__ble = { mode, requests: [], presence: [], writes: [], stages: [], completed: [], nextAck: 1 };
+  const q = window.__ble = { mode, requests: [], presence: [], writes: [], stages: [], completed: [], sent: [], received: [], nextAck: 1 };
   const originalFetch = window.fetch.bind(window);
   window.fetch = (input, options = {}) => {
     if (String(input).includes('/rooms/device')) {
       if (options.method === 'PUT') q.presence.push(JSON.parse(options.body));
       return Promise.resolve(new Response(JSON.stringify({ connected: mode === 'remote', serial_number: mode === 'remote' ? 'EL-REMOTE' : null }), { status: 200 }));
     }
-    if (String(input).includes('/rooms/join')) return Promise.resolve(new Response(JSON.stringify({ participant_id: 1, room_id: 1, room_code: 'QA', accessibility_mode: JSON.parse(options.body).accessibility_mode, joined_at: new Date().toISOString() }), { status: 200 }));
+    if (!live && String(input).includes('/rooms/join')) return Promise.resolve(new Response(JSON.stringify({ participant_id: 1, room_id: 1, room_code: 'QA', accessibility_mode: JSON.parse(options.body).accessibility_mode, joined_at: new Date().toISOString() }), { status: 200 }));
     return originalFetch(input, options);
   };
   const NativeSocket = window.WebSocket;
   window.WebSocket = class extends NativeSocket {
     constructor(url, protocols) {
-      if (String(url).includes('/ws/rooms/')) {
-        const socket = { readyState: 0, send() {}, close() { this.readyState = 3; }, addEventListener() {}, removeEventListener() {} };
+      if (!live && String(url).includes('/ws/rooms/')) {
+        const socket = { readyState: 0, send(text) {
+          q.sent.push(text);
+          let payload;
+          try { payload = JSON.parse(text); } catch { /* Plain chat. */ }
+          const event = payload?.type === 'typing'
+            ? { ...payload, sender_id: 1 }
+            : { type: 'message', sender_id: 1, content: payload?.type === 'message' ? payload.content : text,
+                ...(payload?.source === 'braille' ? { source: 'braille' } : {}) };
+          setTimeout(() => socket.onmessage?.({ data: JSON.stringify(event) }), 0);
+        }, close() { this.readyState = 3; }, addEventListener() {}, removeEventListener() {} };
         q.socket = socket;
-        setTimeout(() => { socket.readyState = 1; socket.onopen?.(); }, 20);
+        setTimeout(() => {
+          socket.readyState = 1; socket.onopen?.();
+          if (mode !== 'keyboard-legacy') socket.onmessage?.({ data: JSON.stringify({ type: 'capabilities', braille_events: true }) });
+        }, 20);
         return socket;
       }
       super(url, protocols);
+      if (live && String(url).includes('/ws/rooms/')) {
+        q.socket = this;
+        this.addEventListener('message', event => q.received.push(JSON.parse(event.data)));
+      }
+    }
+    send(data) {
+      if (this === q.socket) q.sent.push(data);
+      super.send(data);
     }
   };
   if (mode === 'unsupported') {
@@ -67,7 +88,34 @@
     } };
     const keyboard = new EventTarget();
     keyboard.startNotifications = async () => keyboard;
-    keyboard.writeValueWithResponse = async bytes => { q.writes.push({ uuid: uuid(4), bytes: [...bytes] }); };
+    let revision = 0, cells = [], pending = [], requestId = 0;
+    q.bootId = q.bootId || (Math.floor(Math.random() * 0xffffffff) + 1);
+    q.emitKeyboard = (draft, id = 0, original = []) => {
+      cells = [...draft]; pending = [...original]; requestId = id; revision++;
+      const begin = new Uint8Array(19), view = new DataView(begin.buffer);
+      begin.set([1, 1]); view.setUint32(2, q.bootId, true); view.setUint32(6, revision, true);
+      view.setUint32(10, id, true); view.setUint16(14, cells.length, true); view.setUint16(16, pending.length, true);
+      const frames = [begin], all = [...cells, ...pending];
+      for (let offset = 0; offset < all.length; offset += 12) {
+        const packet = new Uint8Array(8 + Math.min(12, all.length - offset));
+        packet.set([1, 2]); const dv = new DataView(packet.buffer);
+        dv.setUint32(2, revision, true); dv.setUint16(6, offset, true); packet.set(all.slice(offset, offset + 12), 8);
+        frames.push(packet);
+      }
+      const end = new Uint8Array([1, 3, 0, 0, 0, 0]); new DataView(end.buffer).setUint32(2, revision, true); frames.push(end);
+      for (const frame of frames) {
+        keyboard.value = new DataView(frame.buffer);
+        keyboard.dispatchEvent(new Event('characteristicvaluechanged'));
+      }
+    };
+    keyboard.writeValueWithResponse = async bytes => {
+      const b = [...bytes]; q.writes.push({ uuid: uuid(4), bytes: b });
+      if (b[1] === 1) q.emitKeyboard(cells, requestId, pending);
+      if (b[1] === 4) q.emitKeyboard(cells, ++q.requestSequence, cells);
+      if (b[1] === 2 && requestId === new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(2, true)) {
+        if (!q.holdKeyboardAck) q.emitKeyboard(b[6] === 1 ? cells.slice(pending.length) : cells);
+      }
+    };
     const serial = { readValue: async () => {
       if (mode === 'silent-drop') device.gatt.connected = false;
       return new DataView(new TextEncoder().encode('EL-0427').buffer);
@@ -76,8 +124,8 @@
       q.stages.push('characteristic:' + id);
       if (id === uuid(2)) return text;
       if (id === uuid(3) && mode !== 'status-missing') return state;
-      if (id === uuid(4) && mode === 'keyboard') return keyboard;
-      if (id === uuid(5) && ['keyboard', 'silent-drop'].includes(mode)) return serial;
+      if (id === uuid(4) && mode.startsWith('keyboard')) return keyboard;
+      if (id === uuid(5) && (mode.startsWith('keyboard') || mode === 'silent-drop')) return serial;
       throw new DOMException('Characteristic missing', 'NotFoundError');
     } };
     device.gatt = {
@@ -98,6 +146,7 @@
       },
     };
     q.device = device;
+    q.requestSequence = 100;
     return device;
   }
   Object.defineProperty(navigator, 'bluetooth', { configurable: true, value: {

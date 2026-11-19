@@ -79,6 +79,90 @@ try {
   await click('.device-delivery-notice button');await until(`!document.querySelector('.device-delivery-notice')`);
   assert.equal(await js(`window.__ble.completed.filter(s=>s==='수신 거절 확인').length`),2);
   cases.push('optional keyboard/serial, ready+sync, chat -> actual GATT packets -> ACK, negative ACK and retry');console.log('PASS '+cases.at(-1));
+
+  // Exercise physical keyboard notifications through the real React hooks in
+  // each participation mode. No camera/model is needed to relay BLE input.
+  const koreanCells = [26, 35, 18, 8, 46]; // 한글
+  for (const [card, label] of [[1, 'voice'], [2, 'sign'], [3, 'text']]) {
+    const requestId = 10 + card;
+    await load('keyboard'); await click('.device-button'); await js(`window.__ble.choose()`);
+    await until(phase('success')); await until(`!document.querySelector('.connect-sheet')`);
+    await click(`.mode-card:nth-child(${card})`);
+    await until(`!!document.querySelector('.chat-screen') && window.__ble.socket?.readyState === 1`);
+    await until(`window.__ble.writes.some(w=>w.uuid.includes('0004-')&&JSON.stringify(w.bytes)==='[1,3,1]')`);
+    assert.ok(await js(`!!document.querySelector('.braille-draft')`), label);
+    await js(`window.__ble.emitKeyboard([8])`); // Unfinished ㄱ still counts as typing.
+    await until(`window.__ble.sent.some(s=>{try{const e=JSON.parse(s);return e.type==='typing'&&e.active===true;}catch{return false;}})`);
+    assert.equal(await js(`document.querySelectorAll('.braille-typing').length`), 0, 'own relay is not a remote participant');
+    await js(`window.__ble.emitKeyboard(${JSON.stringify(koreanCells)})`);
+    await until(`document.querySelector('.braille-draft textarea')?.value==='한글'`);
+    await js(`window.__ble.emitKeyboard(${JSON.stringify(koreanCells)}, ${requestId}, ${JSON.stringify(koreanCells)})`);
+    await until(`document.querySelector('.message-bubble.mine')?.innerText==='한글'`);
+    await until(`window.__ble.writes.some(w=>w.uuid.includes('0004-')&&JSON.stringify(w.bytes)==='[1,2,${requestId},0,0,0,1]')`);
+    assert.equal(await js(`window.__ble.sent.filter(s=>{try{return JSON.parse(s).type==='message';}catch{return false;}}).length`), 1);
+    assert.equal(await js(`window.__ble.completed.includes('한글')`), false, 'keyboard echo never goes back to the display');
+    await js(`window.__ble.emitKeyboard(${JSON.stringify(koreanCells)}, ${requestId}, ${JSON.stringify(koreanCells)})`);
+    await new Promise(r=>setTimeout(r,100));
+    assert.equal(await js(`window.__ble.sent.filter(s=>{try{return JSON.parse(s).type==='message';}catch{return false;}}).length`), 1, 'duplicate notification');
+
+    const receive = event => js(`window.__ble.socket.onmessage({data:${JSON.stringify(JSON.stringify(event))}})`);
+    await receive({type:'typing', source:'text', sender_id:2, active:true});
+    assert.equal(await js(`document.querySelectorAll('.braille-typing').length`), 0, 'ordinary typing has no indicator');
+    await receive({type:'typing', source:'braille', sender_id:2, active:true});
+    await until(`document.querySelector('.braille-typing')?.innerText.includes('점자로 입력 중이에요')`);
+    await receive({type:'message', sender_id:2, content:'일반 입력은 점자 상태를 지우지 않아요'});
+    assert.ok(await js(`!!document.querySelector('.braille-typing')`));
+    await receive({type:'message', source:'braille', sender_id:2, content:'점자 답장'});
+    await until(`!document.querySelector('.braille-typing')`);
+    assert.ok((await js(`document.querySelector('.message-scroll').innerText`)).includes('점자 답장'));
+    await receive({type:'typing', source:'braille', sender_id:2, active:true});
+    await receive({type:'typing', source:'braille', sender_id:3, active:true});
+    await until(`document.querySelector('.braille-typing')?.innerText.includes('2명이')`);
+    await receive({type:'typing', source:'braille', sender_id:2, active:false});
+    await receive({type:'typing', source:'braille', sender_id:3, active:false});
+    await until(`!document.querySelector('.braille-typing')`);
+    cases.push(`${label}: BLE ready, draft, send/ACK once, no display echo, braille-only peer indicator`);console.log('PASS '+cases.at(-1));
+  }
+
+  await js(`window.__ble.sent=[]; document.querySelector('.composer textarea').focus()`);
+  await cdp('Input.insertText', {text:'일반 키보드 입력'});
+  await until(`document.querySelector('.composer textarea')?.value==='일반 키보드 입력'`);
+  assert.equal(await js(`window.__ble.sent.length`), 0, 'normal keyboard never publishes braille typing');
+  await click('.composer .send-button');
+  await until(`window.__ble.sent.includes('일반 키보드 입력')`);
+
+  await js(`window.__ble.savedDevice=window.__ble.device;window.__ble.emitKeyboard([8])`);
+  await until(`window.__ble.sent.some(s=>{try{return JSON.parse(s).active===true;}catch{return false;}})`);
+  await click('.back-button');await until(`!!document.querySelector('.mode-card')`);
+  await until(`window.__ble.sent.some(s=>{try{return JSON.parse(s).active===false;}catch{return false;}})`);
+  await click('.mode-card:nth-child(1)');
+  await until(`window.__ble.socket?.readyState===1 && !!document.querySelector('.braille-draft')`);
+  assert.equal(await js(`window.__ble.savedDevice===window.__ble.device && window.__ble.requests.length===1 && window.__ble.device.gatt.connected`), true);
+  await js(`window.__ble.emitKeyboard(${JSON.stringify(koreanCells)},20,${JSON.stringify(koreanCells)})`);
+  await until(`document.querySelector('.message-bubble.mine')?.innerText==='한글'`);
+  cases.push('normal keyboard has no typing event; same BLE connection survives leaving and switching text to voice');console.log('PASS '+cases.at(-1));
+
+  await js(`window.__ble.sent=[];window.__ble.emitKeyboard([8])`);
+  await until(`window.__ble.sent.some(s=>JSON.parse(s).active===true)`);
+  // Sync reads keep arriving every 2s; they must not keep an idle draft "typing".
+  await until(`window.__ble.sent.some(s=>JSON.parse(s).active===false)`);
+  await js(`window.__ble.socket.onmessage({data:JSON.stringify({type:'typing',source:'braille',sender_id:2,active:true})})`);
+  await until(`!!document.querySelector('.braille-typing')`);
+  await until(`!document.querySelector('.braille-typing')`);
+  await js(`window.__ble.sent=[];window.__ble.emitKeyboard([8,35])`);
+  await until(`window.__ble.sent.some(s=>JSON.parse(s).active===true)`);
+  await js(`window.__ble.device.gatt.disconnect()`);
+  await until(`window.__ble.sent.some(s=>JSON.parse(s).active===false)`);
+  cases.push('idle timeout despite BLE sync, lost stop-event expiry, disconnect clears typing');console.log('PASS '+cases.at(-1));
+
+  await load('keyboard-legacy');await click('.device-button');await js(`window.__ble.choose()`);
+  await until(phase('success'));await until(`!document.querySelector('.connect-sheet')`);
+  await click('.mode-card:nth-child(1)');await until(`window.__ble.socket?.readyState===1`);
+  await until(`window.__ble.writes.some(w=>w.uuid.includes('0004-')&&JSON.stringify(w.bytes)==='[1,3,1]')`);
+  await js(`window.__ble.emitKeyboard(${JSON.stringify(koreanCells)});window.__ble.emitKeyboard(${JSON.stringify(koreanCells)},21,${JSON.stringify(koreanCells)})`);
+  await until(`window.__ble.sent.includes('한글')`);
+  assert.deepEqual(await js(`window.__ble.sent`), ['한글'], 'no protocol JSON leaks into legacy chat');
+  cases.push('legacy server still receives plain braille chat in voice mode');console.log('PASS '+cases.at(-1));
   assert.deepEqual(errors,[]);
   await writeFile(resolve(root,'production-report.json'),JSON.stringify({result:'PASS',cases,runtimeExceptions:errors,physicalHardware:'NOT TESTED',transport:'Browser-only Web Bluetooth fixture; production code has no simulator'},null,2));
   console.log(JSON.stringify({result:'PASS',scenarios:cases.length,physicalHardware:'NOT TESTED'}));

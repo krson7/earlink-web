@@ -11,6 +11,7 @@ export default defineConfig([
   ...nextTs,
 
   globalIgnores([
+    ".firmware-build/**",
     ".next/**",
     "out/**",
     "build/**",

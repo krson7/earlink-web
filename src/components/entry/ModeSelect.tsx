@@ -16,7 +16,7 @@ type ModeSelectProps = {
 const modes = [
   { mode: "VISUAL", title: "음성", english: "Voice", description: "말로 입력하고 받은 메시지를 소리로 듣기" },
   { mode: "HEARING", title: "수어", english: "Sign Language", description: "카메라로 지문자를 인식해 대화하기" },
-  { mode: "STANDARD", title: "텍스트", english: "Text", description: "키보드나 점자 키보드로 입력해 대화하기" },
+  { mode: "STANDARD", title: "텍스트", english: "Text", description: "키보드로 입력해 대화하기" },
 ] as const;
 
 export default function ModeSelect({ onSelectMode, device, showGuide, onDevicePress }: ModeSelectProps) {

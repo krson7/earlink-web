@@ -5,6 +5,7 @@ Next.js 기반 접근성 채팅 MVP입니다.
 - [프로젝트 구조 분석](docs/PROJECT_ANALYSIS.md)
 - [ESP32 3칸 점자 펌웨어, 업로드와 전송 규격](firmware/README.md)
 - [9버튼 한글 점자 키보드: 핀 배치·웹 입력·채팅 전송](firmware/KEYBOARD.md)
+- [모든 모드의 점자 입력과 입력 중 말풍선](docs/BRAILLE_CHAT_API.md)
 - 기기 전송 테스트: `npm run test:earlink`
 - [실제 Bluetooth 연결 및 배포 설정](docs/PRODUCTION_BLUETOOTH.md)
 

@@ -133,10 +133,10 @@ button:focus-visible, a:focus-visible, select:focus-visible { outline: 3px solid
 .mic-button.is-listening { box-shadow: var(--inset); color: #1d3269; }
 .mic-button:disabled { color: #99a3b6; opacity: .65; }
 
-/* 텍스트 모드: 점자 키보드 작성 줄 + 채팅 입력칸 */
+/* 모든 대화 방식에서 기기의 점자 키보드 입력을 함께 표시한다. */
 .composer-stack { flex-shrink: 0; background: var(--surface); }
 .braille-draft { padding: 12px 17px 0; }
-.braille-draft-label { margin: 0 0 6px 6px; color: #515d71; font-size: 11px; font-weight: 600; }
+.braille-draft-label { margin: 0 0 6px 6px; color: #515d71; font-size: 14px; font-weight: 600; }
 .braille-draft textarea { display: block; width: 100%; min-height: 22px; max-height: 66px; resize: none; border: 0; background: transparent; color: #263453; font-size: 14px; line-height: 22px; outline: none; }
 .braille-draft textarea::placeholder { color: #778296; }
 .braille-draft .send-button:not(:disabled) { color: #213b75; }
@@ -176,6 +176,11 @@ button:focus-visible, a:focus-visible, select:focus-visible { outline: 3px solid
 .message-bubble.mine { border-bottom-right-radius: 7px; color: #fff; background: linear-gradient(125deg, #2c4383, #15264f); box-shadow: 5px 6px 10px #c0c9d9, inset 1px 1px 1px #7285b54d; }
 .participant-avatar { display: flex; width: 35px; height: 35px; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 50%; color: #8fa3c8; background: linear-gradient(135deg, #f8faff, #e6ecf5); box-shadow: 3px 4px 8px #c8d1df, -3px -3px 8px #fff; }
 .participant-avatar svg { width: 22px; height: 22px; }
+.typing-bubble { display: flex; align-items: center; gap: 10px; border-bottom-left-radius: 7px; color: #515d71; }
+.typing-dots { display: inline-flex; gap: 4px; align-items: center; }
+.typing-dots i { width: 5px; height: 5px; border-radius: 50%; background: #627599; animation: dot-blink 1.2s ease-in-out infinite; }
+.typing-dots i:nth-child(2) { animation-delay: .2s; }
+.typing-dots i:nth-child(3) { animation-delay: .4s; }
 .composer { flex-shrink: 0; padding: 12px 17px; background: var(--surface); }
 .composer-input { flex: 1; min-width: 0; padding: 12px 18px 9px; border-radius: 28px; background: var(--surface); box-shadow: var(--inset); }
 /* 입력 중에는 테두리 대신 조금 더 깊게 눌린 그림자로 표시한다. */
@@ -209,6 +214,7 @@ button:focus-visible, a:focus-visible, select:focus-visible { outline: 3px solid
   .app-shell { height: min(850px, calc(var(--app-viewport-height, 100dvh) - 64px)); border: 9px solid #111b3b; border-radius: 52px; box-shadow: 18px 24px 48px #202c4a33, -12px -12px 35px #fff; }
 }
 @container earlink-app (max-height: 700px) {
+  .camera-preview { height: clamp(110px, 20cqh, 140px); }
   .mode-content { padding-top: 18px; }
   .mode-options { gap: 14px; margin-top: 18px; }
   .mode-card { min-height: 75px; padding-block: 8px; }

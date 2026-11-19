@@ -29,6 +29,7 @@ import type {
 type ChatScreenProps = {
   participant: JoinRoomResponse;
   messages: ChatMessageItem[];
+  brailleTypingParticipantIds: number[];
   chatConnected: boolean;
   chatStatus: string;
   chatErrorMessage: string;
@@ -62,6 +63,7 @@ function getChatPlaceholder(
 export default function ChatScreen({
   participant,
   messages,
+  brailleTypingParticipantIds,
   chatConnected,
   chatStatus,
   chatErrorMessage,
@@ -397,6 +399,7 @@ export default function ChatScreen({
 
       <MessageList
         messages={messages}
+        brailleTypingParticipantIds={brailleTypingParticipantIds}
         participantId={
           participant.participant_id
         }
@@ -415,33 +418,25 @@ export default function ChatScreen({
         </div>
       )}
 
-      {accessibilityMode ===
-      "HEARING" ? (
-        <CameraComposer
-          roomCode={participant.room_code}
-          participantId={
-            participant.participant_id
-          }
-          chatConnected={chatConnected}
-          chatErrorMessage={
-            chatErrorMessage
-          }
-          onSendText={onSendMessage}
-        />
-      ) : (
-        <div className="composer-stack">
-          {/* 텍스트 모드: 기기의 점자 키보드로 친 글 */}
-          {accessibilityMode === "STANDARD" &&
-            earLinkConnected &&
-            keyboardSupported && (
-            <BrailleKeyboardComposer
-              chatConnected={chatConnected}
-              snapshot={keyboard}
-              error={keyboardError}
-              onSend={requestKeyboardSend}
-            />
-          )}
+      <div className="composer-stack">
+        {earLinkConnected && keyboardSupported && (
+          <BrailleKeyboardComposer
+            chatConnected={chatConnected}
+            snapshot={keyboard}
+            error={keyboardError}
+            onSend={requestKeyboardSend}
+          />
+        )}
 
+        {accessibilityMode === "HEARING" ? (
+          <CameraComposer
+            roomCode={participant.room_code}
+            participantId={participant.participant_id}
+            chatConnected={chatConnected}
+            chatErrorMessage={chatErrorMessage}
+            onSendText={onSendMessage}
+          />
+        ) : (
           <ChatComposer
             message={message}
             chatConnected={chatConnected}
@@ -461,8 +456,8 @@ export default function ChatScreen({
             }
             onSubmit={handleSubmit}
           />
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

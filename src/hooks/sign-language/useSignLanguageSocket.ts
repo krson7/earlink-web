@@ -158,7 +158,7 @@ export function useSignLanguageSocket({
     );
 
   const connectWebSocket =
-    useCallback((): void => {
+    useCallback(function connectWebSocket(): void {
       if (
         disposedRef.current ||
         reconnectBlockedRef.current

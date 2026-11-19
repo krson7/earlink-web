@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test:earlink": "node --experimental-strip-types --test tests/earlink-protocol.test.mjs tests/earlink-keyboard.test.mjs",
     "test:bluetooth:browser": "node tests/browser/earlink-bluetooth.mjs",
+    "test:chat:browser": "node tests/browser/earlink-live-chat.mjs",
     "test:firmware": "python firmware/tests/run_tests.py",
     "test:firmware:deep": "python firmware/tests/run_deep_tests.py --seconds 600",
     "test:firmware:asan": "python firmware/tests/run_deep_tests.py --seconds 600 --asan"

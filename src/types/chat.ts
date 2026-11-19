@@ -12,6 +12,19 @@ export type ChatMessage = {
   type: "message";
   sender_id: number;
   content: string;
+  source?: "braille";
+};
+
+export type BrailleTypingMessage = {
+  type: "typing";
+  source: "braille";
+  sender_id: number;
+  active: boolean;
+};
+
+export type ChatCapabilitiesMessage = {
+  type: "capabilities";
+  braille_events: boolean;
 };
 
 export type ChatErrorMessage = {
@@ -20,7 +33,7 @@ export type ChatErrorMessage = {
   detail: string;
 };
 
-export type ChatServerMessage = ChatMessage | ChatErrorMessage;
+export type ChatServerMessage = ChatMessage | ChatErrorMessage | BrailleTypingMessage | ChatCapabilitiesMessage;
 
 export type ChatMessageItem = ChatMessage & {
   localId: string;

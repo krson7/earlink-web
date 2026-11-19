@@ -16,14 +16,25 @@ import type {
 const FASTAPI_WS_BASE_URL =
   process.env.NEXT_PUBLIC_FASTAPI_WS_BASE_URL ?? "ws://localhost:8000";
 
+const BRAILLE_TYPING_TTL_MS = 7000;
+
 export function useChatSocket(participant: JoinRoomResponse | null) {
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
+  const brailleEventsRef = useRef(false);
+  const typingTimersRef = useRef(new Map<number, number>());
 
   const [messages, setMessages] = useState<ChatMessageItem[]>([]);
   const [connected, setConnected] = useState(false);
   const [status, setStatus] = useState("채팅 연결 전");
   const [errorMessage, setErrorMessage] = useState("");
+  const [brailleTypingParticipantIds, setBrailleTypingParticipantIds] = useState<number[]>([]);
+
+  const clearTyping = useCallback(() => {
+    for (const timer of typingTimersRef.current.values()) window.clearTimeout(timer);
+    typingTimersRef.current.clear();
+    setBrailleTypingParticipantIds([]);
+  }, []);
 
   useEffect(() => {
     if (!participant) {
@@ -64,6 +75,7 @@ export function useChatSocket(participant: JoinRoomResponse | null) {
       socketRef.current = socket;
 
       socket.onopen = () => {
+        brailleEventsRef.current = false;
         reconnectDelay = 500;
         reconnectAttempts = 0;
 
@@ -86,6 +98,34 @@ export function useChatSocket(participant: JoinRoomResponse | null) {
           return;
         }
 
+        if (!serverMessage || typeof serverMessage !== "object") return;
+
+        if (serverMessage.type === "capabilities") {
+          brailleEventsRef.current = serverMessage.braille_events === true;
+          return;
+        }
+
+        function stopTyping(senderId: number): void {
+          window.clearTimeout(typingTimersRef.current.get(senderId));
+          typingTimersRef.current.delete(senderId);
+          setBrailleTypingParticipantIds((previous) => previous.filter((id) => id !== senderId));
+        }
+
+        if (serverMessage.type === "typing") {
+          if (serverMessage.source !== "braille" ||
+              !Number.isSafeInteger(serverMessage.sender_id) || serverMessage.sender_id <= 0 ||
+              serverMessage.sender_id === participantId || typeof serverMessage.active !== "boolean") return;
+          const senderId = serverMessage.sender_id;
+          window.clearTimeout(typingTimersRef.current.get(senderId));
+          if (!serverMessage.active) {
+            stopTyping(senderId);
+          } else {
+            setBrailleTypingParticipantIds((previous) => previous.includes(senderId) ? previous : [...previous, senderId]);
+            typingTimersRef.current.set(senderId, window.setTimeout(() => stopTyping(senderId), BRAILLE_TYPING_TTL_MS));
+          }
+          return;
+        }
+
         if (serverMessage.type === "message") {
           if (
             typeof serverMessage.sender_id !== "number" ||
@@ -93,6 +133,8 @@ export function useChatSocket(participant: JoinRoomResponse | null) {
           ) {
             return;
           }
+
+          if (serverMessage.source === "braille") stopTyping(serverMessage.sender_id);
 
           setMessages((previousMessages) => [
             ...previousMessages,
@@ -120,6 +162,8 @@ export function useChatSocket(participant: JoinRoomResponse | null) {
         }
 
         setConnected(false);
+        brailleEventsRef.current = false;
+        clearTyping();
 
         if (disposed) {
           return;
@@ -176,6 +220,8 @@ export function useChatSocket(participant: JoinRoomResponse | null) {
 
     return () => {
       disposed = true;
+      brailleEventsRef.current = false;
+      clearTyping();
 
       if (reconnectTimerRef.current !== null) {
         window.clearTimeout(reconnectTimerRef.current);
@@ -199,16 +245,17 @@ export function useChatSocket(participant: JoinRoomResponse | null) {
         }
       }
     };
-  }, [participant]);
+  }, [participant, clearTyping]);
 
   const prepareConnection = useCallback((): void => {
+    clearTyping();
     setMessages([]);
     setConnected(false);
     setStatus("채팅 연결 준비 중");
     setErrorMessage("");
-  }, []);
+  }, [clearTyping]);
 
-  const sendMessage = useCallback((text: string): boolean => {
+  const sendText = useCallback((text: string, braille = false): boolean => {
     const trimmedMessage = text.trim();
 
     if (!trimmedMessage) {
@@ -230,10 +277,33 @@ export function useChatSocket(participant: JoinRoomResponse | null) {
       return false;
     }
 
-    socket.send(trimmedMessage);
+    try {
+      // Older servers treat every frame as chat text. Only use envelopes after
+      // the server advertises support, so status JSON never appears in chat.
+      socket.send(braille && brailleEventsRef.current
+        ? JSON.stringify({ type: "message", source: "braille", content: trimmedMessage })
+        : trimmedMessage);
+    } catch {
+      setErrorMessage("메시지를 전송하지 못했습니다. 연결을 확인해 주세요.");
+      return false;
+    }
     setErrorMessage("");
 
     return true;
+  }, []);
+
+  const sendMessage = useCallback((text: string) => sendText(text), [sendText]);
+  const sendBrailleMessage = useCallback((text: string) => sendText(text, true), [sendText]);
+
+  const sendBrailleTyping = useCallback((active: boolean): boolean => {
+    const socket = socketRef.current;
+    if (!brailleEventsRef.current || !socket || socket.readyState !== WebSocket.OPEN) return false;
+    try {
+      socket.send(JSON.stringify({ type: "typing", source: "braille", active }));
+      return true;
+    } catch {
+      return false;
+    }
   }, []);
 
   const clearError = useCallback((): void => {
@@ -241,20 +311,25 @@ export function useChatSocket(participant: JoinRoomResponse | null) {
   }, []);
 
   const reset = useCallback((): void => {
+    sendBrailleTyping(false);
+    clearTyping();
     setMessages([]);
     setConnected(false);
     setStatus("채팅 연결 전");
     setErrorMessage("");
-  }, []);
+  }, [sendBrailleTyping, clearTyping]);
   
 
   return {
     messages,
+    brailleTypingParticipantIds,
     connected,
     status,
     errorMessage,
     prepareConnection,
     sendMessage,
+    sendBrailleMessage,
+    sendBrailleTyping,
     clearError,
     reset,
   };
