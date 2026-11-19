@@ -52,11 +52,6 @@ export default function ModeSelectScreen({
         onDevicePress={onDevicePress}
       />
 
-      {/* 기기 연결 안내: 화면을 어둡게 덮고 기기만 위로 띄운다. */}
-      {showGuide && (
-        <div className="connect-guide-backdrop" aria-hidden="true" onClick={onDismissGuide} />
-      )}
-
       {errorMessage && (
         <div
           role="alert"

@@ -10,6 +10,3 @@ export const HAND_MODEL_URL =
 export const WS_MAX_BUFFERED = 64 * 1024;
 export const DETECT_INTERVAL_MS = 66;
 export const MAX_RECONNECT_ATTEMPTS = 5;
-
-export const FASTAPI_WS_BASE_URL =
-  process.env.NEXT_PUBLIC_FASTAPI_WS_BASE_URL ?? "ws://localhost:8000";

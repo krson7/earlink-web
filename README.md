@@ -13,7 +13,9 @@ Next.js 기반 접근성 채팅 MVP입니다.
 
 기기 이미지나 연결 안내를 누르면 브라우저의 Bluetooth 선택창이 열린다. `EarLink`를 선택하고 GATT 연결·상태 읽기가 완료되어야 연결됨으로 표시된다. 기기 선택 취소·연결 실패 시 연결 완료로 처리하지 않는다. UI 테스트 타이머와 가상 전송 분기는 배포 코드에서 제거했다.
 
-실서비스에서는 Web Bluetooth를 지원하는 브라우저와 HTTPS 주소가 필요하다. 배포 전에 `.env.example`의 API·WebSocket 주소를 실제 서버의 HTTPS·WSS 주소로 설정한 뒤 `npm run build`를 실행한다. `.env.local`의 localhost 주소를 외부 서비스에 그대로 배포하지 않는다.
+실서비스에서는 Web Bluetooth를 지원하는 브라우저와 HTTPS 주소가 필요하다. 한 휴대폰만 기기에 연결하면 다른 참여자는 연결 안내 없이 모드를 선택해 입장한다. 기기 연결은 모드 선택을 막지 않는다.
+
+HTTP와 WebSocket은 기본적으로 웹 주소를 통해 Next.js 서버가 FastAPI에 전달한다. 휴대폰이 자신의 `localhost`에 요청하지 않는다. `.env.example`의 `FASTAPI_HTTP_BASE_URL`을 **Next.js 서버에서 접근 가능한** 백엔드 주소로 설정한 뒤 빌드한다. 같은 컴퓨터에서 두 서버를 실행하면 `http://127.0.0.1:8000`을 사용한다. 기기 상태 공유용 FastAPI 모듈과 설치 방법은 [backend 안내](backend/README.md)를 참고한다.
 
 아래는 프론트엔드 실행 안내입니다.
 

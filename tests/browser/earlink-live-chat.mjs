@@ -44,8 +44,9 @@ try {
       await page.until(`document.querySelector('.connect-sheet')?.dataset.phase==='success'`);
       await page.until(`!document.querySelector('.connect-sheet')`);
     } else {
-      await page.until(`!!document.querySelector('.connect-guide-backdrop')`);
-      await page.js(`document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))`);
+      await page.until(`document.querySelector('.device-scene')?.dataset.state==='connected'`);
+      assert.equal(await page.js(`!!document.querySelector('.connect-guide-action, .connect-guide-backdrop, .connect-sheet')`),false);
+      assert.equal(await page.js(`window.__ble.requests.length`),0);
     }
     await page.click(`.mode-card:nth-child(${card})`);
     await page.until(`window.__ble.received.some(e=>e.type==='capabilities') && !!document.querySelector('.chat-screen')`);
@@ -56,7 +57,7 @@ try {
   const peers = [voice, sign];
   const id = await relay.js(`Number(window.__ble.socket.url.split('/').at(-1))`);
   assert.equal(new Set(await Promise.all(pages.map(p=>p.js(`window.__ble.socket.url`)))).size,3);
-  pass('three real browser participants join through the real API and database validation');
+  pass('one phone reports BLE presence; second and third phones join without pairing or a connection guide via the real API');
 
   const bubbleCount = (page,text) => page.js(`[...document.querySelectorAll('.message-bubble:not(.typing-bubble)')].filter(e=>e.innerText===${JSON.stringify(text)}).length`);
   async function waitMessage(page,text) {
@@ -77,6 +78,8 @@ try {
     assert.equal(await page.js(`document.querySelectorAll('.chat-screen textarea').length`),1,'only the selected mode composer is present');
     assert.equal(await page.js(`document.querySelectorAll('.message-scroll textarea, .message-scroll input, .message-scroll button, .message-scroll [contenteditable="true"]').length`),0,'received braille has no input controls');
     assert.equal(await page.js(`document.querySelector('.braille-typing')?.dataset.sender`),'other');
+    const bubbleHeight = await page.js(`document.querySelector('.typing-bubble').getBoundingClientRect().height`);
+    assert.ok(bubbleHeight < 64, `one-line typing bubble should be compact, got ${bubbleHeight}px`);
   }
   assert.equal(await voice.js(`window.__ble.spoken.length`),0);
   assert.equal(await relay.js(`window.__ble.completed.length`),0);
@@ -194,10 +197,13 @@ try {
   pass('switching the connection owner to sign mode keeps BLE connected and sends to existing voice/sign peers');
 
   await relay.js(`window.__ble.emitKeyboard([8])`);await allTyping(true);
-  await relay.js(`window.__ble.device.gatt.disconnect()`);await allTyping(false);
+  // Delayed release must not make the relay mistake its own old lease for a peer.
+  await relay.js(`window.__ble.disconnectDelay=800;window.__ble.device.gatt.disconnect()`);await allTyping(false);
+  for (const peer of peers) await peer.until(`!!document.querySelector('.device-status .connection-dot.offline')`);
   await relay.click('.device-status');await relay.until(`document.querySelector('.connect-sheet')?.dataset.phase==='connecting'`);
   await relay.js(`window.__ble.choose()`);await relay.until(`document.querySelector('.connect-sheet')?.dataset.phase==='success'`);
   await relay.until(`!document.querySelector('.connect-sheet')`);
+  for (const peer of peers) await peer.until(`!!document.querySelector('.device-status .connection-dot.online')`);
   await sendBraille(35);for (const peer of peers) await peer.until(`[...document.querySelectorAll('.message-bubble:not(.typing-bubble)')].filter(e=>e.innerText==='한글').length===7`);
   pass('BLE disconnect removes peer status and reconnect restores keyboard relay in sign mode');
 

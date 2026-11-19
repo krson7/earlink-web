@@ -47,7 +47,7 @@ export default function BrailleDevice({ device, showGuide, onPress }: BrailleDev
               <span className="connect-guide-symbol"><BluetoothSymbol /></span>
               <span className="connect-guide-label">
                 <strong>기기를 눌러 연결하세요</strong>
-                <span>every way connect</span>
+                <span>한 휴대폰만 연결하면 모두 대화할 수 있어요</span>
               </span>
             </button>
           </div>

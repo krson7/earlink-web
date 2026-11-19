@@ -10,9 +10,9 @@ import type {
   Dispatch,
   SetStateAction,
 } from "react";
+import { getWebSocketUrl } from "@/lib/websocket-url";
 
 import {
-  FASTAPI_WS_BASE_URL,
   MAX_RECONNECT_ATTEMPTS,
   WS_MAX_BUFFERED,
 } from "@/lib/sign-language/constants";
@@ -207,18 +207,9 @@ export function useSignLanguageSocket({
         return;
       }
 
-      const baseUrl =
-        FASTAPI_WS_BASE_URL.replace(
-          /\/+$/,
-          "",
-        );
-
-      const translateWebSocketUrl =
-        `${baseUrl}/ws/translate/` +
-        `${encodeURIComponent(
-          normalizedRoomCode,
-        )}/` +
-        `${participantId}`;
+      const translateWebSocketUrl = getWebSocketUrl(
+        `/ws/translate/${encodeURIComponent(normalizedRoomCode)}/${participantId}`,
+      );
 
       setStatus(
         "FastAPI 서버 연결 중",

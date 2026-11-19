@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { ApiError } from "@/lib/api";
 import { fetchDevicePresence, reportDevicePresence } from "@/lib/device-presence-api";
@@ -11,12 +11,11 @@ import type { DevicePresence } from "@/lib/device-presence-api";
  *
  * - 내가 연결하면 서버에 알리고, 주기적으로 갱신한다.
  * - 내가 연결하지 않았으면 서버에 물어본다.
- * - 서버에 API가 없거나 실패하면 "다른 연결 없음"으로 보고 조용히 넘어간다.
+ * - 조회 실패는 미연결로 단정하지 않고, 연결 안내로 입장을 막지 않는다.
  */
 
-const POLL_INTERVAL_MS = 10_000;
+const POLL_INTERVAL_MS = 3_000;
 const HEARTBEAT_INTERVAL_MS = 20_000;
-const FIRST_CHECK_TIMEOUT_MS = 1_500;
 
 type Options = {
   localConnected: boolean;
@@ -25,6 +24,8 @@ type Options = {
 };
 
 export function useDevicePresence({ localConnected, serialNumber, poll }: Options) {
+  const ownerIdRef = useRef<string | null>(null);
+  const reportsRef = useRef<Promise<void>>(Promise.resolve());
   const [remote, setRemote] = useState<DevicePresence | null>(null);
   const [checked, setChecked] = useState(false);
   const [apiMissing, setApiMissing] = useState(false);
@@ -37,31 +38,44 @@ export function useDevicePresence({ localConnected, serialNumber, poll }: Option
     }
 
     let disposed = false;
+    let checking = false;
 
     async function check(): Promise<void> {
+      if (checking) return;
+      checking = true;
       try {
+        // A disconnect report must finish before we can interpret a connection
+        // as belonging to another phone rather than our own previous session.
+        await reportsRef.current;
+        if (disposed) return;
         const presence = await fetchDevicePresence();
-        if (!disposed) setRemote(presence);
+        if (!disposed) {
+          setRemote(presence);
+          setChecked(true);
+        }
       } catch (failure) {
         if (disposed) return;
-        setRemote(null);
         // 서버에 아직 API가 없으면 더 묻지 않는다.
         if (failure instanceof ApiError && failure.status === 404) setApiMissing(true);
       } finally {
-        if (!disposed) setChecked(true);
+        checking = false;
       }
     }
 
-    void check();
+    async function refresh(): Promise<void> {
+      await check();
+    }
+    void refresh();
     const timer = window.setInterval(() => void check(), POLL_INTERVAL_MS);
-    const giveUp = window.setTimeout(() => {
-      if (!disposed) setChecked(true);
-    }, FIRST_CHECK_TIMEOUT_MS);
+    const onVisible = () => { if (document.visibilityState === "visible") void check(); };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", onVisible);
 
     return () => {
       disposed = true;
       window.clearInterval(timer);
-      window.clearTimeout(giveUp);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [shouldPoll]);
 
@@ -71,20 +85,27 @@ export function useDevicePresence({ localConnected, serialNumber, poll }: Option
     }
 
     function report(connected: boolean, keepalive = false): void {
-      void reportDevicePresence({ connected, serialNumber }, { keepalive }).catch(() => undefined);
+      const ownerId = ownerIdRef.current ??= crypto.randomUUID();
+      // Preserve connect/disconnect ordering, including Strict Mode effect restarts.
+      reportsRef.current = reportsRef.current.then(() =>
+        reportDevicePresence({ connected, serialNumber }, { ownerId, keepalive }),
+      ).catch(() => undefined);
     }
 
     function handlePageHide(): void {
       report(false, true);
     }
+    const handlePageShow = () => report(true);
 
     report(true);
     const timer = window.setInterval(() => report(true), HEARTBEAT_INTERVAL_MS);
     window.addEventListener("pagehide", handlePageHide);
+    window.addEventListener("pageshow", handlePageShow);
 
     return () => {
       window.clearInterval(timer);
       window.removeEventListener("pagehide", handlePageHide);
+      window.removeEventListener("pageshow", handlePageShow);
       report(false);
     };
   }, [localConnected, serialNumber, apiMissing]);
@@ -93,7 +114,7 @@ export function useDevicePresence({ localConnected, serialNumber, poll }: Option
 
   return {
     // 서버 응답을 기다리는 동안 연결 안내를 잠깐 미룬다.
-    checked: checked || apiMissing || localConnected,
+    checked: checked || localConnected,
     remoteConnected,
     remoteSerialNumber: remoteConnected ? remote?.serialNumber ?? null : null,
   };

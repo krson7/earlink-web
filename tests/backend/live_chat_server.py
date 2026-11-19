@@ -14,6 +14,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--backend-root", type=Path, required=True)
 parser.add_argument("--port", type=int, default=3180)
 parser.add_argument("--router-path", type=Path)
+parser.add_argument("--presence-router-path", type=Path)
 options = parser.parse_args()
 cache = Path(__file__).resolve().parents[2] / "node_modules/.cache/earlink-live-tests"
 cache.mkdir(parents=True, exist_ok=True)
@@ -47,6 +48,11 @@ with Session(bind=engine) as db:
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["http://127.0.0.1:3100"], allow_methods=["*"], allow_headers=["*"])
+if options.presence_router_path:
+    spec = importlib.util.spec_from_file_location("presence_router_under_test", options.presence_router_path.resolve())
+    presence = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(presence)
+    room_router.include_router(presence.router)
 app.include_router(room_router)
 app.include_router(chat_router)
 

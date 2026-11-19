@@ -32,7 +32,7 @@ export async function fetchDevicePresence(): Promise<DevicePresence> {
 
 export async function reportDevicePresence(
   presence: DevicePresence,
-  options: { keepalive?: boolean } = {},
+  options: { ownerId: string; keepalive?: boolean },
 ): Promise<void> {
   await requestJson<unknown>("/rooms/device", {
     method: "PUT",
@@ -40,6 +40,7 @@ export async function reportDevicePresence(
     body: JSON.stringify({
       connected: presence.connected,
       serial_number: presence.serialNumber,
+      owner_id: options.ownerId,
     }),
   });
 }

@@ -16,25 +16,26 @@
 
 Web Bluetooth를 지원하는 브라우저와 HTTPS가 필요하다. 브라우저의 기기 검색은 사용자 클릭에서 시작해야 한다. [Chrome 공식 안내](https://developer.chrome.com/docs/capabilities/bluetooth)를 참고한다.
 
-배포 환경에 실제 FastAPI 서버 주소를 설정한 뒤 빌드한다. `.env.example`은 자리 표시자이며 실제 서버 주소가 아니다.
+배포 환경에서 Next.js 서버가 접근할 수 있는 FastAPI 주소를 설정한 뒤 빌드한다. 브라우저는 HTTP와 WebSocket 모두 웹 주소를 사용하고 Next.js 서버가 전달한다. 연결 상태 공유 모듈도 [설치 안내](../backend/README.md)에 따라 FastAPI에 등록한다.
 
 ```dotenv
-NEXT_PUBLIC_FASTAPI_HTTP_BASE_URL=https://api.example.com
-NEXT_PUBLIC_FASTAPI_WS_BASE_URL=wss://api.example.com
+FASTAPI_HTTP_BASE_URL=http://127.0.0.1:8000
 ```
 
-두 값은 `next build` 시 브라우저 번들에 포함되므로 변경 후 다시 빌드해야 한다. 현재 로컬 `.env.local`의 개발용 localhost 주소는 외부 배포에 사용할 수 없다. 배포 플랫폼 환경 변수에 올바른 주소가 이미 설정되어 있다면 해당 플랫폼의 빌드에서 그 값을 사용한다.
+위 주소는 두 서버가 같은 컴퓨터에서 실행될 때의 예시다. 별도 호스팅에서는 실제 백엔드 주소로 바꾼다. WebSocket rewrite 목적지는 빌드 시 결정되므로 주소 변경 후 다시 빌드한다. HTTP 프록시에서는 서버 환경변수를 읽는다. 기존 `NEXT_PUBLIC_FASTAPI_HTTP_BASE_URL`도 호환용으로 읽지만 새 설정은 `FASTAPI_HTTP_BASE_URL`을 사용한다.
+
+WebSocket upgrade를 전달하지 못하는 호스팅에서는 `NEXT_PUBLIC_FASTAPI_WS_BASE_URL=wss://실제-서버-주소`를 별도로 지정한다. 이 값은 브라우저 번들에 포함되므로 휴대폰에서도 접근 가능한 WSS 주소여야 한다. 예전 `ws://localhost:8000` 설정은 같은 웹 주소의 프록시를 사용하도록 처리한다. HTTP 요청은 항상 `/api/backend`를 거친다.
 
 ```sh
 npm run build
 npm run start
 ```
 
-이번 변경은 배포용 코드 전환이며 호스팅 서비스에 게시한 작업은 아니다. 실제 배포용 HTTPS API·WSS 주소는 별도 확인이 필요하다.
+이번 변경은 로컬 웹·백엔드 코드 수정이며 호스팅 서비스에 게시한 작업은 아니다. 실제 배포 환경에서 웹 HTTPS와 WebSocket upgrade 지원을 확인해야 한다.
 
 ## 검증
 
-현재 프로덕션 빌드, TypeScript 및 변경 파일 lint 검사가 통과했다. 기존 프로토콜·키보드 테스트 16개와 아래 브라우저 연결 시나리오 11개가 통과했으며 브라우저 런타임 예외는 없었다. 브라우저 시나리오의 GATT 기기는 테스트 전용 모의 기기다.
+이번 수정에서 프로덕션 빌드와 TypeScript 검사, 기존 프로토콜·키보드 테스트 16개, HTTP 경로 검사 3개, 연결 상태 API 검사 4개, 브라우저 연결 검사 21개가 통과했다. 실제 서버와 브라우저 3개를 연결한 검사 13개도 최종 배포용 실행 모드에서 통과했으며 브라우저 런타임 예외는 없었다. GATT 기기는 테스트 전용 모의 기기다. 자세한 결과는 [검증 기록](VALIDATION_2026-11-19.md)을 참고한다.
 
 기존 프로토콜·키보드 테스트:
 

@@ -32,6 +32,31 @@ try {
   const phase = p=>`document.querySelector('.connect-sheet')?.dataset.phase==='${p}'`;
   async function noFalseConnection(){assert.notEqual(await js(`document.querySelector('.device-scene').dataset.state`),'connected');assert.equal(await js(`window.__ble.presence.filter(p=>p.connected).length`),0);}
   await load('success');
+  await until(`!!document.querySelector('.connect-guide-action')`);
+  assert.equal(await js(`!!document.querySelector('.connect-guide-backdrop')`),false);
+  await click('.mode-card:nth-child(3)');
+  await until(`!!document.querySelector('.chat-screen')`);
+  assert.equal(await js(`window.__ble.requests.length`),0);
+  cases.push('mode selection remains available without pairing even when the optional guide is visible');console.log('PASS '+cases.at(-1));
+
+  for (const mode of ['presence-missing', 'presence-slow']) {
+    await load(mode);
+    assert.equal(await js(`!!document.querySelector('.connect-guide-action, .connect-guide-backdrop')`),false);
+    if (mode === 'presence-slow') {
+      await until(`document.querySelector('.device-scene')?.dataset.state==='connected'`);
+      assert.equal(await js(`!!document.querySelector('.connect-guide-action')`),false);
+    }
+    await click('.mode-card:nth-child(3)');await until(`!!document.querySelector('.chat-screen')`);
+    assert.equal(await js(`window.__ble.requests.length`),0);
+    cases.push(mode+': missing or delayed presence never forces pairing');console.log('PASS '+cases.at(-1));
+  }
+  await load('join-offline');await click('.mode-card:nth-child(3)');
+  await until(`!!document.querySelector('[role="alert"]')`);
+  assert.ok(!(await js(`document.querySelector('[role="alert"]').innerText`)).includes('Failed to fetch'));
+  assert.ok(await js(`document.querySelector('[role="alert"]').innerText.includes('인터넷 연결')`));
+  cases.push('mobile network failure shows a retryable Korean error');console.log('PASS '+cases.at(-1));
+
+  await load('success');
   await new Promise(r=>setTimeout(r,1900));
   assert.equal(await js(`window.__ble.requests.length`),0);
   await click('.device-button');await until(phase('connecting'));

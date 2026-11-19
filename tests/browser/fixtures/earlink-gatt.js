@@ -5,10 +5,17 @@
   const q = window.__ble = { mode, requests: [], presence: [], writes: [], stages: [], completed: [], sent: [], received: [], nextAck: 1 };
   const originalFetch = window.fetch.bind(window);
   window.fetch = (input, options = {}) => {
-    if (String(input).includes('/rooms/device')) {
+    if (live && q.disconnectDelay && String(input).includes('/rooms/device') &&
+        options.method === 'PUT' && !JSON.parse(options.body).connected) {
+      return new Promise(resolve => setTimeout(resolve, q.disconnectDelay)).then(() => originalFetch(input, options));
+    }
+    if (!live && String(input).includes('/rooms/device')) {
       if (options.method === 'PUT') q.presence.push(JSON.parse(options.body));
+      if (mode === 'presence-missing') return Promise.resolve(Response.json({detail:'Not Found'}, {status:404}));
+      if (mode === 'presence-slow') return new Promise(resolve => setTimeout(() => resolve(Response.json({connected:true,serial_number:'EL-REMOTE'})), 3500));
       return Promise.resolve(new Response(JSON.stringify({ connected: mode === 'remote', serial_number: mode === 'remote' ? 'EL-REMOTE' : null }), { status: 200 }));
     }
+    if (mode === 'join-offline' && String(input).includes('/rooms/join')) return Promise.reject(new TypeError('Failed to fetch'));
     if (!live && String(input).includes('/rooms/join')) return Promise.resolve(new Response(JSON.stringify({ participant_id: 1, room_id: 1, room_code: 'QA', accessibility_mode: JSON.parse(options.body).accessibility_mode, joined_at: new Date().toISOString() }), { status: 200 }));
     return originalFetch(input, options);
   };

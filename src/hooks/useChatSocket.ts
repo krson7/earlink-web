@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getWebSocketUrl } from "@/lib/websocket-url";
 
 import {
   createLocalMessageId,
@@ -13,9 +14,6 @@ import type {
   ChatServerMessage,
   JoinRoomResponse,
 } from "@/types/chat";
-
-const FASTAPI_WS_BASE_URL =
-  process.env.NEXT_PUBLIC_FASTAPI_WS_BASE_URL ?? "ws://localhost:8000";
 
 const BRAILLE_TYPING_TTL_MS = 7000;
 
@@ -69,10 +67,9 @@ export function useChatSocket(participant: JoinRoomResponse | null) {
         return;
       }
 
-      const baseUrl = FASTAPI_WS_BASE_URL.replace(/\/+$/, "");
-      const websocketUrl =
-        `${baseUrl}/ws/rooms/` +
-        `${encodeURIComponent(roomCode)}/${participantId}`;
+      const websocketUrl = getWebSocketUrl(
+        `/ws/rooms/${encodeURIComponent(roomCode)}/${participantId}`,
+      );
 
       setStatus("채팅 서버 연결 중");
 
