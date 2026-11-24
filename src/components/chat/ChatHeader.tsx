@@ -16,7 +16,8 @@ type ChatHeaderProps = {
 
 /*
  * 채팅 서버가 끊겨 있으면 대화 자체가 안 되므로 그 상태를 먼저 보여 주고,
- * 그 외에는 점자 기기 연결 상태와 시리얼을 보여 준다.
+ * 대화방에 연결된 참여자는 직접 페어링하지 않아도 초록색 연결 상태를 보여 준다.
+ * 기기 연결 정보가 있으면 시리얼도 함께 보여 준다.
  */
 function getConnectionState(
   chatConnected: boolean,
@@ -29,7 +30,7 @@ function getConnectionState(
     return { text: serialNumber ? `기기 연결됨 · ${serialNumber}` : "기기 연결됨", dot: "connection-dot online" };
   }
   if (deviceConnecting) return { text: "기기 연결 중…", dot: "connection-dot" };
-  return { text: "기기 미연결", dot: "connection-dot offline" };
+  return { text: "기기 연결됨", dot: "connection-dot online" };
 }
 
 export default function ChatHeader({

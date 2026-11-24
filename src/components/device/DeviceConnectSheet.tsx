@@ -239,9 +239,6 @@ export default function DeviceConnectSheet(props: DeviceConnectSheetProps) {
         <div className="connect-sheet-copy" aria-live="polite">
           <h2 id={titleId}>{copy[phase].title}</h2>
           <p id={descriptionId}>{copy[phase].description}</p>
-          {(phase === "idle" || phase === "error" || phase === "unsupported") && (
-            <p>한 휴대폰만 EarLink에 연결하면 돼요. 다른 휴대폰은 페어링 없이 참여하세요.</p>
-          )}
         </div>
 
         {phase === "error" && error && (
