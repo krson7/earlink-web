@@ -161,7 +161,7 @@ export default function Home() {
         <ModeSelectScreen
           loading={room.joining}
           checkingDevice={checkingDevice}
-          errorMessage={room.joinError || presence.error || ""}
+          errorMessage={room.joinError}
           onSelectMode={handleSelectMode}
           device={{ ...earLink, remoteConnected: presence.remoteConnected }}
           showGuide={showGuide}
@@ -180,7 +180,6 @@ export default function Home() {
         remoteConnected={presence.remoteConnected}
         remoteSerialNumber={presence.remoteSerialNumber}
         error={earLink.error}
-        presenceError={presence.error}
         status={earLink.status}
         onControl={earLink.control}
         onIntervalChange={earLink.setIntervalMs}

@@ -32,7 +32,6 @@ type DeviceConnectSheetProps = {
   remoteConnected: boolean;
   remoteSerialNumber: string | null;
   error: string | null;
-  presenceError: string | null;
   status: EarLinkStatus | null;
   onControl: (command: EarLinkCommand) => Promise<void>;
   onIntervalChange: (milliseconds: number) => Promise<void>;
@@ -70,7 +69,7 @@ function SuccessMark() {
 
 export default function DeviceConnectSheet(props: DeviceConnectSheetProps) {
   const {
-    open, connected, deviceName, serialNumber, remoteSerialNumber, error, presenceError, status,
+    open, connected, deviceName, serialNumber, remoteSerialNumber, error, status,
     onControl, onIntervalChange, onConnect, onDisconnect, onClose,
   } = props;
 
@@ -247,9 +246,6 @@ export default function DeviceConnectSheet(props: DeviceConnectSheetProps) {
 
         {phase === "error" && error && (
           <p role="alert" className="connect-sheet-error">{error}</p>
-        )}
-        {presenceError && (
-          <p role="alert" className="connect-sheet-error">{presenceError}</p>
         )}
 
         {phase === "connected" && status && (
