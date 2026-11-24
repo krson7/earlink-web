@@ -17,12 +17,12 @@ import type { EarLinkCommand, EarLinkStatus } from "@/lib/earlink-protocol";
 
 // 원(0.3s 지연 + 0.65s)과 체크(0.4s)가 다 그려진 뒤 잠시 머문다.
 const SUCCESS_HOLD_MS = 2100;
+const CLOSE_DURATION_MS = 400;
 
 type Phase = "connecting" | "success" | "connected" | "remote" | "unsupported" | "error" | "idle";
 
 type DeviceConnectSheetProps = {
   open: boolean;
-  required: boolean;
   supported: boolean;
   connected: boolean;
   connecting: boolean;
@@ -32,6 +32,7 @@ type DeviceConnectSheetProps = {
   remoteConnected: boolean;
   remoteSerialNumber: string | null;
   error: string | null;
+  presenceError: string | null;
   status: EarLinkStatus | null;
   onControl: (command: EarLinkCommand) => Promise<void>;
   onIntervalChange: (milliseconds: number) => Promise<void>;
@@ -69,7 +70,7 @@ function SuccessMark() {
 
 export default function DeviceConnectSheet(props: DeviceConnectSheetProps) {
   const {
-    open, required, connected, deviceName, serialNumber, remoteSerialNumber, error, status,
+    open, connected, deviceName, serialNumber, remoteSerialNumber, error, presenceError, status,
     onControl, onIntervalChange, onConnect, onDisconnect, onClose,
   } = props;
 
@@ -102,6 +103,13 @@ export default function DeviceConnectSheet(props: DeviceConnectSheetProps) {
   const name = deviceName ?? "EarLink";
 
   useEffect(() => {
+    if (open || !mounted) return;
+    // Background tabs can cancel animationend; the closed dialog must still unmount.
+    const timer = window.setTimeout(() => setMounted(false), CLOSE_DURATION_MS);
+    return () => window.clearTimeout(timer);
+  }, [open, mounted]);
+
+  useEffect(() => {
     if (!open || !celebrating) {
       return;
     }
@@ -132,7 +140,7 @@ export default function DeviceConnectSheet(props: DeviceConnectSheetProps) {
 
     function handleKeyDown(event: KeyboardEvent): void {
       if (event.key === "Escape") {
-        if (!required) onClose();
+        onClose();
       }
       if (event.key === "Tab") {
         const controls = cardRef.current?.querySelectorAll<HTMLElement>("button:not(:disabled), select:not(:disabled), [tabindex='0']");
@@ -156,7 +164,7 @@ export default function DeviceConnectSheet(props: DeviceConnectSheetProps) {
       document.removeEventListener("keydown", handleKeyDown);
       restoreFocusTo?.focus({ preventScroll: true });
     };
-  }, [open, required, onClose]);
+  }, [open, onClose]);
 
   function handleAnimationEnd(event: AnimationEvent<HTMLElement>): void {
     if (!open && event.target === event.currentTarget) {
@@ -204,7 +212,7 @@ export default function DeviceConnectSheet(props: DeviceConnectSheetProps) {
 
   return (
     <div className={open ? "connect-sheet" : "connect-sheet is-closing"} data-phase={phase}>
-      <div className="connect-sheet-backdrop" aria-hidden="true" onClick={required ? undefined : onClose} />
+      <div className="connect-sheet-backdrop" aria-hidden="true" onClick={onClose} />
 
       <section
         ref={cardRef}
@@ -218,11 +226,11 @@ export default function DeviceConnectSheet(props: DeviceConnectSheetProps) {
       >
         <span className="connect-sheet-grabber" aria-hidden="true" />
 
-        {!required && <button type="button" onClick={onClose} aria-label="닫기" className="soft-circle connect-sheet-close">
+        <button type="button" onClick={onClose} aria-label="닫기" className="soft-circle connect-sheet-close">
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-4 w-4">
             <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
-        </button>}
+        </button>
 
         <div className="connect-sheet-visual">
           <DeviceModel3D motion={getMotion(phase)} />
@@ -232,10 +240,16 @@ export default function DeviceConnectSheet(props: DeviceConnectSheetProps) {
         <div className="connect-sheet-copy" aria-live="polite">
           <h2 id={titleId}>{copy[phase].title}</h2>
           <p id={descriptionId}>{copy[phase].description}</p>
+          {(phase === "idle" || phase === "error" || phase === "unsupported") && (
+            <p>한 휴대폰만 EarLink에 연결하면 돼요. 다른 휴대폰은 페어링 없이 참여하세요.</p>
+          )}
         </div>
 
         {phase === "error" && error && (
           <p role="alert" className="connect-sheet-error">{error}</p>
+        )}
+        {presenceError && (
+          <p role="alert" className="connect-sheet-error">{presenceError}</p>
         )}
 
         {phase === "connected" && status && (
@@ -250,19 +264,20 @@ export default function DeviceConnectSheet(props: DeviceConnectSheetProps) {
             </button>
           )}
 
-          {(phase === "success" || phase === "connected" || phase === "remote" || (phase === "unsupported" && !required)) && (
+          {(phase === "success" || phase === "connected" || phase === "remote") && (
             <button type="button" onClick={onClose} className="connect-sheet-primary">
               {phase === "success" || phase === "connected" ? "완료" : "확인"}
             </button>
           )}
 
-          {phase === "unsupported" && required && (
-            <p role="status">다른 휴대폰에서 EarLink를 연결하면 입장할 수 있어요.</p>
-          )}
-
           {(phase === "idle" || phase === "error") && (
             <button type="button" onClick={onConnect} className="connect-sheet-primary">
               {phase === "error" ? "다시 시도" : "연결하기"}
+            </button>
+          )}
+          {(phase === "idle" || phase === "error" || phase === "unsupported") && (
+            <button type="button" onClick={onClose} className="connect-sheet-secondary connect-sheet-join">
+              페어링 없이 대화 참여
             </button>
           )}
 

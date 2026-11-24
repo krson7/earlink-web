@@ -8,7 +8,6 @@ import type { AccessibilityMode } from "@/types/chat";
 
 type ModeSelectScreenProps = {
   loading: boolean;
-  pairingRequired: boolean;
   checkingDevice: boolean;
   errorMessage: string;
   onSelectMode: (mode: AccessibilityMode) => void;
@@ -20,7 +19,6 @@ type ModeSelectScreenProps = {
 
 export default function ModeSelectScreen({
   loading,
-  pairingRequired,
   checkingDevice,
   errorMessage,
   onSelectMode,
@@ -50,7 +48,7 @@ export default function ModeSelectScreen({
   return (
     <div className="relative h-full">
       <ModeSelect
-        disabled={pairingRequired || loading}
+        disabled={loading}
         onSelectMode={onSelectMode}
         device={device}
         showGuide={showGuide}

@@ -5,6 +5,13 @@
   const q = window.__ble = { mode, requests: [], presence: [], writes: [], stages: [], completed: [], sent: [], received: [], nextAck: 1 };
   const originalFetch = window.fetch.bind(window);
   window.fetch = (input, options = {}) => {
+    if (live && String(input).includes('/rooms/device') && options.method === 'PUT') {
+      q.presence.push(JSON.parse(options.body));
+      if (q.failPresenceReports > 0) {
+        q.failPresenceReports--;
+        return Promise.reject(new TypeError('Failed to fetch'));
+      }
+    }
     if (live && q.disconnectDelay && String(input).includes('/rooms/device') &&
         options.method === 'PUT' && !JSON.parse(options.body).connected) {
       return new Promise(resolve => setTimeout(resolve, q.disconnectDelay)).then(() => originalFetch(input, options));

@@ -28,7 +28,8 @@ export function useDevicePresence({ localConnected, serialNumber, poll }: Option
   const reportsRef = useRef<Promise<void>>(Promise.resolve());
   const [remote, setRemote] = useState<DevicePresence | null>(null);
   const [checked, setChecked] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [reportError, setReportError] = useState<string | null>(null);
 
   const shouldPoll = poll && !localConnected;
 
@@ -52,13 +53,13 @@ export function useDevicePresence({ localConnected, serialNumber, poll }: Option
         if (!disposed) {
           setRemote(presence);
           setChecked(true);
-          setError(null);
+          setLookupError(null);
         }
       } catch (failure) {
         if (disposed) return;
-        setError(failure instanceof ApiError && failure.status === 404
-          ? "기기 연결 상태 공유 기능을 사용할 수 없어요. 서버 설정을 확인해 주세요."
-          : "다른 휴대폰의 연결 상태를 확인하지 못했어요. 자동으로 다시 확인하고 있어요.");
+        setLookupError(failure instanceof ApiError && failure.status === 404
+          ? "기기 연결 상태를 공유할 수 없어요. 다른 휴대폰이 연결했다면 페어링 없이 참여하세요."
+          : "다른 휴대폰의 연결 상태를 확인하지 못했어요. 페어링 없이 참여할 수 있으며 자동으로 다시 확인해요.");
       } finally {
         checking = false;
       }
@@ -86,29 +87,67 @@ export function useDevicePresence({ localConnected, serialNumber, poll }: Option
       return;
     }
 
-    function report(connected: boolean, keepalive = false): void {
+    let disposed = false;
+    let suspended = false;
+    let reporting = false;
+    let timer: number | undefined;
+
+    function report(connected: boolean, keepalive = false): Promise<void> {
       const ownerId = ownerIdRef.current ??= crypto.randomUUID();
       // Preserve connect/disconnect ordering, including Strict Mode effect restarts.
-      reportsRef.current = reportsRef.current.then(() =>
+      const pending = reportsRef.current.then(() =>
         reportDevicePresence({ connected, serialNumber }, { ownerId, keepalive }),
-      ).catch(() => undefined);
+      );
+      reportsRef.current = pending.catch(() => undefined);
+      return pending;
+    }
+
+    async function refresh(): Promise<void> {
+      if (disposed || suspended || reporting) return;
+      reporting = true;
+      window.clearTimeout(timer);
+      let delay = HEARTBEAT_INTERVAL_MS;
+      try {
+        await report(true);
+        if (!disposed) setReportError(null);
+      } catch {
+        delay = POLL_INTERVAL_MS;
+        if (!disposed) {
+          setReportError("기기는 연결됐지만 연결 상태 공유를 재시도하고 있어요. 다른 휴대폰은 페어링 없이 참여할 수 있어요.");
+        }
+      } finally {
+        reporting = false;
+        if (!disposed && !suspended) timer = window.setTimeout(() => void refresh(), delay);
+      }
     }
 
     function handlePageHide(): void {
-      report(false, true);
+      suspended = true;
+      window.clearTimeout(timer);
+      void report(false, true).catch(() => undefined);
     }
-    const handlePageShow = () => report(true);
+    function handlePageShow(): void {
+      suspended = false;
+      void refresh();
+    }
+    const onVisible = () => { if (document.visibilityState === "visible") void refresh(); };
 
-    report(true);
-    const timer = window.setInterval(() => report(true), HEARTBEAT_INTERVAL_MS);
+    void refresh();
     window.addEventListener("pagehide", handlePageHide);
     window.addEventListener("pageshow", handlePageShow);
+    window.addEventListener("focus", refresh);
+    window.addEventListener("online", refresh);
+    document.addEventListener("visibilitychange", onVisible);
 
     return () => {
-      window.clearInterval(timer);
+      disposed = true;
+      window.clearTimeout(timer);
       window.removeEventListener("pagehide", handlePageHide);
       window.removeEventListener("pageshow", handlePageShow);
-      report(false);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("online", refresh);
+      document.removeEventListener("visibilitychange", onVisible);
+      void report(false).catch(() => undefined);
     };
   }, [localConnected, serialNumber]);
 
@@ -117,7 +156,7 @@ export function useDevicePresence({ localConnected, serialNumber, poll }: Option
   return {
     // 서버 응답을 기다리는 동안 연결 안내를 잠깐 미룬다.
     checked: checked || localConnected,
-    error,
+    error: localConnected ? reportError : lookupError,
     remoteConnected,
     remoteSerialNumber: remoteConnected ? remote?.serialNumber ?? null : null,
   };

@@ -85,6 +85,7 @@ button:focus-visible, a:focus-visible, select:focus-visible { outline: 3px solid
 
 /* 기기 연결 팝업 */
 .connect-sheet { position: absolute; inset: 0; z-index: 60; display: flex; align-items: flex-end; }
+.connect-sheet.is-closing { pointer-events: none; }
 .connect-sheet-backdrop { position: absolute; inset: 0; background: #111b3b61; backdrop-filter: blur(3px); animation: fade-in .3s ease-out both; }
 .connect-sheet.is-closing .connect-sheet-backdrop { animation: fade-out .32s ease-in both; }
 .connect-sheet-card { position: relative; width: 100%; margin: 0 10px max(10px, env(safe-area-inset-bottom)); padding: 12px 22px 18px; border-radius: 34px; outline: none; background: linear-gradient(160deg, #f7f9fc, #e9eef5); text-align: center; box-shadow: 0 -8px 40px #111b3b2e, inset 1px 1px 0 #fff; animation: sheet-up .6s cubic-bezier(.2, 1.15, .3, 1) both; }

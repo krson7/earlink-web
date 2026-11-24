@@ -31,6 +31,7 @@ from server.database import Base, engine
 from server.entities.room import Room
 from server.routers.chat_router import router as chat_router
 from server.routers.room_router import router as room_router
+from server.routers import device_presence_router
 from server.services.chat_service import chat_manager
 from server.services.room_service import ensure_default_room
 
@@ -60,6 +61,14 @@ app.include_router(chat_router)
 @app.get("/__test__/health")
 def health():
     return {"isolated_database": True}
+
+
+@app.post("/__test__/reset-presence")
+def reset_presence():
+    device_presence_router.presence_store = device_presence_router.DevicePresenceStore()
+    if options.presence_router_path:
+        presence.presence_store = presence.DevicePresenceStore()
+    return {"reset": True}
 
 
 @app.post("/__test__/close/{participant_id}")

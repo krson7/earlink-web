@@ -38,21 +38,28 @@ try {
   async function noFalseConnection(){assert.notEqual(await js(`document.querySelector('.device-scene').dataset.state`),'connected');assert.equal(await js(`window.__ble.presence.filter(p=>p.connected).length`),0);}
   await load('success');
   await until(phase('idle'));
-  assert.equal(await js(`document.querySelectorAll('.mode-card:disabled').length`),3);
-  assert.equal(await js(`!!document.querySelector('.connect-sheet-close')`),false);
+  assert.equal(await js(`document.querySelectorAll('.mode-card:disabled').length`),0);
+  assert.equal(await js(`!!document.querySelector('.connect-sheet-close')`),true);
+  await cdp('Input.dispatchKeyEvent',{type:'keyDown',key:'Tab',code:'Tab'});
+  assert.equal(await js(`document.activeElement===document.querySelector('.connect-sheet-close')`),true);
+  await cdp('Input.dispatchKeyEvent',{type:'keyDown',key:'Tab',code:'Tab',modifiers:8});
+  assert.equal(await js(`document.activeElement===document.querySelector('.connect-sheet-join')`),true);
+  cases.push('keyboard focus stays inside the connection dialog');console.log('PASS '+cases.at(-1));
   await cdp('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape'});
-  await click('.connect-sheet-backdrop');
-  await js(`document.querySelector('.mode-card:nth-child(3)').click()`);
-  assert.ok(await js(phase('idle')));
-  assert.equal(await js(`!!document.querySelector('.chat-screen')`),false);
+  await until(`!document.querySelector('.connect-sheet')`);
+  await new Promise(r=>setTimeout(r,3200));
+  assert.equal(await js(`!!document.querySelector('.connect-sheet')`),false);
+  await click('.mode-card:nth-child(3)');
+  await until(`!!document.querySelector('.chat-screen')`);
   assert.equal(await js(`window.__ble.requests.length`),0);
-  cases.push('no connected phone: pairing is mandatory, modes are blocked, Escape and backdrop cannot dismiss it');console.log('PASS '+cases.at(-1));
-  await cdp('Input.dispatchKeyEvent',{type:'keyDown',key:'Tab',code:'Tab'});
-  assert.equal(await js(`document.activeElement===document.querySelector('.connect-sheet-primary')`),true);
-  await cdp('Input.dispatchKeyEvent',{type:'keyDown',key:'Tab',code:'Tab'});
-  assert.equal(await js(`document.activeElement===document.querySelector('.connect-sheet-primary')`),true);
-  cases.push('keyboard focus stays inside the required pairing dialog');console.log('PASS '+cases.at(-1));
+  cases.push('dismissing the connection guide allows chat without BLE and polling does not reopen it');console.log('PASS '+cases.at(-1));
 
+  await load('success');
+  await cdp('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',clickCount:1,x:10,y:20});
+  await cdp('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',clickCount:1,x:10,y:20});
+  await until(`!document.querySelector('.connect-sheet')`);
+  assert.equal(await js(`window.__ble.requests.length`),0);
+  await load('success');
   await js(`window.__ble.remoteConnected=true`);
   await until(`!document.querySelector('.connect-sheet') && !document.querySelector('.mode-card').disabled`);
   await click('.mode-card:nth-child(3)');
@@ -61,22 +68,30 @@ try {
   cases.push('another phone completes pairing: waiting visitor enters without a local Bluetooth request');console.log('PASS '+cases.at(-1));
 
   await load('presence-missing');
-  assert.equal(await js(`document.querySelectorAll('.mode-card:disabled').length`),3);
+  assert.equal(await js(`document.querySelectorAll('.mode-card:disabled').length`),0);
   assert.equal(await js(`document.querySelector('.connect-sheet-copy p').innerText`), '기기 전원을 켜고 휴대폰 가까이에 두세요.');
-  assert.equal(await js(`!!document.querySelector('.connect-sheet [role="alert"]')`), false);
+  assert.ok(await js(`document.querySelector('.connect-sheet [role="alert"]').innerText.includes('페어링 없이 참여')`));
+  await click('.connect-sheet-join');
+  await until(`!document.querySelector('.connect-sheet')`);
+  await click('.mode-card:nth-child(3)');
+  await until(`!!document.querySelector('.chat-screen')`);
+  assert.equal(await js(`window.__ble.requests.length`),0);
+  cases.push('missing presence API still allows another phone to join without a Bluetooth request');console.log('PASS '+cases.at(-1));
+
+  await load('presence-missing');
   await js(`window.__ble.presenceRestored=true;window.__ble.remoteConnected=true`);
   await until(`!document.querySelector('.connect-sheet') && !document.querySelector('.mode-card').disabled`);
   assert.ok(await js(`window.__ble.presenceChecks>=2`));
-  cases.push('missing presence API cannot bypass pairing; polling recovers when the API and peer connection return');console.log('PASS '+cases.at(-1));
+  cases.push('polling recovers when the presence API and peer connection return');console.log('PASS '+cases.at(-1));
 
   await load('presence-slow');
-  assert.equal(await js(`document.querySelectorAll('.mode-card:disabled').length`),3);
+  assert.equal(await js(`document.querySelectorAll('.mode-card:disabled').length`),0);
   assert.equal(await js(`!!document.querySelector('.connect-sheet')`),false);
   await until(`document.querySelector('.device-scene')?.dataset.state==='connected'`);
   assert.equal(await js(`!!document.querySelector('.connect-sheet')`),false);
   await click('.mode-card:nth-child(3)');await until(`!!document.querySelector('.chat-screen')`);
   assert.equal(await js(`window.__ble.requests.length`),0);
-  cases.push('slow presence response waits with modes blocked, then skips pairing when a connected phone is confirmed');console.log('PASS '+cases.at(-1));
+  cases.push('slow presence response waits, then skips pairing when a connected phone is confirmed');console.log('PASS '+cases.at(-1));
   await load('join-offline');await click('.mode-card:nth-child(3)');
   await until(`!!document.querySelector('[role="alert"]')`);
   assert.ok(!(await js(`document.querySelector('[role="alert"]').innerText`)).includes('Failed to fetch'));
@@ -113,8 +128,11 @@ try {
     await load(mode);await click('.connect-sheet-primary');await until(phase('connecting'));await js(`window.__ble.choose()`);await until(phase('error'));await noFalseConnection();
     assert.equal(await js(`window.__ble.device.gatt.connected`),false);cases.push(mode);console.log('PASS '+mode);
   }
-  await load('unsupported');await until(phase('unsupported'));assert.equal(await js(`window.__ble.requests.length`),0);await noFalseConnection();assert.equal(await js(`document.querySelectorAll('.mode-card:disabled').length`),3);assert.equal(await js(`!!document.querySelector('.connect-sheet-close, .connect-sheet-primary')`),false);
-  await js(`window.__ble.remoteConnected=true`);await until(`!document.querySelector('.connect-sheet') && !document.querySelector('.mode-card').disabled`);cases.push('unsupported browser waits for another phone to pair');console.log('PASS '+cases.at(-1));
+  await load('unsupported');await until(phase('unsupported'));assert.equal(await js(`window.__ble.requests.length`),0);await noFalseConnection();
+  await click('.connect-sheet-join');await until(`!document.querySelector('.connect-sheet')`);
+  await click('.mode-card:nth-child(3)');await until(`!!document.querySelector('.chat-screen')`);
+  cases.push('Bluetooth-unsupported phone can join chat without pairing');console.log('PASS '+cases.at(-1));
+  await load('unsupported');await js(`window.__ble.remoteConnected=true`);await until(`!document.querySelector('.connect-sheet') && !document.querySelector('.mode-card').disabled`);cases.push('unsupported browser automatically skips pairing when another phone connects');console.log('PASS '+cases.at(-1));
   await load('remote');await click('.device-button');await until(phase('remote'));assert.equal(await js(`window.__ble.requests.length`),0);assert.match(await js(`document.querySelector('.connect-sheet-copy').innerText`),/다른 휴대폰/);cases.push('remote connection remains separate');console.log('PASS remote connection remains separate');
 
   await load('keyboard');await click('.connect-sheet-primary');await until(phase('connecting'));await js(`window.__ble.choose()`);await until(phase('success'));
